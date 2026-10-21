@@ -57,6 +57,7 @@ BASE=http://localhost:8787 node scripts/live-smoke.mjs   # needs `npm run dev` r
 BASE=http://localhost:8787 GAMES=50 SEED=1 node scripts/sim-games.mjs   # 50 simulated online games
 npm run deploy         # needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the environment
 ```
+Usual way to deploy: `gh workflow run deploy.yml` (GitHub Actions: tests, deploy, live smoke test; the Cloudflare values are repo secrets, so no 1Password prompt).
 Cloudflare token, account ID and R2 keys, and the Spaceship API key and secret, are in 1Password, vault **Dev-Services** (items "Cloudflare API token and R2" and "Spaceship API key"; moved from Private on 2026-10-21). Never commit them.
 
 ## Design notes / gotchas

@@ -99,7 +99,12 @@ Read this before changing anything. Visual design (tokens, layouts, components) 
 
 ## Deploy
 
-- Run `npm run deploy`. The Cloudflare token is in 1Password, vault Dev-Services: "Cloudflare API token and R2" (see README for the passwordless deploy command).
+- **Preferred: GitHub Actions.** Run `gh workflow run deploy.yml --repo nishantk29/mafia-night`, or use the Actions tab → Deploy → Run workflow.
+  - It runs `npm test`, then `npm run deploy`, then the live smoke test.
+  - It reads the repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, so no 1Password is needed.
+  - It runs only when started by hand, never on push. Only Nishant or his own Claude sessions start it; Grokbot doesn't deploy.
+  - Watch it with `gh run watch`.
+- **Fallback from the Mac:** run `npm run deploy` yourself. The Cloudflare token is in 1Password, vault Dev-Services: "Cloudflare API token and R2" (see README for the passwordless deploy command).
 - Read it with `op item get "<name>" --vault Dev-Services --fields credential --reveal` (and `--fields "Account ID"`). The old Private item had a '+' in its name that broke `op read`; the renamed one doesn't.
 - Pass it as an env var. Never print it or save it anywhere.
 - If op says "authorization timeout", Nishant needs to unlock 1Password.
