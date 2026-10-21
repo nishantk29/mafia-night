@@ -30,7 +30,7 @@ export function hostScreen(v, local) {
   const { body, dock } = ({ lobby, dealt, night, day, over })[v.phase](v, local);
   const tabs = [['game', 'Game'], ['table', 'Table'], ['log', 'Log']];
   return `<header class="appbar">
-    <a class="appbar-mark" href="#/" aria-label="Mafia Night home">${ui('brand')}</a>
+    <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
     <span class="phase-badge">${ui(picon)} ${plabel}</span>${v.phase === 'lobby' ? '' : toolsButton()}
   </header>

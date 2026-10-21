@@ -11,7 +11,7 @@ import { toolsButton, toolsPanel } from './tools.js';
 
 const PHASE = { lobby: ['cards', 'Setting up'], dealt: ['cards', 'Roles dealt'], over: ['crown', 'Game over'] };
 const appbar = (title, badge = '') => `<header class="appbar">
-    <a class="appbar-mark" href="#/" aria-label="Mafia Night home">${ui('brand')}</a>
+    <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>${badge}
   </header>`;
 const back = (cls = '') => `<span class="rcard-back ${cls}" aria-hidden="true"><span class="rcard-back-mark">${ui('brand')}</span></span>`;

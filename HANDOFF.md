@@ -86,6 +86,8 @@ Read this before changing anything. Visual design (tokens, layouts, components) 
   - Coin and dice, and a leave-game link.
 - **Tools (storyteller):** talk timer, vote counter with the majority line, random player, coin, dice.
 - **Ways out:** start over (local mode), switch to phones, leave a game. There is also a FAQ page at `#/faq`.
+  - The logo on every screen is labelled "Home". Going home keeps your seat or room.
+  - The home page lists "Resume room" for rooms this device hosts and "Back to your seat in room" for rooms it joined (keys `mafia.host.*` / `mafia.player.*`). Links to closed rooms are dropped.
 
 ## How to verify (do all of this before deploying)
 
