@@ -97,8 +97,8 @@ Read this before changing anything. Visual design (tokens, layouts, components) 
 
 ## Deploy
 
-- Run `npm run deploy`. The Cloudflare token is in 1Password Private: "Cloudflare - Agents API token + R2".
-- Read it with `op item get "<name>" --format json`. `op read` breaks on the '+' in the name.
+- Run `npm run deploy`. The Cloudflare token is in 1Password, vault Dev-Services: "Cloudflare API token and R2" (see README for the passwordless deploy command).
+- Read it with `op item get "<name>" --vault Dev-Services --fields credential --reveal` (and `--fields "Account ID"`). The old Private item had a '+' in its name that broke `op read`; the renamed one doesn't.
 - Pass it as an env var. Never print it or save it anywhere.
 - If op says "authorization timeout", Nishant needs to unlock 1Password.
 - Commit with a clear message and push to `main`.
@@ -115,7 +115,7 @@ Read this before changing anything. Visual design (tokens, layouts, components) 
 - **Role updates from mafia.gg and other sources:** a script that lists role names we don't have yet, for a human to review. Write new roles in our own words; never copy text.
 - **Chat:** Nishant hasn't decided. The recommendation was no general chat for in-person play (it invites cheating), and maybe dead-player chat only. Ask him first.
 - **Old questions for Nishant:** re-enable DNSSEC at Spaceship? Delete the unused pending Cloudflare zone? Ask; don't do either alone.
-- **Deploy:** everything after commit 1d10a07 is undeployed. Nishant wants one deploy at the end.
+- **Local-mode privacy wording** (2026-10-21): local mode now says "Private to this device" in the appbar, with a note in the lobby. Check whether it's deployed by looking for that text on the live site.
 
 ## Where memory lives
 

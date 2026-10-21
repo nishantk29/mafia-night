@@ -57,7 +57,7 @@ BASE=http://localhost:8787 node scripts/live-smoke.mjs   # needs `npm run dev` r
 BASE=http://localhost:8787 GAMES=50 SEED=1 node scripts/sim-games.mjs   # 50 simulated online games
 npm run deploy         # needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the environment
 ```
-Cloudflare token, account ID and R2 keys, and the Spaceship API key and secret, are in 1Password (Private vault: "Cloudflare - Agents API token + R2", "Spaceship - API key + secret (hatethespurs.com)"). Never commit them.
+Cloudflare token, account ID and R2 keys, and the Spaceship API key and secret, are in 1Password, vault **Dev-Services** (items "Cloudflare API token and R2" and "Spaceship API key"; moved from Private on 2026-10-21). Never commit them.
 
 ## Design notes / gotchas
 - Free-plan Durable Objects must be SQLite-backed: migration uses `new_sqlite_classes`.
@@ -65,5 +65,8 @@ Cloudflare token, account ID and R2 keys, and the Spaceship API key and secret, 
 - A player's socket only ever receives their own role (plus teammates for Mafia/Masons/Cult). Dead players' roles become public unless the Janitor hid them. Checked by `test/room.test.js` and `scripts/live-smoke.mjs`.
 - Custom roles register into a process-wide lookup under unguessable `c_xxxx` ids; built-in ids can never be overridden.
 - Custom domain: `mafia.hatethespurs.com` is a 302 redirect set at Spaceship (DNS stays there, email untouched) to the `workers.dev` address. A true custom domain on the Worker would need the zone moved to Cloudflare.
-- 1Password: the Cloudflare item's name contains `+`, which `op read op://...` rejects. Read its fields with `op item get ... --format json` instead.
+- 1Password: the Cloudflare item was renamed to "Cloudflare API token and R2" (no `+`), so `op read` and `op item get --fields` both work now.
+- **Deploy without typing a password:** any agent whose 1Password service-account token is set (`OP_SERVICE_ACCOUNT_TOKEN`, which can read the Dev-Services vault) can deploy:
+  `export CLOUDFLARE_API_TOKEN=$(op item get "Cloudflare API token and R2" --vault Dev-Services --fields credential --reveal) CLOUDFLARE_ACCOUNT_ID=$(op item get "Cloudflare API token and R2" --vault Dev-Services --fields "Account ID") && npm run deploy`
+  On the Mac the desktop app also works, but it can ask for approval; the service-account token never does.
 - Win rules: mafia (weighted) >= everyone else with no killer/cult; killer wins on parity when no mafia/cult; cult wins when all alive are cult. If Mafia and Killer both remain, no auto-win: the storyteller can declare a winner.

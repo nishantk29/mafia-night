@@ -101,7 +101,7 @@ function home() {
         <div class="join-row"><label class="field"><span>Room code</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="ABCDEF" value="${esc(S.ui.draft.joinCode || '')}"></label>
         <button type="button" class="btn ghost" data-a="goJoin">Join</button></div></section>
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
-        <p class="muted">Use a deck of playing cards and this one screen.</p></section>
+        <p class="muted">Use a deck of playing cards and this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
       <p class="home-faq"><a href="#/faq">How it works and FAQ</a></p>
     </div>
     <p class="credits">Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT).</p>

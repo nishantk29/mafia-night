@@ -25,7 +25,7 @@ export function hostScreen(v, local) {
   registerRoles(v.config.customRoles);
   const tab = S.ui.tab;
   const side = S.ui.sideTab;
-  const title = local ? 'On this device' : `<button type="button" class="appbar-code" data-a="showCode" aria-label="Show room code ${esc(v.code)} full screen">Room <b class="code">${esc(v.code)}</b>${ui('expand')}</button>`;
+  const title = local ? 'On this device<span class="appbar-sub">Private to this device</span>' :`<button type="button" class="appbar-code" data-a="showCode" aria-label="Show room code ${esc(v.code)} full screen">Room <b class="code">${esc(v.code)}</b>${ui('expand')}</button>`;
   const [picon, plabel] = v.phase === 'night' ? ['moon', `Night ${v.night}`] : v.phase === 'day' ? ['sun', `Day ${v.day}`] : PHASE[v.phase];
   const { body, dock } = ({ lobby, dealt, night, day, over })[v.phase](v, local);
   const tabs = [['game', 'Game'], ['table', 'Table'], ['log', 'Log']];
@@ -61,7 +61,7 @@ function lobby(v, local) {
   for (const id of c.roles) counts[id] = (counts[id] || 0) + 1;
   const lib = loadLibrary();
 
-  const joinCode = local ? '' : `<section class="block join-code">
+  const joinCode = local ? `<p class="note local-note">${ui('phone')} <span>This game is saved only in this browser on this device. Nobody else can see it, and nothing is sent online. Opening the site somewhere else starts fresh.</span></p>` : `<section class="block join-code">
     <p class="muted">Players go to <b>${esc(joinSite())}</b> and enter</p>
     <div class="room-code code" aria-label="Room code ${esc(v.code.split('').join(' '))}">${esc(v.code)}</div>
     <div class="join-actions">

@@ -1095,3 +1095,7 @@ html.is-seat-dragging,html.is-seat-dragging *{cursor:grabbing!important}
 .logl-when{color:var(--faint);font-size:var(--fs-xs);margin-right:var(--s1)}
 .my-notes .field{margin-top:var(--s2)}
 .my-notes textarea{min-height:140px}
+
+/* Local mode: say plainly that the game lives only on this device. */
+.appbar-sub{display:block;font-size:var(--fs-xs);font-weight:500;color:var(--smoke);overflow:hidden;text-overflow:ellipsis}
+.local-note{margin-bottom:var(--s4)}
