@@ -2,11 +2,12 @@
 // Role secrecy: nothing here shows another player's role or team colour, except what the server already makes
 // public (dead players' roles, and everyone's role once the game is over). The player's own card is the only
 // element with a team class.
-import { S, esc, initial } from './state.js';
+import { S, esc, initial, store } from './state.js';
 import { SUITS, RANKS } from './engine.js';
 import { board, pc, cardName, teamName } from './board.js';
 import { ico, cardArt } from './art.js';
 import { ui } from './ui_icons.js';
+import { toolsButton, toolsPanel } from './tools.js';
 
 const PHASE = { lobby: ['cards', 'Setting up'], dealt: ['cards', 'Roles dealt'], over: ['crown', 'Game over'] };
 const appbar = (title, badge = '') => `<header class="appbar">
@@ -33,12 +34,12 @@ export function playerScreen(v) {
     hand = `<div class="waiting">${back()}<h2 class="phase-title">You’re in, ${esc(me.name)}</h2>
       <p class="muted">Waiting for the storyteller to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
   } else hand = playing(v);
-  return `${appbar(esc(me.name), `<span class="phase-badge">${ui(picon)} ${plabel}</span>`)}
+  return `${appbar(esc(me.name), `<span class="phase-badge">${ui(picon)} ${plabel}</span>${toolsButton()}`)}
   <main class="wrap seat-view">
     <section class="hand" aria-label="Your role">${hand}</section>
     <section class="table-side" aria-label="The table">${tableSide(v)}</section>
     <p class="leave-row"><button type="button" class="linkish" data-a="leaveGame">${ui('back')} Leave this game</button></p>
-  </main>`;
+  </main>${S.ui.tools ? toolsPanel(v, false) : ''}`;
 }
 
 function playing(v) {
@@ -79,8 +80,27 @@ function roleCard(v) {
       ${me.knows.length ? `<p class="note">The Mafia are: ${me.knows.map((t) => `<b>${esc(t.name)}</b>`).join(', ')}</p>` : ''}</div>` : ''}`
     : '<p class="muted reveal-hint">Make sure nobody is looking, then turn your card over.</p>'}
     <button type="button" class="btn big" data-a="reveal" aria-pressed="${shown}">${ui(shown ? 'eye-off' : 'eye')} ${shown ? 'Hide my role' : 'Show my role'}</button>
-    ${shown ? guide(me.guide) : ''}
+    ${shown ? `${results(me.results)}${guide(me.guide)}` : ''}
     ${me.alive ? '' : `<p class="note is-out">${ui('skull')} You’re out of the game. Stay quiet and enjoy the show.</p>`}`;
+}
+
+// What the storyteller told this player at night, newest first. Only behind "Show my role".
+function results(list) {
+  if (!list?.length) return '';
+  return `<section class="block my-results" aria-label="Your night results"><h3 class="block-title">${ui('ear')} What you learned</h3>
+    <ol class="log">${[...list].reverse().map((r) => `<li class="logl"><span class="logl-when">Night ${r.night}</span> <span class="logl-text">${esc(r.text)}</span></li>`).join('')}</ol></section>`;
+}
+
+// Private notes, kept only on this phone.
+export const notesKey = (v) => `mafia.notes.${v.code}.${v.me.id}`;
+function notes(v) {
+  const open = !!S.ui.notesOpen; const text = store.get(notesKey(v)) || '';
+  return `<section class="block my-notes">
+    <button type="button" class="disclosure" aria-expanded="${open}" aria-controls="my-notes" data-a="toggleUi" data-k="notesOpen">
+      ${ui('caret-down', open ? 'is-open' : '')} ${ui('note')} My notes <span class="disclosure-value">${text ? 'Saved on this phone' : 'Only you can see them'}</span></button>
+    <div class="disclosure-body" id="my-notes" ${open ? '' : 'hidden'}>
+      <div class="field"><textarea data-i="myNotes" rows="6" maxlength="4000" placeholder="Who claimed what, who you trust, who voted for whom. Saved on this phone only." aria-label="My notes">${esc(text)}</textarea></div>
+    </div></section>`;
 }
 
 // How to play the role, in four short parts. Built on the server from the role the player was told they are.
@@ -103,7 +123,7 @@ function tableSide(v) {
   const log = v.publicLog.length
     ? `<ol class="log">${[...v.publicLog].reverse().map((l) => `<li class="logl"><span class="logl-text">${esc(l.text)}</span></li>`).join('')}</ol>`
     : '<p class="muted">Nothing yet. Deaths and votes show up here.</p>';
-  return `${people}<section class="block"><h2 class="block-title">What happened</h2>${log}</section>`;
+  return `${people}${v.phase === 'lobby' ? '' : notes(v)}<section class="block"><h2 class="block-title">What happened</h2>${log}</section>`;
 }
 
 // Public deck key (blind card deal): the whole table sees it, so it carries no team colours here.

@@ -6,7 +6,9 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { previewNight, setupWarnings, balanceOf } from './engine.js';
+import { previewNight, setupWarnings, balanceOf, DEFAULT_RULES } from './engine.js';
+import { THEMES } from './theme.js';
+import { toolsButton, toolsPanel } from './tools.js';
 
 const pname = (v, id) => v.players.find((p) => p.id === id)?.name || '?';
 const rname = (id) => ROLE_BY_ID[id]?.name || id;
@@ -30,7 +32,7 @@ export function hostScreen(v, local) {
   return `<header class="appbar">
     <a class="appbar-mark" href="#/" aria-label="Mafia Night home">${ui('brand')}</a>
     <div class="appbar-title">${title}</div>
-    <span class="phase-badge">${ui(picon)} ${plabel}</span>
+    <span class="phase-badge">${ui(picon)} ${plabel}</span>${v.phase === 'lobby' ? '' : toolsButton()}
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
     <section class="pane pane-game" aria-label="Game">${body}
@@ -46,7 +48,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}`;
 }
 
 // ---------------- lobby ----------------
@@ -123,7 +125,7 @@ function lobby(v, local) {
   const label = n < min ? `Add ${plural(short, 'more player')}` : have < n ? `Pick ${plural(n - have, 'more role')}` : have > n ? `Remove ${plural(have - n, 'role')}` : blocked ? 'Fix the setup above first' : 'Deal roles';
   const ready = n >= min && have === n && !blocked;
   return {
-    body: `${joinCode}${players}${dealSetup(c, local)}${roles}`,
+    body: `${joinCode}${players}${dealSetup(c, local)}${gameStyle(c, local)}${roles}`,
     dock: btn('big', 'deal', label, { on: ready }),
   };
 }
@@ -186,6 +188,34 @@ function dealSetup(c, local) {
   </section>`;
 }
 
+// Mafia or Werewolf words, and house rules. data-raw: the theme layer must not rename these labels.
+const RULES = [
+  ['revealOnDeath', 'Show a player’s role when they die', 'Off: roles stay secret until the game ends.'],
+  ['selfProtect', 'Doctors can protect themselves', 'Off: protectors must pick someone else.'],
+  ['firstNightKill', 'Kills on the first night', 'Off: on night 1 the Mafia only meet each other.'],
+  ['dayStart', 'Start with a day', 'Everyone talks and votes before the first night.'],
+];
+function gameStyle(c, local) {
+  const rules = { ...DEFAULT_RULES, ...(c.rules || {}) };
+  const blind = (local || c.mode === 'cards') && c.cardFlow === 'blind';
+  const changed = RULES.filter(([k]) => rules[k] !== DEFAULT_RULES[k]).length;
+  const open = !!S.ui.rulesOpen;
+  return `<section class="block game-style" data-raw>
+    <h2 class="block-title" id="q-theme">Mafia or Werewolf?</h2>
+    ${choices('q-theme', 'theme', THEMES[c.theme] ? c.theme : 'city', Object.entries(THEMES).map(([v, t]) => ({ v, icon: v === 'village' ? 'wolf' : 'fedora', title: t.label, desc: `${t.note} Same roles and rules, different names.` })))}
+    <button type="button" class="disclosure" aria-expanded="${open}" aria-controls="house-rules" data-a="toggleUi" data-k="rulesOpen">
+      ${ui('caret-down', open ? 'is-open' : '')} House rules <span class="disclosure-value">${changed ? `${changed} changed` : 'Standard'}</span></button>
+    <div class="disclosure-body rules" id="house-rules" ${open ? '' : 'hidden'}>
+      ${RULES.map(([k, title, desc]) => {
+        const off = k === 'dayStart' && blind;
+        return `<button type="button" class="rule" role="switch" aria-checked="${rules[k] && !off}" data-a="rule" data-k="${k}" ${off ? 'aria-disabled="true" data-why="With a blind card deal, night 1 is when you learn who is who."' : ''}>
+          <span class="rule-text"><span class="rule-title">${title}</span><span class="rule-desc">${off ? 'Not with a blind card deal: night 1 is when you learn who is who.' : desc}</span></span>
+          <span class="switch" aria-hidden="true"><i></i></span></button>`;
+      }).join('')}
+    </div>
+  </section>`;
+}
+
 // Warnings about the role mix, shown under the hand being built.
 function advice(roleIds, n) {
   if (!roleIds.length) return '';
@@ -215,6 +245,11 @@ const LIVE = ['investigate', 'track', 'watch', 'autopsy'];
 const COIN = ['random', 'fake'];
 
 // ---------------- dealt ----------------
+// Night 1, or day 1 under the "Start with a day" house rule (never with a blind card deal).
+function firstStart(v) {
+  const blind = v.config.mode === 'cards' && v.config.cardFlow === 'blind';
+  return v.config.rules?.dayStart && !blind ? btn('big', 'startDay', 'Start day 1') : btn('big', 'startNight', 'Start night 1');
+}
 function dealt(v, local) {
   const cards = v.config.mode === 'cards';
   const blind = cards && v.config.cardFlow === 'blind';
@@ -226,7 +261,7 @@ function dealt(v, local) {
         <p class="muted">Ask everyone to check their role in private, then start the first night.</p></header>
         ${noPhone.length ? `<section class="whisper"><h3 class="whisper-title">${ui('ear')} Tell these players their role in private</h3>
           ${noPhone.map((p) => `<div class="whisper-item"><b>${esc(p.name)}</b> ${roleChip(ROLE_BY_ID[p.roleId])}</div>`).join('')}</section>` : ''}`,
-      dock: `${back}${btn('big', 'startNight', 'Start night 1')}`,
+      dock: `${back}${firstStart(v)}`,
     };
   }
   const left = v.players.filter((p) => !p.roleId).length;
@@ -244,7 +279,7 @@ function dealt(v, local) {
         : `<p class="muted">${claimed} of ${v.players.length} cards entered.</p>${assignList(v)}`}
     </section>`;
   const ok = blind || !left;
-  return { body, dock: `${back}${btn('big', 'startNight', ok ? 'Start night 1' : `${plural(left, 'player')} still need${left === 1 ? 's' : ''} a card`, { on: ok })}` };
+  return { body, dock: `${back}${ok ? firstStart(v) : btn('big', 'startNight', `${plural(left, 'player')} still need${left === 1 ? 's' : ''} a card`, { on: false })}` };
 }
 
 // big = the key shown to the whole table: disguised roles appear as what they think they are.
@@ -371,7 +406,7 @@ function cue(v, s, num, current, alive) {
       const [yes, no] = s.type === 'alert' ? ['Go on alert', 'Not tonight'] : ['Yes', 'No'];
       inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">${yes}</button><button type="button" class="btn ghost" data-a="alert" data-key="${s.key}" data-v="0">${no}</button></div>`;
     } else {
-      const list = s.dead ? v.players.filter((p) => !p.alive) : alive.filter((p) => s.type === 'protect' || !s.actors.includes(p.id));
+      const list = s.dead ? v.players.filter((p) => !p.alive) : alive.filter((p) => (s.type === 'protect' && v.config.rules?.selfProtect !== false) || !s.actors.includes(p.id));
       const picks = n.picks[s.key] || [];
       const need = s.targets || 1;
       inner = `${head}${list.length

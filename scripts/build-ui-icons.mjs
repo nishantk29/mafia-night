@@ -55,6 +55,14 @@ const KEYS = {
   crosshair: ['ph', 'crosshair-bold'],
   search: ['ph', 'magnifying-glass-bold'],
   sparkle: ['ph', 'sparkle-bold'],
+  wolf: ['game-icons', 'wolf-head'],
+  fedora: ['game-icons', 'fedora'],
+  play: ['ph', 'play-bold'],
+  pause: ['ph', 'pause-bold'],
+  reset: ['ph', 'arrow-counter-clockwise-bold'],
+  hand: ['ph', 'hand-bold'],
+  pick: ['ph', 'user-focus-bold'],
+  rules: ['ph', 'sliders-horizontal-bold'],
 };
 
 const sets = { ph: read('@iconify-json/ph/icons.json'), 'game-icons': read('@iconify-json/game-icons/icons.json') };

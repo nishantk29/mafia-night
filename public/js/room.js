@@ -2,8 +2,9 @@
 import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners,
-  setupWarnings,
+  setupWarnings, DEFAULT_RULES, rulesOf,
 } from './engine.js';
+import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole } from './roles.js';
 import { roleGuide } from './role_guide.js';
 
@@ -19,7 +20,7 @@ const rid = (n = 6) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) =>
 export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
-    config: { mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
+    config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
     players: [], deck: null, phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
   };
@@ -40,7 +41,7 @@ function addPlayer(room, name, offline) {
 function resetDeal(room) {
   for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; }
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.usage = {}; room.dayUsed = {};
-  room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.shield = false; room.framed = [];
+  room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.results = []; room.shield = false; room.framed = [];
 }
 
 // actor: { host: true } | { playerId } | { anon: true }
@@ -115,6 +116,11 @@ export function reduce(room, actor, a) {
       if (a.cardFlow && ['blind', 'claim'].includes(a.cardFlow)) c.cardFlow = a.cardFlow;
       if (Array.isArray(a.roles)) c.roles = a.roles.filter((r) => ROLE_BY_ID[r]).slice(0, MAX_PLAYERS);
       if (typeof a.sharedBoard === 'boolean') c.sharedBoard = a.sharedBoard;
+      if (a.theme && THEMES[a.theme]) c.theme = a.theme;
+      if (a.rules && typeof a.rules === 'object') {
+        c.rules = rulesOf(room);
+        for (const k of Object.keys(DEFAULT_RULES)) if (typeof a.rules[k] === 'boolean') c.rules[k] = a.rules[k];
+      }
       return { ok: true };
     }
     case 'setCustomRoles': {
@@ -183,14 +189,19 @@ export function reduce(room, actor, a) {
       room.night += 1; room.phase = 'night';
       if (room.night === 1) {
         finalizeBlind(room);
-        for (const p of room.players) {
-          if (p.roleId && ROLE_BY_ID[p.roleId].needsTarget && !p.target) {
-            const pool = room.players.filter((q) => q.id !== p.id && factionOf(q.roleId) === 'town');
-            const pick = pool.length ? pool[randInt(pool.length)] : null; p.target = pick?.id || null;
-          }
-        }
+        assignTargets(room);
         log(room, 'Night 1 begins.');
       } else log(room, `Night ${room.night} begins.`);
+      return { ok: true };
+    }
+    case 'startDay': { // house rule: the game opens with a day of talk instead of night 1
+      if (room.phase !== 'dealt') return err('Only right after dealing.');
+      if (!rulesOf(room).dayStart) return err('Turn on "Start with a day" first.');
+      if (isBlind(room)) return err('With a blind card deal, night 1 is when you learn who is who. Start with a night.');
+      if (room.players.some((p) => !p.roleId)) return err('Every player needs a role first.');
+      assignTargets(room);
+      room.day = 1; room.phase = 'day';
+      log(room, 'Day 1 begins.');
       return { ok: true };
     }
     case 'identifyRole': {
@@ -271,6 +282,16 @@ export function reduce(room, actor, a) {
 }
 
 // ---------- projections (what each viewer is allowed to see) ----------
+// Executioner-style roles get a random town target when the game starts.
+function assignTargets(room) {
+  for (const p of room.players) {
+    if (p.roleId && ROLE_BY_ID[p.roleId].needsTarget && !p.target) {
+      const pool = room.players.filter((q) => q.id !== p.id && factionOf(q.roleId) === 'town');
+      const pick = pool.length ? pool[randInt(pool.length)] : null; p.target = pick?.id || null;
+    }
+  }
+}
+
 export function roleCard(roleId) {
   const r = ROLE_BY_ID[roleId];
   return r && { id: r.id, name: r.name, emoji: r.emoji, alignment: r.alignment, blurb: r.blurb, meeting: r.meeting };
@@ -312,12 +333,13 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
   if (real?.showMafia) {
     for (const q of room.players) if (q.roleId && factionOf(q.roleId) === 'mafia') knows.push({ id: q.id, name: q.name });
   }
-  const visible = (q) => over || (!q.alive && !q.roleHidden);
+  const visible = (q) => over || (rulesOf(room).revealOnDeath && !q.alive && !q.roleHidden);
   return {
-    kind: 'player', code: room.code, phase: room.phase, day: room.day, night: room.night, mode: room.config.mode,
+    kind: 'player', code: room.code, phase: room.phase, day: room.day, night: room.night, mode: room.config.mode, theme: room.config.theme || 'city',
     me: {
       id: me.id, name: me.name, alive: me.alive, card: me.card,
-      role: shownId ? roleCard(shownId) : null, guide: shownId ? roleGuide(shownId) : null, team, knows,
+      role: shownId ? roleCard(shownId) : null, guide: shownId ? roleGuide(shownId, rulesOf(room)) : null,
+      results: (room.results || []).filter((r) => r.ids.includes(me.id)).map((r) => ({ night: r.night, text: r.text })), team, knows,
       target: real?.needsTarget && me.target ? playerById(room, me.target)?.name : null,
       claimsLeft: Math.max(0, MAX_WRONG_CLAIMS - me.wrongClaims),
       won: over ? finalWinners(room).some((w) => w.id === me.id) : null,

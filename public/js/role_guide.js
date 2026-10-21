@@ -11,7 +11,7 @@ const DO = {
   track: () => 'point at one player to follow',
   watch: () => 'point at one player to watch',
   autopsy: () => 'point at one dead player',
-  protect: () => 'point at one player to protect (you can pick yourself)',
+  protect: (a, rules) => (rules.selfProtect === false ? 'point at one other player to protect' : 'point at one player to protect (you can pick yourself)'),
   guard: () => 'point at one player to guard',
   alert: () => 'nod if you go on alert tonight, or shake your head',
   kill: () => 'point at the player you want to kill, or shake your head to hold fire',
@@ -46,13 +46,13 @@ function goal(r) {
   return 'Find every Mafia member (and any other killer) and vote them out.';
 }
 
-export function roleGuide(roleId) {
+export function roleGuide(roleId, rules = {}) {
   const r = ROLE_BY_ID[roleId];
   if (!r) return null;
   const night = []; const day = []; const death = []; const know = [];
   const a = r.action;
 
-  if (r.meeting === 'mafia') night.push('Every night you wake with the Mafia. Agree silently on one player to kill and point at them together.');
+  if (r.meeting === 'mafia') night.push(`Every night you wake with the Mafia. Agree silently on one player to kill and point at them together.${rules.firstNightKill === false ? ' On the first night you only meet each other: no kill.' : ''}`);
   if (r.meeting === 'cult') night.push('Every night you wake with the Cult. Agree silently on one player to recruit and point at them together.');
   if (r.meeting === 'mason') night.push('On the first night you open your eyes and meet the other Masons. You can trust each other.');
   if (r.night1 && !r.meeting) night.push('On the first night the storyteller wakes you on your own to show you something. Keep it to yourself.');
@@ -60,10 +60,11 @@ export function roleGuide(roleId) {
   const teamPick = a && ((r.meeting === 'mafia' && a.type === 'kill') || (r.meeting === 'cult' && a.type === 'convert'));
   if (a && !teamPick) {
     const call = (r.meeting === 'mafia' || r.meeting === 'cult') ? 'Then, when the storyteller calls your role on its own' : 'When the storyteller calls your role';
-    const act = (DO[a.type] || (() => 'point at your choice'))(a);
+    const act = (DO[a.type] || (() => 'point at your choice'))(a, rules);
     night.push(`${call}, open your eyes and ${act}.${a.uses !== Infinity && a.uses ? ` You can do this ${TIMES(a.uses)}.` : ''}`);
     if (LEARN[a.type]) night.push(LEARN[a.type](a));
-    if (a.type !== 'protect' && a.type !== 'alert' && a.type !== 'clean' && a.targets) night.push('You can’t pick yourself.');
+    if (a.type === 'kill' && rules.firstNightKill === false) night.push('Nobody can kill on the first night.');
+    if ((a.type !== 'protect' || rules.selfProtect === false) && a.type !== 'alert' && a.type !== 'clean' && a.targets) night.push('You can’t pick yourself.');
   }
   if (!night.length) night.push('Keep your eyes shut all night. Nobody will call you.');
 

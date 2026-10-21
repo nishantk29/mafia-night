@@ -2,12 +2,15 @@
 import { S, esc, store, loadLibrary, saveLibrary } from './state.js';
 import { newRoom, reduce, viewForHost } from './room.js';
 import { registerRoles, ROLE_BY_ID } from './roles.js';
-import { rebalance } from './engine.js';
+import { rebalance, DEFAULT_RULES } from './engine.js';
+import { themeOf, themeText, themeDom } from './theme.js';
+import { TOOL_ACTIONS, tickTools } from './tools.js';
+const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.me?.name].filter(Boolean);
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
 import { hostScreen } from './host.js';
-import { playerScreen, joinForm } from './player.js';
+import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen } from './faq.js';
 
 const $app = document.getElementById('app');
@@ -36,6 +39,7 @@ S.render = function render() {
   $html.dataset.shell = shell;
   const opened = S.ui.anim;
   $app.innerHTML = screen();
+  themeDom($app, themeOf(S.view), seatNames());
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
   applyRoleSearch();
   window.scrollTo(0, y);
@@ -116,7 +120,7 @@ function applyRoleSearch() {
 
 // ---------------- toast ----------------
 let toastT;
-S.toast = (m) => { $toast.textContent = m; $toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $toast.classList.remove('on'), 3200); };
+S.toast = (m) => { $toast.textContent = themeText(String(m), themeOf(S.view), seatNames()); $toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $toast.classList.remove('on'), 3200); };
 
 // ---------------- transports ----------------
 function closeTransport() { S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.conn = true; }
@@ -168,7 +172,7 @@ function localTransport() {
 // ---------------- routing ----------------
 async function route() {
   closeTransport();
-  Object.assign(S.ui, { tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, modal: null, claim: null, claimSuit: null, anim: null });
+  Object.assign(S.ui, { tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
   const h = location.hash.replace(/^#\/?/, '');
   const [kind, arg] = h.split('/');
   S.code = null;
@@ -219,6 +223,7 @@ function showTip(el) {
   if (r.seesAs) bits.push(`<p><b>Thinks they are:</b> ${esc(ROLE_BY_ID[r.seesAs]?.name || r.seesAs)}</p>`);
   if (r.appearsAs) bits.push(`<p><b>Investigators see:</b> ${r.appearsAs === 'mafia' ? 'Mafia' : 'innocent'}</p>`);
   $tip.innerHTML = `<div class="tip-h"><span class="tip-glyph a-${r.alignment}">${ico(r)}</span><b>${esc(r.name)}</b><span class="team-tag a-${r.alignment}"><i class="team-mark a-${r.alignment}"></i>${teamName(r.alignment)}</span></div><p>${esc(r.blurb)}</p>${bits.join('')}`;
+  themeDom($tip, themeOf(S.view), seatNames());
   $tip.dataset.for = r.id;
   $tip.classList.add('on');
   const b = el.getBoundingClientRect(); const w = Math.min(320, window.innerWidth - 16);
@@ -284,6 +289,8 @@ const A = {
   hideCode() { S.ui.showCode = false; S.render(); },
   clearCard(el) { send({ type: 'clearCard', playerId: el.dataset.id }); },
   startNight() { S.ui.condemn = null; send({ type: 'startNight' }); },
+  startDay() { send({ type: 'startDay' }); },
+  rule(el) { if (el.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why); const k = el.dataset.k; const cur = { ...DEFAULT_RULES, ...(S.view?.config?.rules || {}) }; send({ type: 'setConfig', rules: { [k]: !cur[k] } }); },
   // custom role editor
   newRole() { S.ui.draft.role = { alignment: 'town', action: { type: '' } }; S.ui.modal = 'role'; S.ui.anim = 'modal'; S.render(); },
   closeModal() { S.ui.modal = null; S.render(); },
@@ -351,6 +358,8 @@ const A = {
   pickCard(el) { S.ui.claim = el.dataset.v; S.ui.claimSuit = suitOf(el.dataset.v); S.render(); },
   claim() { if (S.ui.claim) send({ type: 'claimCard', card: S.ui.claim }); },
 };
+Object.assign(A, TOOL_ACTIONS);
+setInterval(tickTools, 500);
 
 document.addEventListener('click', (ev) => {
   const el = ev.target.closest('[data-a]');
@@ -440,8 +449,9 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && drag) { dragEnd(false); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
-    if ((S.ui.showKey || S.ui.showCode || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if ((S.ui.tools || S.ui.showKey || S.ui.showCode || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
     if (S.ui.showKey) { A.hideKey(); return; }
+    if (S.ui.tools) { A.closeTools(); return; }
     if (S.ui.showCode) { A.hideCode(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
     if (S.ui.sheet) { const id = S.ui.sheet; A.closeSheet(); refocus(`[data-a="seat"][data-id="${CSS.escape(id)}"]`, ''); return; }
@@ -478,6 +488,7 @@ document.addEventListener('input', (ev) => {
   else if (i === 'joinCode') S.ui.draft.joinCode = el.value.toUpperCase();
   else if (i === 'search') { S.ui.search = el.value; applyRoleSearch(); }
   else if (i === 'note') send({ type: 'setNote', playerId: el.dataset.id, note: el.value });
+  else if (i === 'myNotes' && S.view?.me) store.set(notesKey(S.view), el.value);
   else if (i === 'rf' && el.type !== 'checkbox' && el.tagName !== 'SELECT') setDeep(S.ui.draft.role ||= { alignment: 'town', action: {} }, el.dataset.k, el.value);
 });
 

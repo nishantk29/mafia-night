@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { nightScript, resolveNight, previewNight, setupWarnings } from '../public/js/engine.js';
 import { ROLES, ROLE_BY_ID } from '../public/js/roles.js';
 import { newRoom, reduce, viewForPlayer } from '../public/js/room.js';
+import { themeText } from '../public/js/theme.js';
 
 function mk(spec, { night = 1, phase = 'night' } = {}) {
   const room = newRoom('TEST', 'hostkey-secret');
@@ -240,5 +241,91 @@ describe('Role guide on the phone', () => {
     const g = viewForPlayer(room, id(room, 'X')).me.guide;
     assert.equal(g.night.length, 1);
     assert.match(g.night[0], /wake with the Mafia/);
+  });
+});
+
+describe('House rules', () => {
+  test('no first-night kill: the Mafia only meet, killers skip night 1, night 2 is normal', () => {
+    const room = mk([['Mo', 'mafia'], ['Vi', 'vigilante'], ['Vic', 'villager'], ...filler(3)]);
+    room.config.rules = { firstNightKill: false };
+    const s = nightScript(room);
+    const meet = s.find((x) => x.key === 'meeting:mafia');
+    assert.equal(meet.kind, 'info');
+    assert.ok(!s.some((x) => x.type === 'kill'));
+    resolveNight(room, { 'meeting:mafia': { done: true } });
+    assert.ok(room.players.every((p) => p.alive));
+    room.night = 2; room.phase = 'night';
+    assert.equal(nightScript(room).find((x) => x.key === 'meeting:mafia').type, 'kill');
+  });
+  test('Doctor self-protect off: a self-save does not count', () => {
+    const room = mk([['Mo', 'mafia'], ['Doc', 'doctor'], ...filler(4)]);
+    room.config.rules = { selfProtect: false };
+    resolveNight(room, { 'meeting:mafia': { targets: [id(room, 'Doc')] }, [key(room, 'Doc')]: { targets: [id(room, 'Doc')] } });
+    assert.equal(P(room, 'Doc').alive, false);
+    const room2 = mk([['Mo', 'mafia'], ['Doc', 'doctor'], ...filler(4)]);
+    resolveNight(room2, { 'meeting:mafia': { targets: [id(room2, 'Doc')] }, [key(room2, 'Doc')]: { targets: [id(room2, 'Doc')] } });
+    assert.equal(P(room2, 'Doc').alive, true, 'self-save works by default');
+  });
+  test('roles hidden on death: the dead player\'s role stays secret from phones until the end', () => {
+    const room = mk([['Mo', 'mafia'], ['Cop', 'cop'], ['Ann', 'villager'], ...filler(3)], { phase: 'day', night: 1 });
+    room.config.rules = { revealOnDeath: false };
+    P(room, 'Cop').alive = false;
+    const seen = viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop');
+    assert.equal(seen.role, null);
+    room.config.rules = {};
+    assert.equal(viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop').role.id, 'cop');
+  });
+  test('start with a day: only when switched on, and never with a blind card deal', () => {
+    const room = mk([['Mo', 'mafia'], ['Ann', 'villager'], ...filler(4)], { phase: 'dealt', night: 0 });
+    assert.ok(reduce(room, { host: true }, { type: 'startDay' }).error);
+    reduce(room, { host: true }, { type: 'setConfig', rules: { dayStart: true } });
+    assert.ok(reduce(room, { host: true }, { type: 'startDay' }).ok);
+    assert.equal(room.phase, 'day'); assert.equal(room.day, 1);
+    assert.ok(reduce(room, { host: true }, { type: 'startNight' }).ok);
+    assert.equal(room.night, 1);
+    const blind = mk([['Mo', 'mafia'], ['Ann', 'villager'], ...filler(4)], { phase: 'dealt', night: 0 });
+    blind.config.mode = 'cards'; blind.config.cardFlow = 'blind'; blind.config.rules = { dayStart: true };
+    assert.ok(reduce(blind, { host: true }, { type: 'startDay' }).error);
+  });
+  test('setConfig only accepts known themes and rules', () => {
+    const room = mk([['Mo', 'mafia'], ...filler(5)], { phase: 'lobby', night: 0 });
+    reduce(room, { host: true }, { type: 'setConfig', theme: 'village', rules: { selfProtect: false, bogus: true, dayStart: 'yes' } });
+    assert.equal(room.config.theme, 'village');
+    assert.equal(room.config.rules.selfProtect, false);
+    assert.ok(!('bogus' in room.config.rules)); assert.equal(room.config.rules.dayStart, false);
+    reduce(room, { host: true }, { type: 'setConfig', theme: 'nope' });
+    assert.equal(room.config.theme, 'village');
+  });
+});
+
+describe('Werewolf theme words', () => {
+  const t = (s, names = [], role = false) => themeText(s, 'village', names, role);
+  test('team, roles and results read as Werewolf', () => {
+    assert.equal(t('Mafia, wake up. Who do you kill?'), 'Werewolves, wake up. Who do you kill?');
+    assert.equal(t('Mo is NOT Mafia.', ['Mo']), 'Mo is NOT a Werewolf.');
+    assert.equal(t('Cop, wake up. Who do you check?'), 'Seer, wake up. Who do you check?');
+    assert.equal(t('Mafia', [], true), 'Werewolf');
+    assert.equal(t('Werewolf', [], true), 'Lone Wolf');
+    assert.equal(t('Town Crier wins on Mafia Night'), 'Town Crier wins on Mafia Night');
+  });
+  test('player names are never renamed', () => {
+    assert.equal(t('Cop carried out the Mafia kill.', ['Cop']), 'Cop carried out the Werewolf kill.');
+    assert.equal(t('Town is NOT Mafia.', ['Town']), 'Town is NOT a Werewolf.');
+  });
+  test('the Mafia theme changes nothing', () => {
+    assert.equal(themeText('Mafia, wake up.', 'city'), 'Mafia, wake up.');
+  });
+});
+
+describe('Night results on the phone', () => {
+  test('only the investigator gets the result, and only the words they were told', () => {
+    const room = mk([['X', 'insane_cop'], ['Mo', 'mafia'], ['Ann', 'villager'], ...filler(3)]);
+    resolveNight(room, { [key(room, 'X')]: { targets: [id(room, 'Mo')] } });
+    const mine = viewForPlayer(room, id(room, 'X')).me.results;
+    assert.equal(mine.length, 1);
+    assert.equal(mine[0].text, 'Mo is NOT Mafia.');
+    assert.ok(!/Insane|backwards/i.test(JSON.stringify(viewForPlayer(room, id(room, 'X')))));
+    assert.equal(viewForPlayer(room, id(room, 'Ann')).me.results.length, 0);
+    assert.equal(viewForPlayer(room, id(room, 'Mo')).me.results.length, 0);
   });
 });

@@ -119,7 +119,12 @@ export function unidentifiedSlots(room) {
   return Object.entries(want).filter(([, n]) => n > 0).map(([roleId, remaining]) => ({ roleId, remaining }));
 }
 
+// House rules the storyteller can switch in the lobby.
+export const DEFAULT_RULES = { revealOnDeath: true, selfProtect: true, firstNightKill: true, dayStart: false };
+export const rulesOf = (room) => ({ ...DEFAULT_RULES, ...(room?.config?.rules || {}) });
+
 export function nightScript(room) {
+  const rules = rulesOf(room);
   const steps = [];
   const alive = room.players.filter((p) => p.alive && p.roleId);
   const firstNight = room.night === 1;
@@ -155,7 +160,11 @@ export function nightScript(room) {
     if (r.meeting && !seenMeeting.has(r.meeting)) {
       seenMeeting.add(r.meeting);
       const actors = alive.filter((q) => ROLE_BY_ID[q.roleId].meeting === r.meeting).map((q) => q.id);
-      if (r.meeting === 'mafia') {
+      if (r.meeting === 'mafia' && firstNight && !rules.firstNightKill) {
+        // No kill tonight, but the Mafia still need to see who their teammates are.
+        steps.push({ key: 'meeting:mafia', kind: 'info', roleId: 'mafia', actors, spoken: true, order: 50,
+          prompt: 'Mafia, open your eyes and look at each other. There is no kill tonight. Close your eyes.' });
+      } else if (r.meeting === 'mafia') {
         steps.push({ key: 'meeting:mafia', kind: 'action', type: 'kill', roleId: 'mafia', actors, targets: 1,
           prompt: 'Mafia, wake up. Who do you kill?', order: 50, source: 'mafia' });
       } else if (r.meeting === 'cult') {
@@ -164,6 +173,7 @@ export function nightScript(room) {
       }
     }
     if (r.action && !r.action.group) {
+      if (firstNight && !rules.firstNightKill && r.action.type === 'kill') continue;
       const used = usedCount(room, p.id);
       if (used >= r.action.uses) continue;
       steps.push({ key: `act:${p.id}`, kind: 'action', roleId: r.id, actors: [p.id], ...r.action });
@@ -316,7 +326,8 @@ export function resolveNight(room, actions) {
   // 3) protections
   const protectedSet = new Set(jailed);
   const protectedBy = {};
-  for (const a of active.filter((x) => x.s.type === 'protect')) { protectedSet.add(a.targets[0]); (protectedBy[a.targets[0]] ||= []).push(a.s.actors[0]); }
+  const selfOk = rulesOf(room).selfProtect;
+  for (const a of active.filter((x) => x.s.type === 'protect' && (selfOk || x.targets[0] !== x.s.actors[0]))) { protectedSet.add(a.targets[0]); (protectedBy[a.targets[0]] ||= []).push(a.s.actors[0]); }
   const guardMap = {};
   for (const a of active.filter((x) => x.s.type === 'guard')) (guardMap[a.targets[0]] ||= []).push(a.s.actors[0]);
   const alertSet = new Set(active.filter((x) => x.s.type === 'alert').flatMap((a) => a.s.actors));
@@ -418,6 +429,10 @@ export function resolveNight(room, actions) {
   room.day = room.night;
   room.phase = 'day';
   room.lastReport = rep;
+  // Each investigator's own results, kept for their phone. Only the text they are told; never the private note.
+  room.results ||= [];
+  for (const i of rep.info) if (i.text && i.actorIds?.length) room.results.push({ night: room.night, ids: i.actorIds, text: i.text });
+  if (room.results.length > 200) room.results.splice(0, room.results.length - 200);
   log(room, rep.deaths.length ? `Night ${room.night}: ${rep.deaths.map((d) => nameOf(room, d.id)).join(', ')} died.` : `Night ${room.night}: nobody died.`);
   applyWinChecks(room);
   return rep;
