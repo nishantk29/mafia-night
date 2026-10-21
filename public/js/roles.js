@@ -34,7 +34,7 @@ export const ROLES = [
   R('lookout', 'Lookout', '🔭', 'town', 'Each night, watch one player and learn who visited them.',
     { action: A('watch', 64, 'Lookout, wake up. Who do you watch?') }),
   R('coroner', 'Coroner', '⚰️', 'town', 'Each night, examine a dead player and learn their true role.',
-    { action: A('autopsy', 65, 'Coroner, wake up. Which dead player do you examine?', { dead: true }) }),
+    { action: A('autopsy', 58, 'Coroner, wake up. Which dead player do you examine?', { dead: true }) }),
   R('medium', 'Medium', '🔮', 'town', 'You can speak with the dead. The Storyteller relays your questions.',
     { day: 'Medium may ask the dead a yes/no question.' }),
   R('doctor', 'Doctor', '🩺', 'town', 'Each night, protect one player from a night kill.',
@@ -98,9 +98,9 @@ export const ROLES = [
   R('framer', 'Framer', '🖼️', 'mafia', 'Each night, frame a player so they look like Mafia to investigators.',
     { meeting: 'mafia', action: A('frame', 40, 'Framer, wake up. Who do you frame?'), kills: 'mafia' }),
   R('janitor', 'Janitor', '🧹', 'mafia', 'Once per game, clean up the Mafia\'s victim so their role stays hidden.',
-    { meeting: 'mafia', action: A('clean', 41, 'Janitor, wake up. Clean up tonight\'s victim?', { uses: 1, targets: 0 }), kills: 'mafia' }),
+    { meeting: 'mafia', action: A('clean', 50.5, 'Janitor, wake up. Do you clean up the Mafia\'s victim tonight?', { uses: 1, targets: 0 }), kills: 'mafia' }),
   R('wannabe', 'Wannabe', '🥸', 'mafia', 'Each night you "investigate", but the results are made up.',
-    { meeting: 'mafia', action: A('investigate', 66, 'Wannabe, wake up. Who do you "check"?', { check: 'fake' }), kills: 'mafia' }),
+    { meeting: 'mafia', action: A('investigate', 59, 'Wannabe, wake up. Who do you "check"?', { check: 'fake' }), kills: 'mafia' }),
   R('yakuza', 'Yakuza', '🐉', 'mafia', 'Once per game, convert a non-Mafia player into Mafia.',
     { meeting: 'mafia', action: A('convert', 32, 'Yakuza, wake up. Who do you convert?', { uses: 1, to: 'mafia' }), kills: 'mafia' }),
   R('mad_bomber', 'Mad Bomber', '🧨', 'mafia', 'Once per day, blow up yourself and another player.',
@@ -141,7 +141,7 @@ export const roleOf = (id) => ROLE_BY_ID[id];
 export const ACTION_TYPES = ['kill', 'protect', 'guard', 'alert', 'jail', 'block', 'blockVisitors', 'frame', 'clean',
   'convert', 'copyRole', 'investigate', 'track', 'watch', 'autopsy'];
 const DEFAULT_ORDER = { jail: 10, block: 11, blockVisitors: 14, protect: 20, guard: 21, alert: 22, convert: 32, frame: 40,
-  clean: 41, kill: 53, investigate: 60, track: 63, watch: 64, autopsy: 65, copyRole: 33 };
+  clean: 50.5, kill: 53, investigate: 60, track: 63, watch: 64, autopsy: 58, copyRole: 33 };
 const txt = (s, n) => String(s ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, n);
 
 // Returns a safe role object, or null. Never trusts shape from the wire.

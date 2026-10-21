@@ -1,3 +1,4 @@
+import { roleGuide } from '../public/js/role_guide.js';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { newRoom, reduce, viewForPlayer, viewForHost, roleCard } from '../public/js/room.js';
@@ -293,6 +294,37 @@ describe('phase machine', () => {
   });
 });
 
+// ---------- seat order ----------
+describe('moveSeat', () => {
+  const order = (room) => room.players.map((p) => p.name).join(',');
+  test('moves a seat forward and backward', () => {
+    const { room } = lobby(['A', 'B', 'C', 'D']);
+    assert.ok(H(room, { type: 'moveSeat', playerId: pid(room, 'A'), toIndex: 2 }).ok);
+    assert.equal(order(room), 'B,C,A,D');
+    assert.ok(H(room, { type: 'moveSeat', playerId: pid(room, 'D'), toIndex: 0 }).ok);
+    assert.equal(order(room), 'D,B,C,A');
+  });
+  test('clamps the index and works mid-game', () => {
+    const room = dealt(['mafia', 'doctor', 'cop', 'villager', 'villager']);
+    H(room, { type: 'startNight' });
+    const first = room.players[0].id; const last = room.players[4].id;
+    assert.ok(H(room, { type: 'moveSeat', playerId: first, toIndex: 99 }).ok);
+    assert.equal(room.players[4].id, first);
+    assert.ok(H(room, { type: 'moveSeat', playerId: last, toIndex: -5 }).ok);
+    assert.equal(room.players[0].id, last);
+    assert.ok(H(room, { type: 'moveSeat', playerId: last, toIndex: 'x' }).ok);
+    assert.equal(room.players[0].id, last);
+    assert.equal(room.players.length, 5);
+  });
+  test('rejects unknown players and non-hosts', () => {
+    const { room, tokens } = lobby(['A', 'B', 'C']);
+    assert.equal(H(room, { type: 'moveSeat', playerId: 'ghost', toIndex: 0 }).error, 'Bad player.');
+    assert.ok(reduce(room, { playerId: tokens.C.playerId }, { type: 'moveSeat', playerId: tokens.C.playerId, toIndex: 0 }).error);
+    assert.ok(reduce(room, ANON, { type: 'moveSeat', playerId: pid(room, 'C'), toIndex: 0 }).error);
+    assert.equal(order(room), 'A,B,C');
+  });
+});
+
 // ---------- full smoke games ----------
 describe('full game smoke', () => {
   test('town wins: lobby -> deal -> night -> day -> condemn mafia -> over', () => {
@@ -472,7 +504,9 @@ describe('secrecy: viewForPlayer', () => {
 
   test('Cara (plain villager) sees none of the secret roles anywhere in her JSON', () => {
     const { room } = game9();
-    const s = JSON.stringify(viewForPlayer(room, pid(room, 'Cara')));
+    const v = viewForPlayer(room, pid(room, 'Cara'));
+    assert.deepEqual(v.me.guide, roleGuide('villager')); // her own guide; it names the Mafia as the enemy
+    const s = JSON.stringify({ ...v, me: { ...v.me, guide: null } });
     for (const [n, r] of ROLES9) {
       if (n === 'Cara') continue;
       for (const sec of secretsOf(r)) assert.ok(!s.includes(sec), `${r} secret ${sec} leaked to Cara`);
@@ -494,7 +528,9 @@ describe('secrecy: viewForPlayer', () => {
     for (const [who, real] of [['Mill', 'miller'], ['Trey', 'traitor']]) {
       const v = viewForPlayer(room, pid(room, who));
       assert.equal(v.me.role.id, 'villager');
-      const s = JSON.stringify(v);
+      // The guide is the plain villager guide (which names the Mafia as the enemy); everything else stays silent.
+      assert.deepEqual(v.me.guide, roleGuide('villager'));
+      const s = JSON.stringify({ ...v, me: { ...v.me, guide: null } });
       for (const sec of secretsOf(real)) assert.ok(!s.includes(sec), `${real} secret ${sec}`);
       assert.ok(!/Mafia/.test(s.replace(/"alignment":"[a-z]+"/g, '')), 'mafia mentioned in traitor/miller view');
     }

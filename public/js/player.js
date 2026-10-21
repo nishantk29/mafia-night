@@ -79,7 +79,20 @@ function roleCard(v) {
       ${me.knows.length ? `<p class="note">The Mafia are: ${me.knows.map((t) => `<b>${esc(t.name)}</b>`).join(', ')}</p>` : ''}</div>` : ''}`
     : '<p class="muted reveal-hint">Make sure nobody is looking, then turn your card over.</p>'}
     <button type="button" class="btn big" data-a="reveal" aria-pressed="${shown}">${ui(shown ? 'eye-off' : 'eye')} ${shown ? 'Hide my role' : 'Show my role'}</button>
+    ${shown ? guide(me.guide) : ''}
     ${me.alive ? '' : `<p class="note is-out">${ui('skull')} You’re out of the game. Stay quiet and enjoy the show.</p>`}`;
+}
+
+// How to play the role, in four short parts. Built on the server from the role the player was told they are.
+function guide(g) {
+  if (!g) return '';
+  const part = (icon, title, lines) => (lines.length ? `<div class="guide-part"><h3 class="guide-title">${ui(icon)} ${title}</h3>${lines.map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : '');
+  return `<section class="guide" aria-label="How to play your role">
+    ${part('crown', 'How you win', [g.goal])}
+    ${part('moon', 'At night', g.night)}
+    ${part('sun', 'By day', g.day)}
+    ${part('skull', 'Good to know', [...g.death, ...g.know])}
+  </section>`;
 }
 
 function tableSide(v) {

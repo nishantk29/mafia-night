@@ -36,7 +36,7 @@ export function suggestRoles(n) {
   if (power.filter((r) => r === 'mason').length === 1) power = power.filter((r) => r !== 'mason'); // a lone Mason has nobody to meet
   const roles = [...mafia, ...third, ...power];
   while (roles.length < n) roles.push('villager');
-  return roles.slice(0, n);
+  return rebalance(roles.slice(0, n)); // even the suggestion out with the same scores the lobby shows
 }
 
 export function dealRoles(roleIds, playerIds) {
@@ -130,8 +130,14 @@ export function nightScript(room) {
       if (roleId === 'villager') continue;
       const r = ROLE_BY_ID[roleId];
       const base = r.action?.order ?? (r.meeting === 'mafia' ? 50 : r.meeting === 'cult' ? 31 : 80);
+      // Call people by the role they THINK they have; never say a disguised role's real name aloud.
+      const shown = ROLE_BY_ID[r.seesAs] || r;
+      const twins = room.deck.map.filter((m) => m.roleId !== roleId && (ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) === shown.id);
+      const cards = room.deck.map.filter((m) => m.roleId === roleId).map((m) => m.card);
       steps.push({ key: `id:${roleId}`, kind: 'identify', roleId, count: remaining, candidates: open, order: base - 0.5,
-        prompt: `${r.name}${remaining > 1 ? 's' : ''}, open your eyes. Tap who ${remaining > 1 ? 'they are' : 'it is'}.` });
+        prompt: `${shown.name}${remaining > 1 ? 's' : ''}, open your eyes. Tap who ${remaining > 1 ? 'they are' : 'it is'}.`,
+        hint: r.seesAs || twins.length
+          ? `Several players think they are the ${shown.name}. Ask them to show you their card without a word: ${cards.join(' or ')} is the ${r.name}.` : '' });
     }
   }
   const seenMeeting = new Set();
@@ -142,7 +148,9 @@ export function nightScript(room) {
     if (firstNight && r.night1 && !seenInfo.has(r.id)) {
       seenInfo.add(r.id);
       const actors = alive.filter((q) => q.roleId === r.id).map((q) => q.id);
-      steps.push({ key: `n1:${r.id}`, kind: 'info', roleId: r.id, actors, prompt: r.night1, order: blindNow ? 105 : 5 });
+      // Lines that call players awake are read aloud; everything else is a private note for the storyteller.
+      const spoken = !r.seesAs && /open your eyes/i.test(r.night1);
+      steps.push({ key: `n1:${r.id}`, kind: 'info', roleId: r.id, actors, prompt: r.night1, spoken, order: blindNow ? 105 : 5 });
     }
     if (r.meeting && !seenMeeting.has(r.meeting)) {
       seenMeeting.add(r.meeting);
@@ -161,7 +169,63 @@ export function nightScript(room) {
       steps.push({ key: `act:${p.id}`, kind: 'action', roleId: r.id, actors: [p.id], ...r.action });
     }
   }
+  // Two people can answer to the same call (a Cop and an Insane Cop both hear "Cop, wake up"): wake them one by one.
+  const said = {};
+  for (const st of steps) if (st.kind === 'action') (said[st.prompt] ||= []).push(st);
+  for (const group of Object.values(said)) if (group.length > 1) for (const st of group) {
+    st.hint = `More than one player answers to this call. Tap ${st.actors.map((id) => nameOf(room, id)).join(' and ')} on the shoulder so only they wake.`;
+  }
   return steps.sort((a, b) => a.order - b.order);
+}
+
+// What the storyteller should tell an investigator right now, given only the choices made by roles that woke
+// earlier tonight. Runs the night on a copy of the room, so nothing changes.
+export function previewNight(room, actions, stepKey) {
+  const steps = nightScript(room);
+  const me = steps.find((st) => st.key === stepKey);
+  if (!me) return null;
+  const sofar = {};
+  for (const st of steps) if (st.order <= me.order && actions?.[st.key]) sofar[st.key] = actions[st.key];
+  const copy = structuredClone(room);
+  copy.log = []; copy.pending = [];
+  resolveNight(copy, sofar);
+  return copy.lastReport.info.find((i) => i.key === stepKey) || { text: '', note: 'No result: they were blocked or stayed home.', blocked: true };
+}
+
+// Advice about a role set before dealing. level: 'error' blocks the deal, 'warn' is risky, 'tip' is a nudge.
+export function setupWarnings(roleIds, playerCount) {
+  const out = [];
+  const roles = roleIds.map((id) => ROLE_BY_ID[id]).filter(Boolean);
+  const n = Math.max(playerCount, roles.length);
+  const count = (pred) => roles.filter(pred).length;
+  const mafia = roles.filter((r) => factionOf(r.id) === 'mafia');
+  const mafiaWeight = mafia.reduce((t, r) => t + (r.weight || 1), 0);
+  const third = count((r) => factionOf(r.id) === 'third');
+  const town = count((r) => factionOf(r.id) === 'town');
+  const has = (id) => roles.some((r) => r.id === id);
+  const hasCheck = roles.some((r) => r.action?.type === 'investigate' && ['alignment', 'role', 'parity'].includes(r.action.check));
+  if (!mafia.length) out.push({ level: 'error', text: 'Add at least one Mafia role.' });
+  if (mafia.length && mafiaWeight >= n - mafia.length) out.push({ level: 'error', text: `The Mafia already match everyone else (${mafia.length} of ${n}). They would win before anyone wakes up.` });
+  else if (mafia.length && mafiaWeight / n > 0.4) out.push({ level: 'warn', text: `${mafia.length} Mafia in ${n} players is a lot. Around 1 in 4 is usual.` });
+  else if (n >= 8 && mafia.length && mafia.length / n < 0.17) out.push({ level: 'warn', text: `Only ${mafia.length} Mafia in ${n} players. Town will usually win; around 1 in 4 is usual.` });
+  if (third / n > 0.3) out.push({ level: 'warn', text: `${third} third-party roles is a lot. Town and Mafia may never finish each other off.` });
+  const soloKillers = count((r) => factionOf(r.id) === 'third' && r.action?.type === 'kill');
+  if (soloKillers >= 2) out.push({ level: 'warn', text: `${soloKillers} solo killers: games end very fast.` });
+  if (count((r) => r.meeting === 'mason') === 1) out.push({ level: 'warn', text: 'A single Mason has nobody to meet. Add a second or remove it.' });
+  if (has('lover') && count((r) => r.id === 'lover') !== 2) out.push({ level: 'warn', text: 'Lovers come in pairs. Use exactly two.' });
+  const deceivers = roles.filter((r) => r.appearsAs === 'innocent' || r.action?.type === 'frame' || r.appearsAs === 'mafia');
+  if (deceivers.length && !hasCheck) out.push({ level: 'tip', text: `${[...new Set(deceivers.map((r) => r.name))].join(', ')} only matter${deceivers.length === 1 ? 's' : ''} if someone investigates. Add a Cop or Detective.` });
+  if (n >= 7 && !hasCheck) out.push({ level: 'tip', text: 'Nobody can investigate, so Town has to guess. Add a Cop for a classic game.' });
+  if (has('placebo_doctor') && !has('doctor')) out.push({ level: 'tip', text: 'A Placebo Doctor works best with a real Doctor in the game.' });
+  for (const r of roles.filter((x) => x.seesAs && x.seesAs !== 'villager')) {
+    if (!has(r.seesAs)) out.push({ level: 'tip', text: `The ${r.name} thinks they are the ${ROLE_BY_ID[r.seesAs].name}, and there is no real ${ROLE_BY_ID[r.seesAs].name}. That's fine, but nobody will contradict them.` });
+  }
+  const killers = count((r) => r.action?.type === 'kill' || r.meeting === 'mafia' && r.id === 'mafia') || (mafia.length ? 1 : 0);
+  const savers = count((r) => ['protect', 'guard', 'jail'].includes(r.action?.type));
+  if (savers > killers + 1) out.push({ level: 'warn', text: `${savers} protectors against ${killers} killer${killers === 1 ? '' : 's'}: nights may often end with nobody dead.` });
+  const uniques = ['godfather', 'doctor', 'cop', 'jailer', 'mayor', 'president', 'janitor'];
+  for (const id of uniques) if (count((r) => r.id === id) > 1) out.push({ level: 'tip', text: `More than one ${ROLE_BY_ID[id].name}. That works, but it's unusual.` });
+  return out;
 }
 
 // When every non-villager slot is matched, hand the rest of the table the Villager slots.
@@ -209,7 +273,7 @@ export function resolveNight(room, actions) {
     const targets = (raw.targets || []).filter((id) => playerById(room, id));
     const need = s.targets ?? 1;
     const on = need === 0 ? !!raw.on : targets.length >= need;
-    return { s, targets, on };
+    return { s, targets, on, coin: raw.coin === 'mafia' || raw.coin === 'innocent' ? raw.coin : null };
   }).filter((a) => a.on);
 
   // usage
@@ -238,9 +302,16 @@ export function resolveNight(room, actions) {
     rep.notes.push(`${a.s.actors.map((id) => nameOf(room, id)).join(', ')} (${ROLE_BY_ID[a.s.roleId].name}) was blocked. Tell them nothing happened, or that they were distracted.`);
   }
 
-  // 2) who visited whom (non-blocked acts)
+  // 2) who visited whom (non-blocked acts). A team kill is carried out by ONE free member: a plain killer if
+  // possible, otherwise whoever is free. Blocked members stay home, so they are not seen and not shot.
+  for (const a of active) {
+    const free = a.s.actors.filter((id) => !blockedPlayers.has(id));
+    const plain = free.find((id) => !ROLE_BY_ID[playerById(room, id)?.roleId]?.action || ROLE_BY_ID[playerById(room, id)?.roleId]?.action?.type === 'kill');
+    a.visitors = a.s.actors.length > 1 ? [plain || free[0]].filter(Boolean) : a.s.actors;
+    if (a.s.actors.length > 1 && a.s.type === 'kill' && a.visitors[0]) rep.notes.push(`${nameOf(room, a.visitors[0])} carried out the ${ROLE_BY_ID[a.s.roleId]?.name || 'team'} kill.`);
+  }
   const visits = {};
-  for (const a of active) for (const t of a.targets) (visits[t] ||= []).push(...a.s.actors);
+  for (const a of active) for (const t of a.targets) (visits[t] ||= []).push(...a.visitors);
 
   // 3) protections
   const protectedSet = new Set(jailed);
@@ -267,17 +338,17 @@ export function resolveNight(room, actions) {
     const src = a.s.source || 'kill';
     if (!tp.alive) continue;
     if (room.shield) { rep.saves.push({ target: t, text: `${tp.name} survived: nobody can be killed tonight.` }); continue; }
-    if (tr.nightImmune) { rep.saves.push({ target: t, text: `${tp.name} (Grandma) cannot be killed at night.` }); continue; }
+    if (tr.nightImmune) { rep.saves.push({ target: t, text: `${tp.name} (${tr.name}) cannot be killed at night.` }); continue; }
     if (jailed.has(t) || alertSet.has(t)) { rep.saves.push({ target: t, text: `${tp.name} survived the attack.` }); continue; }
     if (guardMap[t]?.length) { // each bodyguard absorbs one hit; a second attacker gets through
       const bg = guardMap[t].shift();
       markDeath(bg, `took the hit for ${tp.name}`);
-      rep.saves.push({ target: t, text: `${nameOf(room, bg)} (Bodyguard) died protecting ${tp.name}.` });
+      rep.saves.push({ target: t, text: `${nameOf(room, bg)} (${ROLE_BY_ID[playerById(room, bg)?.roleId]?.name || 'Bodyguard'}) died protecting ${tp.name}.` });
       continue;
     }
     if (protectedSet.has(t)) { rep.saves.push({ target: t, text: `${tp.name} was attacked but saved.` }); continue; }
     markDeath(t, src === 'mafia' ? 'killed by the Mafia' : src === 'killer' ? 'killed by the Serial Killer' : src === 'vigilante' ? 'shot by the Vigilante' : 'killed in the night');
-    if (tr.retaliate) for (const k of a.s.actors) markDeath(k, `blown up by ${tp.name} (Bomb)`);
+    if (tr.retaliate) for (const k of a.visitors) markDeath(k, `blown up by ${tp.name} (${tr.name})`);
     if (src === 'mafia') cleaned.add(t);
   }
   const clean = active.find((a) => a.s.type === 'clean');
@@ -302,26 +373,29 @@ export function resolveNight(room, actions) {
     }
   }
 
-  // 7) information
+  // 7) information. `text` is exactly what the storyteller says; `note` is for the storyteller only.
   const sideName = (v) => (v === 'mafia' ? 'MAFIA' : 'NOT Mafia');
   for (const a of active.filter((x) => ['investigate', 'track', 'watch', 'autopsy'].includes(x.s.type))) {
     const actorIds = a.s.actors;
     const t = alivePlayer(a.targets[0]);
-    let text;
+    let text; let note = '';
     if (a.s.type === 'investigate') {
       const chk = a.s.check;
       if (chk === 'alignment') text = `${t.name} is ${sideName(appearsAs(room, t))}.`;
-      else if (chk === 'inverted') text = `${t.name} is ${sideName(appearsAs(room, t) === 'mafia' ? 'innocent' : 'mafia')} (Insane Cop: result is flipped; say it as true).`;
+      else if (chk === 'inverted') { text = `${t.name} is ${sideName(appearsAs(room, t) === 'mafia' ? 'innocent' : 'mafia')}.`; note = 'Insane Cop: this is the flipped result. Say it as if it were true.'; }
+      else if (chk === 'random') { text = `${t.name} is ${sideName(a.coin || (randInt(2) ? 'mafia' : 'innocent'))}.`; note = 'Confused Cop: a coin flip, not the truth. Say it as if it were true.'; }
+      else if (chk === 'naive') { text = `${t.name} is ${sideName('innocent')}.`; note = 'Naive Cop: everyone looks innocent to them. Say it as if it were true.'; }
+      else if (chk === 'paranoid') { text = `${t.name} is ${sideName('mafia')}.`; note = 'Paranoid Cop: everyone looks guilty to them. Say it as if it were true.'; }
       else if (chk === 'role') text = `${t.name} is the ${ROLE_BY_ID[t.roleId].name}.`;
       else if (chk === 'parity') {
         const u = alivePlayer(a.targets[1]);
         const same = appearsAs(room, t) === appearsAs(room, u);
         text = `${t.name} and ${u.name} are ${same ? 'on the SAME side' : 'on DIFFERENT sides'}.`;
       } else if (chk === 'fake') {
-        text = `${t.name} is ${sideName(randInt(2) ? 'mafia' : 'innocent')} (Wannabe: made-up result).`;
+        text = `${t.name} is ${sideName(a.coin || (randInt(2) ? 'mafia' : 'innocent'))}.`; note = 'Made-up result (a coin flip).';
       }
     } else if (a.s.type === 'track') {
-      const went = active.filter((x) => x.s.actors.includes(t.id) && x.targets.length).flatMap((x) => x.targets).map((id) => nameOf(room, id));
+      const went = active.filter((x) => x.visitors.includes(t.id) && x.targets.length).flatMap((x) => x.targets).map((id) => nameOf(room, id));
       text = went.length ? `${t.name} visited ${[...new Set(went)].join(', ')}.` : `${t.name} stayed home.`;
     } else if (a.s.type === 'watch') {
       const who = (visits[t.id] || []).filter((id) => !actorIds.includes(id)).map((id) => nameOf(room, id));
@@ -329,7 +403,7 @@ export function resolveNight(room, actions) {
     } else if (a.s.type === 'autopsy') {
       text = `${t.name} was the ${ROLE_BY_ID[t.roleId].name}.`;
     }
-    rep.info.push({ actorIds, roleId: a.s.roleId, text });
+    rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note });
   }
 
   // 8) apply deaths
@@ -430,3 +504,83 @@ export function finalWinners(room) {
 }
 
 export { ROLES, ROLE_BY_ID, factionOf };
+
+// ---------- balance ----------
+// Every role gets a strength score in the style of Ultimate Werewolf: Town roles help Town (+), Mafia and
+// solo threats hurt Town (−). A setup that adds up to about 0 gives both sides a fair game.
+// A role can override its score with `power`.
+const TOWN_ACTION = { protect: 4, guard: 3, jail: 5, block: 3, blockVisitors: 3, kill: 4, track: 4, watch: 4, autopsy: 2, alert: 3 };
+const TOWN_CHECK = { alignment: 7, role: 8, parity: 5, inverted: 2, random: 0, naive: -1, paranoid: -1, fake: 0 };
+const MAFIA_EXTRA = { block: -2, jail: -2, frame: -2, clean: -1, convert: -4, kill: -2, protect: -1, guard: -1, watch: -1, track: -1, alert: -1, blockVisitors: -1 };
+export function rolePower(roleId) {
+  const r = ROLE_BY_ID[roleId];
+  if (!r) return 0;
+  if (typeof r.power === 'number') return r.power;
+  const t = r.action?.type; const side = factionOf(r.id);
+  if (side === 'town') {
+    let p = t === 'investigate' ? TOWN_CHECK[r.action.check] ?? 5 : TOWN_ACTION[t] ?? (r.showMafia ? 7 : r.meeting === 'mason' ? 2 : (r.day || r.onDeath || r.onCondemn) ? 2 : 1);
+    if (r.appearsAs === 'mafia') p -= 1;
+    if (r.nightImmune) p += 1;
+    return p;
+  }
+  if (side === 'mafia') {
+    let p = r.alignment === 'mafia' && !r.meeting && t !== 'kill' ? -5 : -6;
+    if (r.appearsAs === 'innocent') p -= 2;
+    if (t === 'investigate') p += r.action.check === 'role' ? -2 : r.action.check === 'parity' ? -1 : 0;
+    else if (t && t !== 'kill') p += MAFIA_EXTRA[t] ?? 0;
+    else if (t === 'kill' && !r.meeting) p -= 2;
+    if (r.nightImmune) p -= 1;
+    p -= ((r.weight || 1) - 1) * 3;
+    return p;
+  }
+  // third party
+  if (t === 'kill') return r.nightImmune || r.appearsAs === 'innocent' ? -8 : -7;
+  if (r.meeting === 'cult') return t === 'convert' ? -8 : -3;
+  if (r.winsWith === 'mafia') return -3;
+  if (r.winsWith === 'town-loss') return -2;
+  if (t === 'protect' || t === 'guard') return 1;
+  if (t === 'investigate') return -2;
+  if (r.sideWin) return -1;
+  return 0;
+}
+
+// { score, verdict: 'even' | 'town' | 'mafia', strength: 'even' | 'slight' | 'strong', text }
+export function balanceOf(roleIds) {
+  const score = roleIds.reduce((t, id) => t + rolePower(id), 0);
+  const a = Math.abs(score);
+  const strength = a <= 3 ? 'even' : a <= 8 ? 'slight' : 'strong';
+  const verdict = strength === 'even' ? 'even' : score > 0 ? 'town' : 'mafia';
+  const side = verdict === 'town' ? 'Town' : 'the Mafia';
+  const text = strength === 'even' ? 'Even: both sides have a fair chance.'
+    : strength === 'slight' ? `Leans toward ${side}.` : `Strongly favors ${side}.`;
+  return { score, verdict, strength, text };
+}
+
+// Swap roles one at a time, keeping the player count, until the setup is about even. Prefers small changes:
+// it only swaps in common roles, and only touches Villagers, plain Mafia and the role it just added.
+const SWAP_IN = ['villager', 'mafia', 'doctor', 'cop', 'godfather', 'vigilante', 'bodyguard', 'tracker', 'jester', 'hooker', 'framer'];
+export function rebalance(roleIds) {
+  let roles = [...roleIds];
+  const score = (rs) => Math.abs(balanceOf(rs).score);
+  const fine = (rs) => {
+    const m = rs.filter((id) => factionOf(id) === 'mafia').length;
+    return m >= 1 && m <= Math.max(1, Math.floor(rs.length / 3)) && !setupWarnings(rs, rs.length).some((w) => w.level === 'error');
+  };
+  for (let step = 0; step < 16 && score(roles) > 2; step++) {
+    let best = null;
+    for (let i = 0; i < roles.length; i++) {
+      for (const x of SWAP_IN) {
+        if (x === roles[i]) continue;
+        if (!['villager', 'mafia'].includes(x) && roles.includes(x)) continue; // one of each special role
+        const next = roles.slice(); next[i] = x;
+        if (!fine(next)) continue;
+        // Prefer replacing filler (Villagers, plain Mafia) over a role the host picked on purpose.
+        const cost = score(next) + (['villager', 'mafia'].includes(roles[i]) ? 0 : 0.5);
+        if (!best || cost < best.cost) best = { cost, next };
+      }
+    }
+    if (!best || score(best.next) >= score(roles)) break;
+    roles = best.next;
+  }
+  return roles;
+}

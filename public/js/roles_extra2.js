@@ -30,13 +30,11 @@ export function buildExtra2(R, A) {
 
     // --- cop variants ---
     R('confused_cop', 'Confused Cop', '😵', 'town', 'You think you are a Cop, but your results are random noise.',
-      { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'fake' }) }),
+      { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'random' }) }),
     R('naive_cop', 'Naive Cop', '🐑', 'town', 'You think you are a Cop, but everyone always looks innocent to you.',
-      { seesAs: 'cop', night1: 'Naive Cop: ignore the random result the console shows and ALWAYS answer "not Mafia".',
-        action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'fake' }) }),
+      { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'naive' }) }),
     R('paranoid_cop', 'Paranoid Cop', '😰', 'town', 'You think you are a Cop, but everyone always looks guilty to you.',
-      { seesAs: 'cop', night1: 'Paranoid Cop: ignore the random result the console shows and ALWAYS answer "Mafia".',
-        action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'fake' }) }),
+      { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'paranoid' }) }),
 
     // --- guns, vests and items (storyteller tracks) ---
     R('deputy', 'Deputy', '📛', 'town', 'You hold one secret gun to fire in daylight. Nobody learns you pulled the trigger.',

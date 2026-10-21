@@ -6,6 +6,7 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
+import { previewNight, setupWarnings, balanceOf } from './engine.js';
 
 const pname = (v, id) => v.players.find((p) => p.id === id)?.name || '?';
 const rname = (id) => ROLE_BY_ID[id]?.name || id;
@@ -110,7 +111,7 @@ function lobby(v, local) {
       ${have ? '<button type="button" class="btn ghost" data-a="clearRoles">Clear</button>' : ''}
       <button type="button" class="btn ghost" data-a="newRole">${ui('plus')} New role</button>
     </div>
-    ${deckList}
+    ${deckList}${advice(c.roles, n)}
     <div class="role-filter" role="tablist" aria-label="Show roles from">${filters.map(([k, l]) => `<button type="button" role="tab" aria-selected="${team === k}" tabindex="${team === k ? 0 : -1}" class="${k === 'all' || k === 'custom' ? '' : `a-${k}`}" data-a="roleTeam" data-v="${k}">${l}</button>`).join('')}</div>
     <label class="search-field">${ui('search')}<input class="search" data-i="search" placeholder="Search roles" aria-label="Search roles" value="${esc(S.ui.search)}"></label>
     <div class="role-grid">${list.map(tile).join('')}</div>
@@ -118,8 +119,9 @@ function lobby(v, local) {
   </section>`;
 
   const short = min - n;
-  const label = n < min ? `Add ${plural(short, 'more player')}` : have < n ? `Pick ${plural(n - have, 'more role')}` : have > n ? `Remove ${plural(have - n, 'role')}` : 'Deal roles';
-  const ready = n >= min && have === n;
+  const blocked = have === n && setupWarnings(c.roles, n).some((w) => w.level === 'error');
+  const label = n < min ? `Add ${plural(short, 'more player')}` : have < n ? `Pick ${plural(n - have, 'more role')}` : have > n ? `Remove ${plural(have - n, 'role')}` : blocked ? 'Fix the setup above first' : 'Deal roles';
+  const ready = n >= min && have === n && !blocked;
   return {
     body: `${joinCode}${players}${dealSetup(c, local)}${roles}`,
     dock: btn('big', 'deal', label, { on: ready }),
@@ -184,6 +186,34 @@ function dealSetup(c, local) {
   </section>`;
 }
 
+// Warnings about the role mix, shown under the hand being built.
+function advice(roleIds, n) {
+  if (!roleIds.length) return '';
+  const ws = setupWarnings(roleIds, n);
+  const b = balanceOf(roleIds);
+  // The meter runs from -15 (Mafia) to +15 (Town); the marker sits at the setup's score.
+  const pos = Math.max(0, Math.min(100, 50 + (b.score / 15) * 50));
+  const meter = `<div class="balance" data-strength="${b.strength}" data-verdict="${b.verdict}">
+    <div class="balance-head"><span class="balance-title">Balance</span><span class="balance-text">${esc(b.text)}</span></div>
+    <div class="balance-bar" role="meter" aria-valuemin="-15" aria-valuemax="15" aria-valuenow="${b.score}" aria-label="Balance: ${esc(b.text)}">
+      <span class="balance-end">Mafia</span><span class="balance-track"><i class="balance-mid"></i><i class="balance-dot" style="left:${pos.toFixed(1)}%"></i></span><span class="balance-end">Town</span></div>
+    ${b.strength === 'even' ? '' : `<button type="button" class="btn ghost" data-a="rebalance">${ui('shuffle')} Balance it for me</button>`}
+  </div>`;
+  const icon = { error: 'warning', warn: 'warning', tip: 'info' };
+  return `${meter}${ws.length ? `<ul class="advice">${ws.map((w) => `<li class="note advice-${w.level} ${w.level === 'tip' ? '' : 'is-warn'}">${ui(icon[w.level])} ${esc(w.text)}</li>`).join('')}</ul>` : ''}`;
+}
+
+// The host's view rebuilt as a room, so the shared engine can work out live results on this device.
+function roomFromView(v) {
+  return {
+    code: v.code, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, winner: null,
+    players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },
+    shield: v.shield, dayUsed: { ...(v.dayUsed || {}) }, sideWins: [...(v.sideWins || [])], pending: [], log: [], framed: [],
+  };
+}
+const LIVE = ['investigate', 'track', 'watch', 'autopsy'];
+const COIN = ['random', 'fake'];
+
 // ---------------- dealt ----------------
 function dealt(v, local) {
   const cards = v.config.mode === 'cards';
@@ -217,11 +247,15 @@ function dealt(v, local) {
   return { body, dock: `${back}${btn('big', 'startNight', ok ? 'Start night 1' : `${plural(left, 'player')} still need${left === 1 ? 's' : ''} a card`, { on: ok })}` };
 }
 
+// big = the key shown to the whole table: disguised roles appear as what they think they are.
+// The storyteller's own key shows the truth, with what the player believes.
 function keyTable(v, big = false) {
-  const rows = [...v.deck.map].sort((a, b) => ROLE_BY_ID[a.roleId].alignment.localeCompare(ROLE_BY_ID[b.roleId].alignment) || a.roleId.localeCompare(b.roleId));
+  const shown = (m) => (big && ROLE_BY_ID[ROLE_BY_ID[m.roleId].seesAs]) || ROLE_BY_ID[m.roleId];
+  const rows = [...v.deck.map].sort((a, b) => shown(a).alignment.localeCompare(shown(b).alignment) || shown(a).id.localeCompare(shown(b).id) || a.card.localeCompare(b.card));
   const fits = big ? `${rows.length <= 9 ? ' fits-9' : ''}${rows.length <= 16 ? ' fits-16' : ''}` : '';
-  return `<div class="keygrid ${big ? 'is-big' : ''}${fits}">${rows.map((m) => { const r = ROLE_BY_ID[m.roleId];
-    return `<div class="keyrow a-${r.alignment}">${pc(m.card)}<span class="key-glyph">${ico(r)}</span><span class="key-name">${esc(r.name)}</span><i class="team-mark a-${r.alignment}" role="img" aria-label="${teamName(r.alignment)}"></i></div>`; }).join('')}</div>`;
+  return `<div class="keygrid ${big ? 'is-big' : ''}${fits}">${rows.map((m) => { const r = shown(m); const real = ROLE_BY_ID[m.roleId];
+    const thinks = !big && real.seesAs ? ` <span class="meta">thinks: ${esc(ROLE_BY_ID[real.seesAs].name)}</span>` : '';
+    return `<div class="keyrow a-${r.alignment}">${pc(m.card)}<span class="key-glyph">${ico(r)}</span><span class="key-name">${esc(r.name)}${thinks}</span><i class="team-mark a-${r.alignment}" role="img" aria-label="${teamName(r.alignment)}"></i></div>`; }).join('')}</div>`;
 }
 // Where players type the code. The workers.dev address is long, so point people at the short domain.
 function joinSite() {
@@ -274,6 +308,20 @@ function night(v) {
   return { body, dock: btn('big', 'resolve', canResolve ? `${ui('sun')} ${label}` : label, { on: canResolve, why: label }) };
 }
 
+// Live answer for an investigator, worked out from the choices of everyone who woke earlier tonight.
+function tellNow(v, s, set) {
+  if (s.kind !== 'action' || !LIVE.includes(s.type) || !set?.targets?.length) return '';
+  if (COIN.includes(s.check) && !set.coin) {
+    return `<div class="tell-now"><p class="note is-private">${ui('ear')} This result is a coin flip. Flip it now and say the answer as if it were true.</p>
+      <button type="button" class="btn" data-a="coin" data-key="${s.key}">${ui('coin')} Flip a coin</button></div>`;
+  }
+  let res;
+  try { res = previewNight(roomFromView(v), S.ui.night.actions, s.key); } catch { return ''; }
+  if (!res) return '';
+  if (res.blocked) return `<div class="tell-now"><p class="note is-private">${ui('ear')} ${esc(res.note)} Tell them nothing happened.</p></div>`;
+  return `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p>${res.note ? `<p class="note is-private">${esc(res.note)}</p>` : ''}</div>`;
+}
+
 function cue(v, s, num, current, alive) {
   const n = S.ui.night;
   const r = ROLE_BY_ID[s.roleId];
@@ -288,14 +336,17 @@ function cue(v, s, num, current, alive) {
         : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
     }
     return `<li class="cue is-done"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
-      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div></li>`;
+      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div>${tellNow(v, s, set)}</li>`;
   }
   if (!current) {
     const what = s.kind === 'identify' ? 'Find who it is' : s.kind === 'info' ? 'Wake them up' : 'Record their choice';
     return `<li class="cue"><span class="cue-n">${num}</span><button type="button" class="cue-line" data-a="focusStep" data-key="${s.key}">${roleEl}<span class="meta">${what}</span></button></li>`;
   }
   const spoken = s.kind === 'identify' ? s.prompt.replace(/\s*Tap who (it is|they are)\.?\s*$/, '') : s.prompt;
-  const say = `<p class="say">“${esc(spoken)}”</p>`;
+  const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>` : '';
+  const say = s.kind === 'info' && !s.spoken
+    ? `<p class="note is-private">${ui('ear')} Just for you: ${esc(s.prompt)}</p>`
+    : `<p class="say">“${esc(spoken)}”</p>${hint}`;
   let inner;
   if (s.kind === 'identify') {
     const picks = n.picks[s.key] || [];
@@ -320,7 +371,7 @@ function cue(v, s, num, current, alive) {
       const [yes, no] = s.type === 'alert' ? ['Go on alert', 'Not tonight'] : ['Yes', 'No'];
       inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">${yes}</button><button type="button" class="btn ghost" data-a="alert" data-key="${s.key}" data-v="0">${no}</button></div>`;
     } else {
-      const list = s.dead ? v.players.filter((p) => !p.alive) : alive;
+      const list = s.dead ? v.players.filter((p) => !p.alive) : alive.filter((p) => s.type === 'protect' || !s.actors.includes(p.id));
       const picks = n.picks[s.key] || [];
       const need = s.targets || 1;
       inner = `${head}${list.length
@@ -353,7 +404,7 @@ function day(v) {
         ${rep.notes.map((t) => `<li class="event is-note">${ui('info')}<div>${esc(t)}</div></li>`).join('')}
       </ul>
       ${rep.info.length ? `<section class="whisper"><h3 class="whisper-title">${ui('ear')} Tell these players in private</h3>
-        ${rep.info.map((i) => `<div class="whisper-item">${names(v, i.actorIds)} <span class="muted">${esc(rname(i.roleId))}</span><p>${esc(i.text)}</p></div>`).join('')}</section>` : ''}`;
+        ${rep.info.map((i) => `<div class="whisper-item">${names(v, i.actorIds)} <span class="muted">${esc(rname(i.roleId))}</span><p>${esc(i.text)}</p>${i.note ? `<p class="note is-private">${esc(i.note)}</p>` : ''}</div>`).join('')}</section>` : ''}`;
   }
   const pend = v.pending.map((p) => `<section class="cue is-current pending"><div class="cue-body">
       <span class="meta">${esc(pname(v, p.playerId))}</span><p class="say">${esc(p.text)}</p>

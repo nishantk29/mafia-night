@@ -159,7 +159,7 @@ export function buildExtra(R, A) {
 
     // --- profit when town falls ---
     R('vulture', 'Vulture', '🦅', 'third', 'You win if you are alive when the town loses. Each night, pick at a corpse to learn its role.',
-      { winsWith: 'town-loss', action: A('autopsy', 65, 'Vulture, wake up. Which dead player do you pick over?', { dead: true }) }),
+      { winsWith: 'town-loss', action: A('autopsy', 58, 'Vulture, wake up. Which dead player do you pick over?', { dead: true }) }),
     R('profiteer', 'Profiteer', '📈', 'third', 'You win if you are alive when the town loses. Each night, watch who visits one player.',
       { winsWith: 'town-loss', action: A('watch', 64, 'Profiteer, wake up. Whose door do you watch?') }),
     R('agent_provocateur', 'Agent Provocateur', '🧪', 'third', 'You win if you are alive when the town loses. Each night, frame a player to stir up trouble.',

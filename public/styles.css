@@ -968,3 +968,78 @@ html[data-shell="host"] #toast{bottom:calc(var(--tabbar-h) + var(--dock-h) + env
 .deal-switch{margin-top:var(--s2)}
 .leave-row{grid-column:1/-1;margin:var(--s5) 0 var(--s3);text-align:center}
 .leave-row .linkish{color:var(--smoke)}
+
+/* ---------- seat drag and drop ---------- */
+/* Host seats can be dragged round the table (and rows of the crowded seat list); player boards never can. */
+.board[data-host="1"] .seat,.board[data-host="1"] .seatrow{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.board[data-host="1"] .seat{touch-action:none;cursor:grab}
+@media (hover:hover){.board[data-host="1"] .seatrow{cursor:grab}}
+html.is-seat-dragging,html.is-seat-dragging *{cursor:grabbing!important}
+.seat.is-dragging{z-index:5;transform:translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)))}
+.seat.is-dragging .seat-card{transform:scale(1.08);box-shadow:var(--lift-2)}
+/* brass = where it will land */
+.seat.is-drop .seat-card{outline:2px dashed var(--brass);outline-offset:4px;box-shadow:var(--lamp)}
+.seatrow.is-dragging{z-index:5;transform:translate(var(--dx, 0px), var(--dy, 0px));background:var(--panel-2);border-radius:var(--r-control);box-shadow:var(--lift-2)}
+.seatrow.is-drop{outline:2px dashed var(--brass);outline-offset:-2px;border-radius:var(--r-control)}
+.sheet .seat-move{margin-top:var(--s2)}
+@media (prefers-reduced-motion:reduce){.seat.is-dragging .seat-card{transform:none}}
+
+/* ---------- FAQ ---------- */
+.home-faq{margin-top:var(--s5)}
+.home-faq a{display:inline-flex;align-items:center;min-height:44px;color:var(--smoke);font-size:var(--fs-sm)}
+@media (hover:hover){.home-faq a:hover{color:var(--candle)}}
+.wrap.faq > .lede{margin-top:var(--s3);max-width:none}
+.faq-group{margin-top:var(--s7)}
+.faq-group > .block-title{margin-bottom:var(--s2)}
+.faq-q{border-bottom:1px solid var(--rule)}
+.faq-q:first-of-type{border-top:1px solid var(--rule)}
+.faq-q > summary{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:56px;padding:var(--s3) 0;
+  font-weight:700;font-size:var(--fs-md);line-height:1.3;color:var(--candle);list-style:none;cursor:pointer}
+.faq-q > summary::-webkit-details-marker{display:none}
+.faq-q > summary .ui-ico{width:20px;height:20px;color:var(--smoke);vertical-align:0;transition:transform var(--t-open) var(--ease-out)}
+.faq-q[open] > summary .ui-ico{transform:rotate(180deg)}
+@media (hover:hover){.faq-q > summary:hover .ui-ico{color:var(--candle)}}
+.faq-a{padding:0 0 var(--s5);max-width:var(--measure)}
+.faq-a > * + *{margin-top:var(--s3)}
+.faq-a ul,.faq-a ol{display:grid;gap:var(--s2);padding-left:1.4em}
+.faq-a li::marker{color:var(--smoke)}
+.faq-a a{color:var(--candle)}
+.faq-back{margin-top:var(--s7)}
+
+/* ---------- setup advice and balance (lobby) ---------- */
+.advice{list-style:none;margin:var(--s3) 0 0;padding:0;display:grid;gap:var(--s1)}
+.advice .note{margin-top:0}
+.note.advice-error,.note.advice-error > .ui-ico{color:var(--mafia)}
+.note.advice-tip{color:var(--smoke)}
+.note.is-ok > .ui-ico{color:var(--baize-lit)}
+.balance{margin-top:var(--s4);padding:var(--s3) var(--s4) var(--s4);background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-panel)}
+.balance-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--s1) var(--s3)}
+.balance-title{font-family:var(--font-display);font-weight:700;font-size:var(--fs-lg);letter-spacing:.02em}
+.balance-text{color:var(--smoke);font-size:var(--fs-sm)}
+.balance[data-strength="even"] .balance-text{color:var(--candle)}
+.balance[data-strength="strong"][data-verdict="town"] .balance-text{color:var(--town)}
+.balance[data-strength="strong"][data-verdict="mafia"] .balance-text{color:var(--mafia)}
+.balance-bar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s3);margin-top:var(--s3)}
+.balance-end{font-size:var(--fs-xs);color:var(--faint)}
+.balance-track{position:relative;height:10px;border-radius:var(--r-pill);
+  background:linear-gradient(90deg,var(--mafia-dim),var(--rule) 40%,var(--rule) 60%,var(--town-dim))}
+/* the even zone: a quiet band in the middle */
+.balance-mid{position:absolute;left:40%;right:40%;top:-3px;bottom:-3px;border-left:1px solid var(--rule-strong);border-right:1px solid var(--rule-strong)}
+.balance-dot{position:absolute;top:50%;width:22px;height:22px;border-radius:50%;transform:translate(-50%,-50%);
+  background:var(--brass);border:3px solid var(--room);box-shadow:var(--lift-1);transition:left var(--t-open) var(--ease-out)}
+.balance .btn{margin-top:var(--s3)}
+@media (prefers-reduced-motion:reduce){.balance-dot{transition:none}}
+
+/* ---------- storyteller-only lines and live results (night) ---------- */
+.note.is-private{font-size:var(--fs-sm);color:var(--smoke);padding-left:var(--s3);border-left:2px dashed var(--rule-strong)}
+.note.is-private > .ui-ico{color:var(--brass)}
+.tell-now{margin-top:var(--s2);display:grid;gap:var(--s2);justify-items:start}
+.tell-say{display:flex;gap:var(--s2);align-items:flex-start;margin:0;font-size:var(--fs-md);max-width:var(--measure)}
+.tell-say > .ui-ico{margin-top:.15em;color:var(--brass);vertical-align:0}
+.tell-say b{font-family:var(--font-voice);font-style:italic;font-weight:600;color:var(--brass-hi)}
+
+/* ---------- how to play your role (player phone) ---------- */
+.guide{padding:var(--s4);background:var(--panel);border:1px solid var(--rule);border-radius:var(--r-panel);display:grid;gap:var(--s4);text-align:left;max-width:34rem;width:100%;justify-self:center}
+.guide-part p{margin:var(--s1) 0 0;font-size:var(--fs-md);line-height:var(--lh-ui);color:var(--candle)}
+.guide-title{display:flex;align-items:center;gap:var(--s2);margin:0;font-family:var(--font-display);font-weight:700;font-size:var(--fs-lg);letter-spacing:.02em;color:var(--brass)}
+.guide-title .ui-ico{width:20px;height:20px;vertical-align:0}

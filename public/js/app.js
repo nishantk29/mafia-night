@@ -2,11 +2,13 @@
 import { S, esc, store, loadLibrary, saveLibrary } from './state.js';
 import { newRoom, reduce, viewForHost } from './room.js';
 import { registerRoles, ROLE_BY_ID } from './roles.js';
+import { rebalance } from './engine.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
 import { hostScreen } from './host.js';
 import { playerScreen, joinForm } from './player.js';
+import { faqScreen } from './faq.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -23,6 +25,7 @@ function focusSelector(el) {
 
 let pendingRender = false;
 S.render = function render() {
+  if (drag) { pendingRender = true; return; } // a seat is being dragged: the drop renders
   const a = document.activeElement;
   if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; return; }
   pendingRender = false;
@@ -51,7 +54,7 @@ function refocus(sel, cls) {
 document.addEventListener('focusout', () => { if (pendingRender) setTimeout(() => S.render(), 50); });
 
 function shellAttrs() {
-  if (S.fatal || S.mode === 'home') return { phase: 'home', shell: 'home' };
+  if (S.fatal || S.mode === 'home' || S.mode === 'faq') return { phase: 'home', shell: 'home' };
   if (S.mode === 'host' || S.mode === 'local') return { phase: S.view?.phase || 'lobby', shell: 'host' };
   if (S.mode === 'play') return { phase: S.view?.kind === 'player' ? S.view.phase : 'lobby', shell: 'player' };
   return { phase: 'home', shell: 'home' };
@@ -66,6 +69,7 @@ function screen() {
       <a class="btn" href="#/">Go to the home page</a></div></main>`;
   }
   if (S.mode === 'home') return home();
+  if (S.mode === 'faq') return faqScreen();
   if (S.mode === 'local') return S.view ? hostScreen(S.view, true) : '';
   if (S.mode === 'host') return banner + (S.view ? hostScreen(S.view, false) : connecting('Connecting to your room…'));
   if (S.mode === 'play') {
@@ -94,6 +98,7 @@ function home() {
         <button type="button" class="btn ghost" data-a="goJoin">Join</button></div></section>
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
         <p class="muted">Use a deck of playing cards and this one screen.</p></section>
+      <p class="home-faq"><a href="#/faq">How it works and FAQ</a></p>
     </div>
     <p class="credits">Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT).</p>
   </main>`;
@@ -181,13 +186,15 @@ async function route() {
       S.transport = wsTransport(S.code, () => { try { const c = JSON.parse(store.get(`mafia.player.${S.code}`) || 'null'); return c ? { type: 'hello', ...c } : null; } catch { return null; } });
       S.send = (a) => S.transport.send(a);
     }
-  } else {
+  } else if (kind === 'faq') S.mode = 'faq';
+  else {
     S.mode = 'home';
     for (const k of Object.keys(localStorage).filter((x) => x.startsWith('mafia.host.'))) {
       const code = k.slice(11);
       fetch(`/api/room/${code}`).then((r) => { if (!r.ok) { store.del(k); if (S.mode === 'home') S.render(); } }).catch(() => {});
     }
   }
+  if (S.mode === 'home' || S.mode === 'faq') window.scrollTo(0, 0);
   S.render();
 }
 window.addEventListener('hashchange', route);
@@ -258,6 +265,7 @@ const A = {
   rmPlayer(el) { send({ type: 'removePlayer', playerId: el.dataset.id }); },
   cfg(el) { send({ type: 'setConfig', [el.dataset.k]: el.dataset.v }); },
   suggest() { syncLibrary(); send({ type: 'suggestRoles' }); },
+  rebalance() { const roles = S.view?.config?.roles || []; if (roles.length) send({ type: 'setConfig', roles: rebalance(roles) }); },
   clearRoles() { send({ type: 'setConfig', roles: [] }); },
   addRole(el) { syncLibrary(); send({ type: 'setConfig', roles: [...S.view.config.roles, el.dataset.id] }); },
   subRole(el) { const r = [...S.view.config.roles]; const i = r.lastIndexOf(el.dataset.id); if (i >= 0) r.splice(i, 1); send({ type: 'setConfig', roles: r }); },
@@ -306,6 +314,12 @@ const A = {
   alert(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { on: el.dataset.v === '1', targets: [] }; S.render(); },
   infoDone(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { done: true }; S.render(); },
   undoStep(el) { delete S.ui.night.actions[el.dataset.key]; S.ui.night.focus = el.dataset.key; S.render(); },
+  // A coin flip for results that are random by design; kept with the step so the morning report says the same thing.
+  coin(el) {
+    const set = S.ui.night.actions[el.dataset.key]; if (!set) return;
+    set.coin = crypto.getRandomValues(new Uint8Array(1))[0] & 1 ? 'mafia' : 'innocent';
+    S.toast(set.coin === 'mafia' ? 'Heads: say MAFIA.' : 'Tails: say NOT Mafia.'); S.render();
+  },
   resolve() { send({ type: 'submitNight', actions: S.ui.night.actions }); },
   // day
   selCondemn(el) { S.ui.condemn = S.ui.condemn === el.dataset.id ? null : el.dataset.id; S.render(); },
@@ -317,6 +331,14 @@ const A = {
   newGame() { if (S.view.phase === 'over' || confirm('Abandon this game and go back to setup?')) { S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'newGame' }); } },
   // board
   seat(el) { if (S.mode === 'play') return; S.ui.anim = S.ui.sheet ? null : 'sheet'; S.ui.sheet = el.dataset.id; S.render(); },
+  // One place round the table. At the ends the first and last seats swap, so nobody else shifts.
+  moveSeat(el) {
+    const ps = S.view.players; const n = ps.length; const i = ps.findIndex((p) => p.id === el.dataset.id);
+    if (i < 0 || n < 2) return;
+    const j = (i + Number(el.dataset.v) + n) % n;
+    if (Math.abs(j - i) === 1) return moveSeat(ps[i].id, j);
+    const other = ps[j].id; moveSeat(ps[i].id, j); moveSeat(other, i);
+  },
   closeSheet() { S.ui.sheet = null; S.render(); },
   tag(el) { send({ type: 'toggleTag', playerId: el.dataset.id, tag: el.dataset.c }); },
   killp(el) { send({ type: 'kill', playerId: el.dataset.id, cause: 'host' }); },
@@ -341,8 +363,81 @@ document.addEventListener('click', (ev) => {
   fn(el, ev);
 });
 
+// ---------------- seat drag and drop (host) ----------------
+// Drag a seat round the table, or a row of the crowded seat list, to change where someone sits. The drag
+// starts after 8px so a tap still opens the seat panel. Renders wait for the drop (see S.render). Touch on
+// the list needs a short hold first, so the list still scrolls; the seat panel's Move buttons do the rest.
+let drag = null; let swallowClick = null; // the one click the browser fires at the end of a drag
+function moveSeat(id, to) {
+  const ps = S.view?.players || []; const from = ps.findIndex((p) => p.id === id);
+  if (from < 0 || to < 0 || to === from) return;
+  const next = [...ps]; next.splice(to, 0, ...next.splice(from, 1));
+  S.view = { ...S.view, players: next }; // reorder now so the seat doesn't jump back while the room answers
+  send({ type: 'moveSeat', playerId: id, toIndex: to });
+  S.render();
+}
+function dragOn() {
+  const d = drag; if (!d || d.on) return;
+  clearTimeout(d.hold); d.hold = null; d.on = true;
+  try { d.el.setPointerCapture(d.pid); } catch { /* synthetic or finished pointer */ }
+  const box = d.el.closest(d.list ? '.seatlist' : '.table');
+  d.area = box.getBoundingClientRect();
+  d.slots = [...box.querySelectorAll(d.list ? '.seatrow' : '.seat')].map((el) => {
+    const b = el.getBoundingClientRect(); return { el, x: b.left + b.width / 2, y: b.top + b.height / 2 };
+  });
+  d.el.classList.add('is-dragging');
+  $html.classList.add('is-seat-dragging');
+}
+function dragEnd(drop) {
+  const d = drag; if (!d) return;
+  drag = null; clearTimeout(d.hold);
+  $html.classList.remove('is-seat-dragging');
+  if (d.on) {
+    clearTimeout(swallowClick); swallowClick = setTimeout(() => { swallowClick = null; }, 0);
+    d.el.classList.remove('is-dragging'); d.el.style.removeProperty('--dx'); d.el.style.removeProperty('--dy');
+    d.target?.classList.remove('is-drop');
+    if (drop && d.target) moveSeat(d.id, S.view.players.findIndex((p) => p.id === d.target.dataset.id));
+  }
+  if (pendingRender) setTimeout(() => { if (pendingRender && !drag) S.render(); }, 0);
+}
+document.addEventListener('pointerdown', (ev) => {
+  if (drag) dragEnd(false);
+  if (!ev.isPrimary || ev.button !== 0 || S.mode === 'play') return;
+  const el = ev.target.closest?.('.board[data-host="1"] .seat, .board[data-host="1"] .seatrow');
+  if (!el) return;
+  const list = el.classList.contains('seatrow');
+  drag = { el, list, id: el.dataset.id, pid: ev.pointerId, x0: ev.clientX, y0: ev.clientY, on: false, target: null,
+    hold: list && ev.pointerType !== 'mouse' ? setTimeout(dragOn, 350) : null };
+});
+document.addEventListener('pointermove', (ev) => {
+  const d = drag; if (!d || ev.pointerId !== d.pid) return;
+  const dx = ev.clientX - d.x0; const dy = ev.clientY - d.y0;
+  if (!d.on) {
+    if (Math.hypot(dx, dy) < 8) return;
+    if (d.hold) return dragEnd(false); // moved before the hold: the list is being scrolled
+    dragOn();
+  }
+  ev.preventDefault();
+  d.el.style.setProperty('--dx', `${dx}px`); d.el.style.setProperty('--dy', `${dy}px`);
+  // Land on the nearest seat centre, or nowhere once the pointer leaves the table.
+  const a = d.area; const x = ev.clientX; const y = ev.clientY;
+  let best = null; let bestD = Infinity;
+  if (x > a.left - 40 && x < a.right + 40 && y > a.top - 40 && y < a.bottom + 40) {
+    for (const s of d.slots) { const dist = Math.hypot(s.x - x, s.y - y); if (dist < bestD) { bestD = dist; best = s.el; } }
+  }
+  const target = best && best !== d.el ? best : null;
+  if (target !== d.target) { d.target?.classList.remove('is-drop'); target?.classList.add('is-drop'); d.target = target; }
+});
+document.addEventListener('pointerup', (ev) => { if (drag && ev.pointerId === drag.pid) dragEnd(true); });
+document.addEventListener('pointercancel', (ev) => { if (drag && ev.pointerId === drag.pid) dragEnd(false); });
+document.addEventListener('touchmove', (ev) => { if (drag?.on) ev.preventDefault(); }, { passive: false });
+document.addEventListener('contextmenu', (ev) => { if (drag?.list) ev.preventDefault(); });
+// The click that follows a drop is not a tap on the seat.
+document.addEventListener('click', (ev) => { if (swallowClick) { clearTimeout(swallowClick); swallowClick = null; ev.preventDefault(); ev.stopPropagation(); } }, true);
+
 // ---------------- keyboard ----------------
 document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && drag) { dragEnd(false); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
     if ((S.ui.showKey || S.ui.showCode || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }

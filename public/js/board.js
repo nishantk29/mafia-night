@@ -72,7 +72,7 @@ export function board(view, host) {
     ? `<b class="table-phase">${phaseLabel(view)}</b><span class="table-alive">${view.phase === 'lobby' ? `${n} seated` : `${aliveCount} alive`}</span>`
     : `<b class="table-phase">${phaseLabel(view)}</b><span class="table-alive">No one seated yet</span>`;
   return `<div class="board" style="--n:${Math.max(n, 1)}" data-density="${density(n)}" data-host="${host ? 1 : 0}">
-    <div class="table" role="group" aria-label="Seating, clockwise from the top">
+    <div class="table" role="group" aria-label="Seating, clockwise from the top${host ? '. Drag a seat to move someone.' : ''}">
       <div class="table-mid">${mid}</div>${seats}
     </div>
     ${n ? `<ol class="seatlist" aria-label="Seating order">${rows}</ol>` : ''}
@@ -90,6 +90,7 @@ export function sheet(view) {
   if (!p) return '';
   const r = p.roleId ? ROLE_BY_ID[p.roleId] : null;
   const L = view.config.legend;
+  const n = view.players.length; const seatNo = view.players.indexOf(p) + 1;
   const roleOptions = [`<option value="">No role yet</option>`].concat(
     Object.values(ROLE_BY_ID).sort((a, b) => a.name.localeCompare(b.name)).map((x) => `<option value="${x.id}" ${x.id === p.roleId ? 'selected' : ''}>${esc(x.name)}</option>`)).join('');
   const entering = S.ui.anim === 'sheet' ? ' is-entering' : '';
@@ -102,6 +103,8 @@ export function sheet(view) {
     <div class="dots-edit">${DOT_COLORS.map((c) => `<button type="button" class="dotbtn" aria-pressed="${p.tags.includes(c)}" data-a="tag" data-id="${p.id}" data-c="${c}"><i class="dot d-${c}"></i><span>${esc(L[c])}</span></button>`).join('')}</div>
     <label class="field"><span>Note</span><input data-i="note" data-id="${p.id}" maxlength="80" value="${esc(p.note)}" placeholder="For example: claimed Doctor on day 1"></label>
     <label class="field"><span>Role (fix a mistake)</span><select data-i="setRole" data-id="${p.id}">${roleOptions}</select></label>
+    ${n > 1 ? `<h3 class="sheet-sub">Seat ${seatNo} of ${n}</h3>
+    <div class="btn-row seat-move"><button type="button" class="btn ghost" data-a="moveSeat" data-id="${p.id}" data-v="-1">Move left</button><button type="button" class="btn ghost" data-a="moveSeat" data-id="${p.id}" data-v="1">Move right</button></div>` : ''}
     <div class="btn-row">
       ${p.alive ? `<button type="button" class="btn danger" data-a="killp" data-id="${p.id}">${ui('skull')} Eliminate ${esc(p.name)}</button>` : `<button type="button" class="btn" data-a="revive" data-id="${p.id}">Bring ${esc(p.name)} back</button>`}
       <button type="button" class="btn ghost" data-a="rename" data-id="${p.id}">${ui('pencil')} Rename</button>

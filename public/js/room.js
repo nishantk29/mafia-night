@@ -2,8 +2,10 @@
 import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners,
+  setupWarnings,
 } from './engine.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole } from './roles.js';
+import { roleGuide } from './role_guide.js';
 
 export const DOT_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white'];
 const DEFAULT_LEGEND = {
@@ -91,6 +93,14 @@ export function reduce(room, actor, a) {
       room.players = room.players.filter((p) => p.id !== a.playerId);
       return { ok: true };
     }
+    case 'moveSeat': { // seating order is the order of room.players; allowed in every phase
+      const i = room.players.findIndex((p) => p.id === a.playerId);
+      if (i < 0) return err('Bad player.');
+      const to = Math.max(0, Math.min(room.players.length - 1, Math.trunc(Number(a.toIndex)) || 0));
+      const [p] = room.players.splice(i, 1);
+      room.players.splice(to, 0, p);
+      return { ok: true };
+    }
     case 'renamePlayer': {
       const p = playerById(room, a.playerId); const n = cleanName(a.name);
       if (!p || !n) return err('Bad name.');
@@ -127,6 +137,8 @@ export function reduce(room, actor, a) {
       if (room.config.roles.length !== n) return err(`Pick exactly ${n} roles (you picked ${room.config.roles.length}).`);
       const needsMafia = room.config.roles.some((r) => factionOf(r) === 'mafia');
       if (!needsMafia) return err('Add at least one Mafia-aligned role.');
+      const fatal = setupWarnings(room.config.roles, n).find((w) => w.level === 'error');
+      if (fatal) return err(fatal.text);
       if (room.config.mode === 'app') {
         const map = dealRoles(room.config.roles, room.players.map((p) => p.id));
         for (const p of room.players) p.roleId = map[p.id];
@@ -305,7 +317,7 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
     kind: 'player', code: room.code, phase: room.phase, day: room.day, night: room.night, mode: room.config.mode,
     me: {
       id: me.id, name: me.name, alive: me.alive, card: me.card,
-      role: shownId ? roleCard(shownId) : null, team, knows,
+      role: shownId ? roleCard(shownId) : null, guide: shownId ? roleGuide(shownId) : null, team, knows,
       target: real?.needsTarget && me.target ? playerById(room, me.target)?.name : null,
       claimsLeft: Math.max(0, MAX_WRONG_CLAIMS - me.wrongClaims),
       won: over ? finalWinners(room).some((w) => w.id === me.id) : null,
@@ -317,7 +329,7 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
     sharedBoard: room.config.sharedBoard,
     deckCards: room.config.mode === 'cards' && room.phase === 'dealt' ? room.deck?.map.length : null,
     deckKey: room.config.mode === 'cards' && room.config.cardFlow === 'blind' && room.deck
-      ? [...room.deck.map].sort((x, y) => FULL_DECK.indexOf(x.card) - FULL_DECK.indexOf(y.card)).map((m) => ({ card: m.card, role: roleCard(m.roleId) })) : null,
+      ? [...room.deck.map].sort((x, y) => FULL_DECK.indexOf(x.card) - FULL_DECK.indexOf(y.card)).map((m) => ({ card: m.card, role: roleCard(ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) })) : null, // disguised roles show what they think they are
     winner: over ? room.winner : null,
     winners: over ? finalWinners(room) : [],
     publicLog: room.log.filter((l) => /died|condemned|Game over|taken down|eliminated|nobody/i.test(l.text)).slice(-20).map((l) => ({ night: l.night, day: l.day, text: l.text.replace(/\s*\(.*?\)\s*$/, '') })),

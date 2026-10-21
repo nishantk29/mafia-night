@@ -151,7 +151,7 @@ async function playGame(g) {
   const dealErr = await act({ type: 'deal' }, { expectError: true });
   if (dealErr) {
     out.notes.push(`deal refused: ${dealErr}`);
-    if (!/Mafia-aligned|exactly/.test(dealErr)) problem(`deal refused unexpectedly: ${dealErr}`);
+    if (!/Mafia-aligned|exactly|already match|No Mafia|Fix the setup/i.test(dealErr)) problem(`deal refused unexpectedly: ${dealErr}`);
     all.forEach((c) => c.ws.close()); return out;
   }
 

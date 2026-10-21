@@ -52,10 +52,20 @@ export class Room extends DurableObject {
     this.ready = ctx.blockConcurrencyWhile(async () => { this.room = (await ctx.storage.get('room')) || null; });
   }
 
+  // A failed write must never swallow a move: retry once, and if storage is still unhappy keep going with the
+  // in-memory room (it is what every screen is showing) and try again on the next action.
   async save() {
     this.room.updated = Date.now();
-    await this.ctx.storage.put('room', this.room);
-    await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL_MS);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        await this.ctx.storage.put('room', this.room);
+        await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL_MS);
+        return true;
+      } catch (e) {
+        console.error(`save failed (attempt ${attempt}) for room ${this.room.code}:`, e?.message || e);
+      }
+    }
+    return false;
   }
 
   async alarm() { await this.ctx.storage.deleteAll(); this.room = null; }

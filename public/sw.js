@@ -10,7 +10,7 @@ const PRECACHE = [
   SHELL,
   '/styles.css',
   '/manifest.webmanifest',
-  ...['app', 'art', 'art_manifest', 'board', 'engine', 'host', 'icon_data', 'player', 'role_icons', 'roles',
+  ...['app', 'art', 'art_manifest', 'board', 'engine', 'faq', 'host', 'icon_data', 'player', 'role_icons', 'roles',
     'roles_extra', 'roles_extra2', 'room', 'state', 'ui_icons'].map((m) => `/js/${m}.js`),
   ...['big-shoulders-display-var', 'alegreya-sans-400', 'alegreya-sans-500', 'alegreya-sans-700',
     'alegreya-sans-800', 'alegreya-italic-var'].map((f) => `/fonts/${f}.woff2`),
