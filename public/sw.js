@@ -3,7 +3,7 @@
 // - Page loads: network-first, falling back to the cached app shell, so "#/local" works offline after one visit.
 // - /api/* and /ws/* never touch the cache: rooms are live and must come from the network.
 // Bump VERSION on every deploy that changes a file below, or installed phones keep the old copy.
-const VERSION = 'mafia-1792542075866';
+const VERSION = 'mafia-1792581055234';
 
 const SHELL = '/';
 const PRECACHE = [
