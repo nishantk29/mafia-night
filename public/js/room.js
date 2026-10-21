@@ -314,6 +314,16 @@ export function viewForHost(room, connected = new Set()) {
   };
 }
 
+// Rebuilds enough of a room from the host's view to dry-run the night (live investigator results).
+// Shared by the storyteller console and the simulator, so both preview exactly the same way.
+export function roomFromView(v) {
+  return {
+    code: v.code, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, winner: null,
+    players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },
+    shield: v.shield, dayUsed: { ...(v.dayUsed || {}) }, sideWins: [...(v.sideWins || [])], pending: [], log: [], framed: [],
+  };
+}
+
 export function viewForPlayer(room, playerId, connected = new Set()) {
   registerRoles(room.config.customRoles);
   const me = playerById(room, playerId);
@@ -325,7 +335,8 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
   if (real?.meeting) {
     for (const q of room.players) {
       if (q.id !== me.id && q.roleId && ROLE_BY_ID[q.roleId].meeting === real.meeting) {
-        team.push({ id: q.id, name: q.name, role: real.meeting === 'mafia' ? roleCard(q.roleId) : null, alive: q.alive });
+        // A disguised teammate is shown as what they think they are, so nobody holding the same role learns it.
+        team.push({ id: q.id, name: q.name, role: real.meeting === 'mafia' ? roleCard(ROLE_BY_ID[q.roleId].seesAs || q.roleId) : null, alive: q.alive });
       }
     }
   }

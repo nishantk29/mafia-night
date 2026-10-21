@@ -174,6 +174,23 @@ describe('live results during the night', () => {
     resolveNight(room, acts);
     assert.deepEqual(room.lastReport.info.map((i) => i.text).sort(), [cop, tr].sort());
   });
+  test('a Tracker is not shown a visit by a role that wakes after them, live or in the morning', () => {
+    const room = mk([['Tr', 'tracker'], ['Lo', 'lookout'], ['Mo', 'mafia'], ['Vic', 'villager'], ...filler(2)]);
+    const acts = { [key(room, 'Tr')]: { targets: [id(room, 'Lo')] }, [key(room, 'Lo')]: { targets: [id(room, 'Vic')] } };
+    assert.equal(previewNight(room, acts, key(room, 'Tr')).text, 'Lo stayed home.');
+    resolveNight(room, acts);
+    assert.equal(room.lastReport.info.find((i) => i.roleId === 'tracker').text, 'Lo stayed home.');
+  });
+  test('of two Lookouts, the one called first does not see the second one\'s visit', () => {
+    const room = mk([['L1', 'lookout'], ['L2', 'lookout'], ['Mo', 'mafia'], ['Vic', 'villager'], ...filler(2)]);
+    const acts = { [key(room, 'L1')]: { targets: [id(room, 'Vic')] }, [key(room, 'L2')]: { targets: [id(room, 'Vic')] } };
+    const first = nightScript(room).find((s) => s.roleId === 'lookout').key;
+    const [a, b] = first === key(room, 'L1') ? ['L1', 'L2'] : ['L2', 'L1'];
+    assert.equal(previewNight(room, acts, key(room, a)).text, 'Nobody visited Vic.');
+    assert.equal(previewNight(room, acts, key(room, b)).text, `${a} visited Vic.`);
+    resolveNight(room, acts);
+    assert.deepEqual(room.lastReport.info.map((i) => i.text).sort(), ['Nobody visited Vic.', `${a} visited Vic.`].sort());
+  });
 });
 
 describe('setup warnings', () => {
@@ -265,6 +282,21 @@ describe('House rules', () => {
     const room2 = mk([['Mo', 'mafia'], ['Doc', 'doctor'], ...filler(4)]);
     resolveNight(room2, { 'meeting:mafia': { targets: [id(room2, 'Doc')] }, [key(room2, 'Doc')]: { targets: [id(room2, 'Doc')] } });
     assert.equal(P(room2, 'Doc').alive, true, 'self-save works by default');
+  });
+  test('nobody else can target themselves, even if a request asks for it', () => {
+    const room = mk([['Mo', 'mafia'], ['Ma', 'mafia'], ['Cop', 'cop'], ['Vig', 'vigilante'], ['Bg', 'bodyguard'], ...filler(4)]);
+    resolveNight(room, {
+      'meeting:mafia': { targets: [id(room, 'Mo')] }, [key(room, 'Cop')]: { targets: [id(room, 'Cop')] },
+      [key(room, 'Vig')]: { targets: [id(room, 'Vig')] }, [key(room, 'Bg')]: { targets: [id(room, 'Bg')] },
+    });
+    assert.ok(room.players.every((p) => p.alive));
+    assert.deepEqual(room.lastReport.info, []);
+    assert.equal(room.usage[id(room, 'Vig')] || 0, 0, 'an ignored shot does not use up the Vigilante\'s bullet');
+  });
+  test('a Parity Cop cannot compare a player with themselves', () => {
+    const room = mk([['Mo', 'mafia'], ['Pc', 'parity_cop'], ['Vic', 'villager'], ...filler(4)]);
+    resolveNight(room, { [key(room, 'Pc')]: { targets: [id(room, 'Vic'), id(room, 'Vic')] } });
+    assert.deepEqual(room.lastReport.info, []);
   });
   test('roles hidden on death: the dead player\'s role stays secret from phones until the end', () => {
     const room = mk([['Mo', 'mafia'], ['Cop', 'cop'], ['Ann', 'villager'], ...filler(3)], { phase: 'day', night: 1 });

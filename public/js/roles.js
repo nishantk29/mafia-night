@@ -176,6 +176,8 @@ export function sanitizeRole(x) {
     if (a.type === 'convert') role.action.to = 'mafia';
     if (a.type === 'autopsy' || a.type === 'copyRole') role.action.dead = true;
     if (a.type === 'kill') role.action.source = 'custom';
+    // A disguised role is woken by the name it thinks it has: the prompt is read aloud.
+    if (role.seesAs) { const shown = ROLE_BY_ID[role.seesAs]; role.action.prompt = shown.action?.prompt || `${shown.name}, wake up.`; }
   }
   return role;
 }
