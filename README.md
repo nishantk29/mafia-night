@@ -60,6 +60,7 @@ BASE=http://localhost:8787 node scripts/live-smoke.mjs   # needs `npm run dev` r
 BASE=http://localhost:8787 GAMES=50 SEED=1 node scripts/sim-games.mjs   # 50 simulated online games (ONLY=7 replays one)
 node scripts/role-gaps.mjs             # role names other sites have and we don't (names only)
 node scripts/role-gaps.mjs --offline --file names.txt   # same, from a saved or pasted list (one name per line)
+node scripts/role-gaps.mjs --picklist picks.md   # also write a Markdown checklist to tick (works with the options above)
 npm run deploy         # needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the environment
 ```
 Cloudflare token, account ID and R2 keys, and the Spaceship API key and secret, are in 1Password (Private vault: "Cloudflare - Agents API token + R2", "Spaceship - API key + secret (hatethespurs.com)"). Never commit them.

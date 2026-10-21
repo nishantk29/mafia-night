@@ -128,11 +128,12 @@ Read this before changing anything. Visual design (tokens, layouts, components) 
 - **Role gaps helper:** `node scripts/role-gaps.mjs` lists role names from mafia.gg (its app bundle) and mafiarole.com (role headings) that we don't have. It reads names only and never saves or prints descriptions.
   - `--save names.txt` keeps the fetched names.
   - `--offline --file names.txt` works from a saved or pasted list.
+  - `--picklist picks.md` also writes the missing names as a Markdown checklist, one section per source. Names that are probably jokes or site-specific go in a last section: those with a digit, a character other than letters, spaces, hyphens, apostrophes, periods or ampersands, more than 3 words, or a word from `SITE_WORDS` (gg, discord, mod, bot...).
   - On 2026-10-21 it found 200 mafia.gg names we don't have, and none from mafiarole.com. Many are joke or site-specific roles: a human should pick.
 
 ## Open work (agreed or requested, not done yet)
 
-- **New roles from the role-gaps list:** Nishant picks which names are worth adding, then they are written in our own words in `roles_extra*.js` (with icons, `npm run assets`). Never copy text from the source sites.
+- **New roles from the role-gaps list:** Nishant picks which names are worth adding (`--picklist picks.md` gives him a checklist to tick), then they are written in our own words in `roles_extra*.js` (with icons, `npm run assets`). Never copy text from the source sites.
 - **Full playability review** of every phase on phone and desktop, in both themes. This includes a browser check that the console's live "Tell them now" results still render: `roomFromView` moved from host.js to room.js.
 - **Chat:** Nishant hasn't decided. The recommendation was no general chat for in-person play (it invites cheating), and maybe dead-player chat only. Ask him first.
 - **Old questions for Nishant:** re-enable DNSSEC at Spaceship? Delete the unused pending Cloudflare zone? Ask; don't do either alone.
