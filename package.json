@@ -1,0 +1,22 @@
+{
+  "name": "mafia-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "node --test test/",
+    "deploy": "node -e \"const f=require('fs'),s='public/sw.js',q=String.fromCharCode(39);f.writeFileSync(s,f.readFileSync(s,'utf8').replace(/const VERSION = '[^']*'/,'const VERSION = '+q+'mafia-'+Date.now()+q))\" && wrangler deploy",
+    "assets": "node scripts/build-assets.mjs",
+    "art:brief": "node scripts/art-brief.mjs",
+    "art:slice": "node scripts/slice-art.mjs",
+    "icons:ui": "node scripts/build-ui-icons.mjs"
+  },
+  "devDependencies": {
+    "@fontsource-variable/alegreya": "^5.3.0",
+    "@fontsource-variable/big-shoulders-display": "^5.3.0",
+    "@fontsource/alegreya-sans": "^5.3.0",
+    "@iconify-json/game-icons": "^1.2.4",
+    "@iconify-json/ph": "^1.2.2",
+    "wrangler": "^4"
+  }
+}

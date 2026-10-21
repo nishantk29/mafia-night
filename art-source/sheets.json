@@ -1,0 +1,342 @@
+[
+  {
+    "sheet": "01",
+    "roles": [
+      "mafia",
+      "villager",
+      "doctor",
+      "cop",
+      "detective",
+      "godfather"
+    ]
+  },
+  {
+    "sheet": "02",
+    "roles": [
+      "jester",
+      "bodyguard",
+      "vigilante",
+      "hunter",
+      "mason",
+      "killer"
+    ]
+  },
+  {
+    "sheet": "03",
+    "roles": [
+      "cult",
+      "executioner",
+      "survivor",
+      "jailer",
+      "hooker",
+      "framer"
+    ]
+  },
+  {
+    "sheet": "04",
+    "roles": [
+      "janitor",
+      "veteran",
+      "tracker",
+      "lookout",
+      "merlin",
+      "president"
+    ]
+  },
+  {
+    "sheet": "05",
+    "roles": [
+      "traitor",
+      "amnesiac",
+      "opportunist",
+      "miller",
+      "grandma",
+      "bomb"
+    ]
+  },
+  {
+    "sheet": "06",
+    "roles": [
+      "actress",
+      "assassin",
+      "associate",
+      "bagman",
+      "ballot_stuffer",
+      "blackmailer"
+    ]
+  },
+  {
+    "sheet": "07",
+    "roles": [
+      "blinder",
+      "booby_goon",
+      "bookkeeper",
+      "bouncer",
+      "con_artist",
+      "consigliere"
+    ]
+  },
+  {
+    "sheet": "08",
+    "roles": [
+      "disguiser",
+      "don",
+      "driver",
+      "enforcer",
+      "family_doctor",
+      "fiddler"
+    ]
+  },
+  {
+    "sheet": "09",
+    "roles": [
+      "gramps",
+      "hitman",
+      "illusionist",
+      "interceptor",
+      "kidnapper",
+      "kingpin"
+    ]
+  },
+  {
+    "sheet": "10",
+    "roles": [
+      "lawyer",
+      "mad_bomber",
+      "made_man",
+      "mob_lawyer",
+      "muscle",
+      "paparazzi"
+    ]
+  },
+  {
+    "sheet": "11",
+    "roles": [
+      "paralyzer",
+      "poacher",
+      "poisoner",
+      "riot_starter",
+      "saboteur",
+      "sentinel"
+    ]
+  },
+  {
+    "sheet": "12",
+    "roles": [
+      "shadow",
+      "sleeper_agent",
+      "slowpoke",
+      "smoke_bomber",
+      "sniper",
+      "snitch"
+    ]
+  },
+  {
+    "sheet": "13",
+    "roles": [
+      "spy",
+      "strongman",
+      "tailor",
+      "talent_scout",
+      "ventriloquist",
+      "voodoo_lady"
+    ]
+  },
+  {
+    "sheet": "14",
+    "roles": [
+      "wannabe",
+      "whisperer",
+      "witch",
+      "yakuza",
+      "agent_provocateur",
+      "angel"
+    ]
+  },
+  {
+    "sheet": "15",
+    "roles": [
+      "arsonist",
+      "collaborator",
+      "creepy_girl",
+      "cthulhu",
+      "cult_guard",
+      "cult_seer"
+    ]
+  },
+  {
+    "sheet": "16",
+    "roles": [
+      "fifth_columnist",
+      "hermit",
+      "hired_gun",
+      "informant",
+      "mastermind",
+      "mercenary"
+    ]
+  },
+  {
+    "sheet": "17",
+    "roles": [
+      "monk",
+      "patsy",
+      "politician",
+      "poltergeist",
+      "prepper",
+      "profiteer"
+    ]
+  },
+  {
+    "sheet": "18",
+    "roles": [
+      "prophet",
+      "rival",
+      "smuggler",
+      "stalker",
+      "trickster",
+      "vendetta"
+    ]
+  },
+  {
+    "sheet": "19",
+    "roles": [
+      "vulture",
+      "warlock",
+      "werewolf",
+      "zealot",
+      "agent",
+      "archivist"
+    ]
+  },
+  {
+    "sheet": "20",
+    "roles": [
+      "back_alley_doctor",
+      "baker",
+      "blacksmith",
+      "bleeder",
+      "caroler",
+      "census_taker"
+    ]
+  },
+  {
+    "sheet": "21",
+    "roles": [
+      "chairperson",
+      "chef",
+      "civilian",
+      "confused_cop",
+      "coroner",
+      "defense_attorney"
+    ]
+  },
+  {
+    "sheet": "22",
+    "roles": [
+      "deputy",
+      "dirty_cop",
+      "doorman",
+      "dreamer",
+      "drunk",
+      "enchantress"
+    ]
+  },
+  {
+    "sheet": "23",
+    "roles": [
+      "gallis",
+      "governor",
+      "granny",
+      "gunsmith",
+      "hangman",
+      "inquisitor"
+    ]
+  },
+  {
+    "sheet": "24",
+    "roles": [
+      "insane_cop",
+      "invisible_man",
+      "journalist",
+      "judge",
+      "keymaker",
+      "leader"
+    ]
+  },
+  {
+    "sheet": "25",
+    "roles": [
+      "lightkeeper",
+      "loudmouth",
+      "lover",
+      "marshal",
+      "mayor",
+      "medium"
+    ]
+  },
+  {
+    "sheet": "26",
+    "roles": [
+      "naive_cop",
+      "nosy_neighbor",
+      "oracle",
+      "paranoid_cop",
+      "parity_cop",
+      "party_host"
+    ]
+  },
+  {
+    "sheet": "27",
+    "roles": [
+      "peeping_tom",
+      "penguin",
+      "placebo_doctor",
+      "prosecutor",
+      "psychic",
+      "puppy"
+    ]
+  },
+  {
+    "sheet": "28",
+    "roles": [
+      "queen",
+      "representative",
+      "retired_hitman",
+      "saint",
+      "samurai",
+      "scholar"
+    ]
+  },
+  {
+    "sheet": "29",
+    "roles": [
+      "scribe",
+      "secretary",
+      "security_guard",
+      "sharpshooter",
+      "sheriff",
+      "sleepwalker"
+    ]
+  },
+  {
+    "sheet": "30",
+    "roles": [
+      "soothsayer",
+      "surveyor",
+      "telepath",
+      "tinkerer",
+      "tipster",
+      "town_crier"
+    ]
+  },
+  {
+    "sheet": "31",
+    "roles": [
+      "trapper",
+      "treestump",
+      "turncoat",
+      "virgin",
+      "witness"
+    ]
+  }
+]

@@ -1,0 +1,12 @@
+# dependencies and local tooling
+node_modules/
+.wrangler/
+.dev.vars
+
+# local-only working files
+.backups/
+.qa/
+art-source/sheets/
+
+# OS noise
+.DS_Store

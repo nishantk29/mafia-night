@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mafia Night</title>
+<meta name="description" content="Deal secret roles for Mafia and Werewolf to phones or a deck of playing cards, and run the night as storyteller.">
+<meta name="theme-color" content="#1B1410">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="Mafia Night">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mafia Night">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preload" href="/fonts/alegreya-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/big-shoulders-display-var.woff2" as="font" type="font/woff2" crossorigin>
+<style>html{background:#1B1410;color-scheme:dark}</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<radialGradient id="vig" cx=".5" cy=".45" r=".8"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></radialGradient>
+</defs></svg>
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<noscript>This game needs JavaScript.</noscript>
+<script type="module" src="/js/app.js"></script>
+<script>
+// Offline support. Skipped on localhost so a dev server always serves fresh files;
+// run localStorage.sw = '1' in the console to test the service worker locally.
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || /\.(localhost|test)$/.test(location.hostname);
+  var force = false;
+  try { force = localStorage.getItem('sw') === '1'; } catch (e) {}
+  if (local && !force) {
+    navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
+    if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('mafia-') === 0) caches.delete(k); }); });
+    return;
+  }
+  addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });
+})();
+</script>
+</body>
+</html>
