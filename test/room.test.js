@@ -804,6 +804,31 @@ describe('blind card flow', () => {
 
 // ---------- custom roles ----------
 describe('custom roles', () => {
+  test('a disguised Mafia teammate is listed as what they think they are, so a twin never learns the real role', () => {
+    const { room } = lobby(names(8));
+    const sleeper = { id: 'c_sleep1', name: 'Deep Sleeper', alignment: 'mafia', meeting: 'mafia', seesAs: 'villager', blurb: 'Secretly Mafia.' };
+    assert.ok(H(room, { type: 'setCustomRoles', roles: [sleeper] }).ok);
+    assert.ok(H(room, { type: 'setConfig', roles: ['c_sleep1', 'c_sleep1', 'mafia', 'villager', 'villager', 'villager', 'villager', 'cop'] }).ok);
+    assert.ok(H(room, { type: 'deal' }).ok);
+    const twins = room.players.filter((p) => p.roleId === 'c_sleep1');
+    for (const me of twins) {
+      const v = viewForPlayer(room, me.id);
+      assert.equal(v.me.role.id, 'villager');
+      const dump = JSON.stringify(v);
+      assert.ok(!dump.includes('Deep Sleeper') && !dump.includes('c_sleep1'), dump);
+      const twin = v.me.team.find((t) => twins.some((p) => p.id === t.id));
+      assert.equal(twin.role.id, 'villager');
+      assert.equal(v.me.team.find((t) => P(room, t.name).roleId === 'mafia').role.id, 'mafia', 'undisguised teammates show as usual');
+    }
+  });
+
+  test('a disguised custom role is woken by the name it thinks it has, never its real one', () => {
+    const r = sanitizeRole({ id: 'c_dis01', name: 'Secret Seer', seesAs: 'cop', action: { type: 'investigate', check: 'role', prompt: 'Secret Seer, wake up.' } });
+    assert.equal(r.action.prompt, ROLE_BY_ID.cop.action.prompt);
+    assert.equal(sanitizeRole({ id: 'c_dis02', name: 'Hidden', seesAs: 'villager', action: { type: 'protect' } }).action.prompt, 'Villager, wake up.');
+    assert.equal(sanitizeRole({ id: 'c_dis03', name: 'Open', action: { type: 'protect' } }).action.prompt, 'Open, wake up.');
+  });
+
   test('sanitizeRole rejects bad ids and missing names', () => {
     for (const bad of [null, undefined, 5, 'x', {}, { id: 'c_ab', name: 'x' }, { id: 'C_abcd', name: 'x' }, { id: 'c_abcd' },
       { id: 'c_abcd', name: '   ' }, { id: 'c_abcd', name: '<>' }, { id: 'c_abcdefghijklm', name: 'x' }, { id: 'cop', name: 'Fake Cop' },

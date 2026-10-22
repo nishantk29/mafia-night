@@ -189,13 +189,14 @@ export function nightScript(room) {
 }
 
 // What the storyteller should tell an investigator right now, given only the choices made by roles that woke
-// earlier tonight. Runs the night on a copy of the room, so nothing changes.
+// earlier tonight (steps before it in the script; at the same wake order, the ones listed first).
+// Runs the night on a copy of the room, so nothing changes.
 export function previewNight(room, actions, stepKey) {
   const steps = nightScript(room);
   const me = steps.find((st) => st.key === stepKey);
   if (!me) return null;
   const sofar = {};
-  for (const st of steps) if (st.order <= me.order && actions?.[st.key]) sofar[st.key] = actions[st.key];
+  for (const st of steps.slice(0, steps.indexOf(me) + 1)) if (actions?.[st.key]) sofar[st.key] = actions[st.key];
   const copy = structuredClone(room);
   copy.log = []; copy.pending = [];
   resolveNight(copy, sofar);
@@ -277,13 +278,17 @@ export function resolveNight(room, actions) {
   const steps = nightScript(room).filter((s) => s.kind === 'action');
   const rep = { night: room.night, deaths: [], saves: [], info: [], conversions: [], notes: [] };
   const alivePlayer = (id) => playerById(room, id);
+  const selfProtect = rulesOf(room).selfProtect;
 
-  const acts = steps.map((s) => {
+  // Nobody targets themselves, except protectors when the house rule allows it. The console never offers it;
+  // this keeps a stale or hand-made request from doing it anyway. The same player can't be picked twice.
+  const acts = steps.map((s, idx) => {
     const raw = actions?.[s.key] || {};
-    const targets = (raw.targets || []).filter((id) => playerById(room, id));
+    const selfOk = s.type === 'protect' && selfProtect;
+    const targets = [...new Set(raw.targets || [])].filter((id) => playerById(room, id) && (selfOk || !s.actors.includes(id)));
     const need = s.targets ?? 1;
     const on = need === 0 ? !!raw.on : targets.length >= need;
-    return { s, targets, on, coin: raw.coin === 'mafia' || raw.coin === 'innocent' ? raw.coin : null };
+    return { s, idx, targets, on, coin: raw.coin === 'mafia' || raw.coin === 'innocent' ? raw.coin : null };
   }).filter((a) => a.on);
 
   // usage
@@ -326,8 +331,7 @@ export function resolveNight(room, actions) {
   // 3) protections
   const protectedSet = new Set(jailed);
   const protectedBy = {};
-  const selfOk = rulesOf(room).selfProtect;
-  for (const a of active.filter((x) => x.s.type === 'protect' && (selfOk || x.targets[0] !== x.s.actors[0]))) { protectedSet.add(a.targets[0]); (protectedBy[a.targets[0]] ||= []).push(a.s.actors[0]); }
+  for (const a of active.filter((x) => x.s.type === 'protect')) { protectedSet.add(a.targets[0]); (protectedBy[a.targets[0]] ||= []).push(a.s.actors[0]); }
   const guardMap = {};
   for (const a of active.filter((x) => x.s.type === 'guard')) (guardMap[a.targets[0]] ||= []).push(a.s.actors[0]);
   const alertSet = new Set(active.filter((x) => x.s.type === 'alert').flatMap((a) => a.s.actors));
@@ -385,6 +389,9 @@ export function resolveNight(room, actions) {
   }
 
   // 7) information. `text` is exactly what the storyteller says; `note` is for the storyteller only.
+  // Trackers and Lookouts only see visits by roles that woke before them: that is what the storyteller could
+  // tell them live (previewNight), so the morning report and the phone must say the same.
+  const wokeBy = (a) => active.filter((x) => x.idx <= a.idx);
   const sideName = (v) => (v === 'mafia' ? 'MAFIA' : 'NOT Mafia');
   for (const a of active.filter((x) => ['investigate', 'track', 'watch', 'autopsy'].includes(x.s.type))) {
     const actorIds = a.s.actors;
@@ -406,10 +413,10 @@ export function resolveNight(room, actions) {
         text = `${t.name} is ${sideName(a.coin || (randInt(2) ? 'mafia' : 'innocent'))}.`; note = 'Made-up result (a coin flip).';
       }
     } else if (a.s.type === 'track') {
-      const went = active.filter((x) => x.visitors.includes(t.id) && x.targets.length).flatMap((x) => x.targets).map((id) => nameOf(room, id));
+      const went = wokeBy(a).filter((x) => x.visitors.includes(t.id) && x.targets.length).flatMap((x) => x.targets).map((id) => nameOf(room, id));
       text = went.length ? `${t.name} visited ${[...new Set(went)].join(', ')}.` : `${t.name} stayed home.`;
     } else if (a.s.type === 'watch') {
-      const who = (visits[t.id] || []).filter((id) => !actorIds.includes(id)).map((id) => nameOf(room, id));
+      const who = wokeBy(a).filter((x) => x.targets.includes(t.id)).flatMap((x) => x.visitors).filter((id) => !actorIds.includes(id)).map((id) => nameOf(room, id));
       text = who.length ? `${[...new Set(who)].join(', ')} visited ${t.name}.` : `Nobody visited ${t.name}.`;
     } else if (a.s.type === 'autopsy') {
       text = `${t.name} was the ${ROLE_BY_ID[t.roleId].name}.`;

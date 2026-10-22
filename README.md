@@ -42,19 +42,24 @@ public/js/room.js     room state, reducer, per-viewer projections (secrecy lives
 public/js/roles*.js   role catalog + custom-role validation
 src/worker.js         Cloudflare Worker + Room Durable Object (WebSockets, hibernation)
 scripts/live-smoke.mjs  end-to-end + role-secrecy check against a running server
-scripts/sim-games.mjs   plays many full online games with odd role mixes, names and reconnects
-test/                 232 unit tests (node --test)
+scripts/sim-games.mjs   plays many full online games with odd role mixes, names and reconnects, deals every role,
+                        and checks the rule oracles (live results = morning report, honest checks, disguises)
+scripts/sim-lib.mjs     the simulator's pure parts (coverage planning, console-like nights, oracles)
+scripts/role-gaps.mjs   lists role NAMES from mafia.gg / mafiarole.com that we don't have yet, for review
+test/                 301 unit tests (node --test), including the oracles over 450 in-process games
 scripts/build-assets.mjs  icons, fonts, portrait manifest
 scripts/art-brief.mjs, slice-art.mjs  ChatGPT/Gemini art workflow
 ```
 
 ## Run, test, deploy
 ```bash
-npm install
+npm install            # wrangler and the simulator need Node 22+
 npm run dev            # http://localhost:8787
 npm test               # unit tests
 BASE=http://localhost:8787 node scripts/live-smoke.mjs   # needs `npm run dev` running
-BASE=http://localhost:8787 GAMES=50 SEED=1 node scripts/sim-games.mjs   # 50 simulated online games
+BASE=http://localhost:8787 GAMES=50 SEED=1 node scripts/sim-games.mjs   # 50 simulated online games (ONLY=7 replays one)
+node scripts/role-gaps.mjs             # role names other sites have and we don't (names only)
+node scripts/role-gaps.mjs --offline --file names.txt   # same, from a saved or pasted list (one name per line)
 npm run deploy         # needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the environment
 ```
 Usual way to deploy: `gh workflow run deploy.yml` (GitHub Actions: tests, deploy, live smoke test; the Cloudflare values are repo secrets, so no 1Password prompt).

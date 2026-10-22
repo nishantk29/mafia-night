@@ -7,6 +7,7 @@ import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { previewNight, setupWarnings, balanceOf, DEFAULT_RULES } from './engine.js';
+import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { toolsButton, toolsPanel } from './tools.js';
 
@@ -233,14 +234,7 @@ function advice(roleIds, n) {
   return `${meter}${ws.length ? `<ul class="advice">${ws.map((w) => `<li class="note advice-${w.level} ${w.level === 'tip' ? '' : 'is-warn'}">${ui(icon[w.level])} ${esc(w.text)}</li>`).join('')}</ul>` : ''}`;
 }
 
-// The host's view rebuilt as a room, so the shared engine can work out live results on this device.
-function roomFromView(v) {
-  return {
-    code: v.code, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, winner: null,
-    players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },
-    shield: v.shield, dayUsed: { ...(v.dayUsed || {}) }, sideWins: [...(v.sideWins || [])], pending: [], log: [], framed: [],
-  };
-}
+// Steps that get a live result, and checks that are a coin flip by design.
 const LIVE = ['investigate', 'track', 'watch', 'autopsy'];
 const COIN = ['random', 'fake'];
 
