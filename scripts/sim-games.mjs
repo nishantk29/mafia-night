@@ -11,13 +11,15 @@
 //   SEED must be a positive whole number. ONLY=7 replays one game, but only with the same GAMES and SEED (the
 //   coverage planner spreads roles across the whole plan). The run exits 1 unless every role was dealt; set
 //   ALLOW_UNDEALT=1 for short runs where not all roles fit.
+// Ladder: LADDER=1 PER=5 SEED=1 plays PER games at each size from 5 to 12 players, easy to hard within each size
+//   (tier 0 classic Mafia/Cop/Doctor ... tier 4 custom roles and odd mixes). Role coverage is not checked in a ladder run.
 import { ROLES, ROLE_BY_ID, factionOf, registerRoles } from '../public/js/roles.js';
 import { DEFAULT_RULES } from '../public/js/engine.js';
 import { CATALOGUE, rng, planCoverage, pickNightActions, livePreviews, nightProblems, disguiseLeaks } from './sim-lib.mjs';
 
 const BASE = process.env.BASE || 'http://localhost:8787';
 const WS = BASE.replace(/^http/, 'ws');
-const GAMES = Number(process.env.GAMES || 50);
+const GAMES = process.env.LADDER ? 8 * Number(process.env.PER || 5) : Number(process.env.GAMES || 50);
 const ONLY = process.env.ONLY ? Number(process.env.ONLY) : null;
 const PARALLEL = Number(process.env.PARALLEL || 5);
 const SEED = Number(process.env.SEED || 1);
@@ -27,6 +29,8 @@ if (!Number.isInteger(SEED) || SEED <= 0) {
   console.error(`SEED must be a positive whole number (got ${JSON.stringify(process.env.SEED)})`);
   process.exit(2);
 }
+// LADDER=1: every player count 5..12, PER games each, tier 0 (classic) .. 4 (everything) within each count.
+const LADDER = !!process.env.LADDER; const PER = Number(process.env.PER || 5);
 const MAX_ROUNDS = 25;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -79,6 +83,7 @@ function customRoles(R, g) {
 // that will deal, so the whole catalogue gets dealt in one run.
 function planGame(g) {
   const R = rng(SEED * 100003 + g);
+  if (LADDER) return planLadder(g, R);
   const n = R.pick([5, 5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 25, 30, 40, 50]);
   const modeKind = R.pick(['app', 'app', 'claim', 'blind']);
   const strategy = R.pick(Object.keys(STRATEGIES));
@@ -88,8 +93,22 @@ function planGame(g) {
   const rules = { revealOnDeath: R.chance(0.8), selfProtect: R.chance(0.7), firstNightKill: R.chance(0.8), dayStart: R.chance(0.15) };
   return { g, R, n, modeKind, strategy, customs, roles, rules };
 }
+
+function planLadder(g, R) {
+  const n = 5 + Math.floor(g / PER), tier = Math.min(4, Math.floor((g % PER) * 5 / PER));
+  const m = Math.max(1, Math.floor(n / 4));
+  const fill = (head) => [...head, ...Array(Math.max(0, n - head.length)).fill('villager')].slice(0, n);
+  let strategy, roles, modeKind, customs = [], rules = { ...DEFAULT_RULES };
+  if (tier === 0) { strategy = 'L0 classic'; modeKind = 'app'; roles = fill([...Array(m).fill('mafia'), 'cop', 'doctor']); }
+  else if (tier === 1) { strategy = 'L1 standard'; modeKind = R.pick(['app', 'claim']); roles = fill(['godfather', ...Array(m - 1).fill('mafia'), 'cop', 'doctor', 'vigilante', 'jester', 'bodyguard', 'mason', 'mason'].slice(0, n)); if (!roles.some((r) => ['godfather','mafia'].includes(r))) roles[0] = 'godfather'; }
+  else if (tier === 2) { strategy = 'L2 ' + R.pick(['blockers', 'investigators', 'killers']); modeKind = R.pick(['app', 'claim', 'blind']); roles = STRATEGIES[strategy.slice(3)](R, n); rules = { ...rules, selfProtect: R.chance(0.5) }; }
+  else if (tier === 3) { strategy = 'L3 ' + R.pick(['thirdParty', 'converters', 'sideWins', 'mafiaHeavy']); modeKind = R.pick(['app', 'claim', 'blind']); roles = STRATEGIES[strategy.slice(3)](R, n); rules = { revealOnDeath: R.chance(0.6), selfProtect: R.chance(0.5), firstNightKill: R.chance(0.7), dayStart: R.chance(0.3) }; }
+  else { strategy = 'L4 ' + R.pick(['everything', 'custom', 'random', 'sameRole', 'allMafia']); modeKind = R.pick(['app', 'claim', 'blind']); customs = customRoles(R, g); registerRoles(customs); roles = STRATEGIES[strategy.slice(3)](R, n, customs); rules = { revealOnDeath: R.chance(0.5), selfProtect: R.chance(0.5), firstNightKill: R.chance(0.5), dayStart: R.chance(0.5) }; }
+  roles = roles.map((id) => (ROLE_BY_ID[id] ? id : 'villager'));
+  return { g, R, n, modeKind, strategy, customs, roles, rules, tier };
+}
 const PLANS = Array.from({ length: GAMES }, (_, g) => planGame(g));
-const UNPLACED = planCoverage(PLANS, rng(SEED * 7919));
+const UNPLACED = LADDER ? [] : planCoverage(PLANS, rng(SEED * 7919));
 const DEALT = new Set(); // built-in roles that really reached a player
 
 // ---------- wire ----------
@@ -156,7 +175,7 @@ async function playGame(plan) {
   const used = new Set();
   const joins0 = host.seen;
   for (let i = 0; i < phoneCount; i++) {
-    let name = R.chance(0.35) ? R.pick(WEIRD_NAMES) : PLAIN[i % PLAIN.length] + (i >= PLAIN.length ? i : '');
+    let name = (plan.tier ?? 9) >= 2 && R.chance(0.35 * Math.min(1, ((plan.tier ?? 4)) / 4)) ? R.pick(WEIRD_NAMES) : PLAIN[i % PLAIN.length] + (i >= PLAIN.length ? i : '');
     const p = connect(code, { type: 'hello', join: name }); all.push(p); await p.ready;
     await until(() => p.joined || p.errors.length || p.fatal || p.closed, 'join ' + JSON.stringify(name) + ` (player ${i + 1}, closed=${p.closed})`);
     if (!p.joined) { used.add(name.trim().toLowerCase()); p.ws.close(); continue; } // refused names are fine (duplicate, blank)
@@ -399,7 +418,7 @@ console.log('host action round-trip ms: median', LAT[LAT.length >> 1], '· p99',
 console.log('winners:', JSON.stringify(wins), '· largest frame:', Math.max(...results.map((r) => r.maxFrame || 0)), 'bytes');
 // Role coverage: every built-in role should have reached a player somewhere in the run.
 let uncovered = [];
-if (ONLY === null) {
+if (ONLY === null && !LADDER) {
   const missing = CATALOGUE.filter((id) => !DEALT.has(id));
   uncovered = missing.filter((id) => !UNPLACED.includes(id)); // planned into a game, but never dealt
   console.log(`roles dealt: ${CATALOGUE.length - missing.length} of ${CATALOGUE.length}`);
