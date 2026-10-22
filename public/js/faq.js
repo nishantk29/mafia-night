@@ -13,6 +13,7 @@ const GROUPS = [
         <li><b>On phones.</b> Tap Host a game. Players join with the room code and each phone shows one secret role.</li>
         <li><b>A real deck, players look up their card.</b> The app matches each role to a playing card. Deal the cards face down. Each player taps the card they got on their own phone and sees only their role.</li>
         <li><b>A real deck, the storyteller learns who is who.</b> The card key (which card is which role) is shown to the whole table, and you deal face down without looking. On night 1, as you call each role, the players with that card raise a hand and you tap them. The app builds the cast as you go.</li>
+        <li><b>No phones, no app?</b> Print the <a href="/print.html" target="_blank" rel="noopener">card guide</a> and play with a deck on the table.</li>
         <li><b>Run on this device.</b> No phones at all: a deck of playing cards and the storyteller’s one screen. Choose “No phones? Run the game on this device” on the home page.</li>
       </ul>`],
     ['How do players join?', `
