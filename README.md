@@ -60,6 +60,7 @@ BASE=http://localhost:8787 node scripts/live-smoke.mjs   # needs `npm run dev` r
 BASE=http://localhost:8787 GAMES=50 SEED=1 node scripts/sim-games.mjs   # 50 simulated online games (ONLY=7 replays one)
 node scripts/role-gaps.mjs             # role names other sites have and we don't (names only)
 node scripts/role-gaps.mjs --offline --file names.txt   # same, from a saved or pasted list (one name per line)
+node scripts/role-gaps.mjs --picklist picks.md   # also write a Markdown checklist to tick (works with the options above)
 npm run deploy         # needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the environment
 ```
 Usual way to deploy: `gh workflow run deploy.yml` (GitHub Actions: tests, deploy, live smoke test; the Cloudflare values are repo secrets, so no 1Password prompt).
