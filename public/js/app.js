@@ -12,6 +12,8 @@ import { teamName } from './board.js';
 import { hostScreen } from './host.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen } from './faq.js';
+import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn } from './fx.js';
+import { gameOverEvent } from './room.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -42,6 +44,7 @@ S.render = function render() {
   themeDom($app, themeOf(S.view), seatNames());
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
   applyRoleSearch();
+  afterRender();
   window.scrollTo(0, y);
   // A dialog that just opened takes focus; otherwise focus goes back to the element that had it.
   const dialogClose = (opened === 'sheet' || opened === 'modal') && $app.querySelector('.sheet .x-btn, .modal .x-btn, .overlay-in .x-btn');
@@ -136,9 +139,10 @@ function wsTransport(code, helloFn) {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
-        if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) S.ui.reveal = false;
-        S.view = m.view; S.render();
+        if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
+        const prev = S.view; S.view = m.view; S.render(); observe(prev, m.view);
       }
+      else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
       else if (m.type === 'error') S.toast(m.error);
       else if (m.type === 'joined') store.set(`mafia.player.${code}`, JSON.stringify({ playerId: m.playerId, token: m.token }));
       else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = m.error; S.render(); } }
@@ -157,7 +161,11 @@ function localTransport() {
   let room;
   try { room = JSON.parse(store.get(KEY) || 'null'); } catch { room = null; }
   if (!room) { room = newRoom('LOCAL', 'local'); room.config.mode = 'cards'; }
-  const emit = () => { store.set(KEY, JSON.stringify(room)); registerRoles(room.config.customRoles); S.view = viewForHost(room, new Set()); S.render(); };
+  const emit = () => {
+    store.set(KEY, JSON.stringify(room)); registerRoles(room.config.customRoles);
+    const prev = S.view; S.view = viewForHost(room, new Set()); S.render(); observe(prev, S.view);
+    if (prev && prev.phase !== 'over' && room.phase === 'over') showVictory(gameOverEvent(room)); // single device: no server to announce it
+  };
   setTimeout(emit, 0);
   return {
     send(a) {
@@ -174,6 +182,7 @@ function localTransport() {
 // ---------------- routing ----------------
 async function route() {
   closeTransport();
+  closeVictory();
   Object.assign(S.ui, { tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
   const h = location.hash.replace(/^#\/?/, '');
   const [kind, arg] = h.split('/');
@@ -338,6 +347,9 @@ const A = {
   pend(el) { send({ type: 'resolvePending', pendingId: el.dataset.pid, targetId: el.dataset.id || null }); },
   useDay(el) { send({ type: 'useDay', playerId: el.dataset.id }); },
   declare() { const s = prompt('Who wins? Type town, mafia, or a player’s name.'); if (s) send({ type: 'declareWinner', side: s.toLowerCase(), reason: 'Declared by the Storyteller.' }); },
+  playAgain() { closeVictory(); S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'playAgain' }); },
+  closeVictory() { closeVictory(); S.ui.anim = 'roles'; S.render(); },
+  toggleAnim() { setAnim(!animOn()); S.render(); },
   newGame() { if (S.view.phase === 'over' || confirm('Abandon this game and go back to setup?')) { S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'newGame' }); } },
   // board
   seat(el) { if (S.mode === 'play') return; S.ui.anim = S.ui.sheet ? null : 'sheet'; S.ui.sheet = el.dataset.id; S.render(); },
@@ -450,6 +462,7 @@ document.addEventListener('click', (ev) => { if (swallowClick) { clearTimeout(sw
 // ---------------- keyboard ----------------
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && drag) { dragEnd(false); return; }
+  if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
     if ((S.ui.tools || S.ui.showKey || S.ui.showCode || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }

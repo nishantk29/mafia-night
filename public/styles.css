@@ -1,4 +1,5 @@
-/* Mafia Night: "The card room after midnight". Spec: DESIGN.md (sections 4-10, 15, 16).
+/* Mafia Night: "The card room after midnight", restyled in a bold transit-app language (DESIGN.md section 18).
+   Spec: DESIGN.md (sections 4-10, 15, 16, 18).
    Fonts (all SIL OFL 1.1, self-hosted): Big Shoulders Display, Alegreya Sans, Alegreya italic. */
 
 /* ==================================================================== fonts */
@@ -60,7 +61,7 @@
   --section:var(--s7);
 
   /* radii */
-  --r-control:10px; --r-tag:8px; --r-panel:16px; --r-pill:999px;
+  --r-control:14px; --r-tag:8px; --r-panel:24px; --r-card:28px; --r-pill:999px;
 
   /* elevation */
   --lift-1:0 1px 0 rgba(8,5,3,.6), 0 6px 14px -8px rgba(8,5,3,.9);
@@ -70,6 +71,7 @@
   /* motion */
   --ease-out:cubic-bezier(.2,.7,.1,1); --ease-in-out:cubic-bezier(.6,0,.3,1);
   --t-press:90ms; --t-open:200ms; --t-reveal:650ms;
+  --spring:cubic-bezier(.34,1.56,.64,1); /* overshoots, then settles: springy buttons and pops */
 
   /* chrome */
   --appbar-h:56px; --tabbar-h:64px; --dock-h:80px; --table-chrome:140px;
@@ -716,12 +718,15 @@ section.cue::before{display:none}
 .card-fan .rcard-back,.waiting .rcard-back{box-shadow:inset 0 0 0 6px var(--lacquer), inset 0 0 0 7px rgba(224,174,82,.6), 0 0 0 1px rgba(224,174,82,.22), var(--lift-2)}
 
 /* the one orchestrated moment: role-card turn-over */
-.rcard.is-flipping .rcard-inner{animation:rc-flip var(--t-reveal) var(--ease-out) both}
+.rcard.is-flipping .rcard-inner{animation:rc-flip var(--t-reveal) var(--ease-out) both;will-change:transform}
+.rcard.is-popping .rcard-inner{animation:rc-pop 520ms var(--ease-out) both;will-change:transform,opacity}
 .rcard.is-unflipping .rcard-inner{animation:rc-unflip var(--t-open) var(--ease-in-out) both}
 .rcard.is-flipping .rcard-front::after{content:"";position:absolute;inset:-10% 0;z-index:3;pointer-events:none;
   background:linear-gradient(115deg, transparent 35%, rgba(247,213,138,.26) 50%, transparent 65%);
   animation:rc-glint 250ms ease-out calc(var(--t-reveal) - 250ms) both}
-@keyframes rc-flip{from{transform:rotateY(180deg)}to{transform:rotateY(0deg)}}
+@keyframes rc-flip{0%{transform:rotateY(180deg) scale(.94)}55%{transform:rotateY(-10deg) translateZ(50px) scale(1.06)}80%{transform:rotateY(3deg) translateZ(20px) scale(1.02)}100%{transform:rotateY(0deg) scale(1)}}
+@keyframes rc-pop{0%{transform:rotateY(180deg) translateY(30px) scale(.7);opacity:0}60%{transform:rotateY(180deg) translateY(-6px) scale(1.07);opacity:1}100%{transform:rotateY(180deg) scale(1);opacity:1}}
+@keyframes rc-pop-flat{0%{transform:scale(.88)}60%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes rc-unflip{from{transform:rotateY(0deg)}to{transform:rotateY(180deg)}}
 @keyframes rc-glint{from{transform:translateX(-110%)}to{transform:translateX(110%)}}
 @keyframes rc-fade{from{opacity:0}to{opacity:1}}
@@ -1100,3 +1105,179 @@ html.is-seat-dragging,html.is-seat-dragging *{cursor:grabbing!important}
 /* Local mode: say plainly that the game lives only on this device. */
 .appbar-sub{display:block;font-size:var(--fs-xs);font-weight:500;color:var(--smoke);overflow:hidden;text-overflow:ellipsis}
 .local-note{margin-bottom:var(--s4)}
+
+/* ======================================================================================
+   Transit-style default look (DESIGN.md section 18): flat saturated colour blocks, big rounded cards, pill
+   buttons, heavy type, springy presses. Liquid Glass only on overlays, sheets and the main action.
+   ====================================================================================== */
+.btn{min-height:52px;padding:0 26px;border-radius:var(--r-pill);font-weight:800;box-shadow:0 4px 0 var(--brass-lo);
+  transition:background-color var(--t-press),border-color var(--t-press),transform 260ms var(--spring)}
+.btn:active{transform:translateY(3px) scale(.96)}
+.btn.ghost{box-shadow:none;border-width:2px}
+.btn.danger{box-shadow:0 4px 0 var(--card-red)}
+.btn.ghost.danger,.btn.disabled,.btn[aria-disabled="true"]{box-shadow:none}
+.btn.big{min-height:64px;font-size:var(--fs-lg)}
+.pk{min-height:52px;border-radius:var(--r-pill);border-width:2px;font-weight:700;transition:background-color var(--t-press),color var(--t-press),transform 260ms var(--spring)}
+.pk:active{transform:scale(.94)}
+.pk[aria-pressed="true"]{transform:scale(1.04)}
+.mini,.pill,.phase-badge{font-weight:800}
+.sheet{border-radius:32px 32px 0 0}
+.cue.is-current .cue-body,.whisper,.balance,.guide,.panel{border-radius:var(--r-card)}
+.rule{border-radius:var(--r-panel)}
+
+/* colour blocks: the phase says what it is at a glance */
+.pane-game .phase-head{padding:var(--s5);border-radius:var(--r-card);background:var(--brass);color:var(--on-brass)}
+html[data-phase="night"] .pane-game .phase-head{background:var(--town)}
+.pane-game .phase-head .muted,.pane-game .phase-head .note,.pane-game .phase-head .note > .ui-ico{color:var(--on-brass)}
+.win{padding:var(--s6) var(--s5);border-radius:var(--r-card);background:var(--team,var(--brass));color:var(--on-brass)}
+.win .phase-title,.win .muted{color:var(--on-brass)}
+.win .phase-title{font-size:var(--fs-3xl);line-height:.95}
+
+/* big glanceable numbers */
+.tally{font-weight:800;font-size:var(--fs-md)}
+.vote-row{border-radius:var(--r-panel);padding:var(--s2) var(--s2) var(--s2) var(--s4);border-width:2px}
+.vote-n{font:800 var(--fs-2xl)/1 var(--font-display)}
+.appbar-timer{font-family:var(--font-display);font-size:1.25em;font-weight:800}
+.is-tick{display:inline-block;animation:fx-tick 360ms var(--spring) both;will-change:transform,opacity}
+@keyframes fx-tick{0%{transform:translateY(55%) scale(.7);opacity:0}100%{transform:none;opacity:1}}
+
+/* the main action: big, at the bottom, in thumb reach; frosted so the page shows through */
+.action-dock{background:linear-gradient(to bottom,transparent,var(--room) 38%);border-top:0;padding-top:var(--s5)}
+.tabbar button{isolation:isolate}
+.tabbar button[aria-current="page"]{color:var(--on-brass)}
+.tabbar button[aria-current="page"]::before{inset:8px 16%;height:auto;top:8px;bottom:8px;border-radius:var(--r-pill);background:var(--brass);z-index:-1}
+.anim-toggle{margin-left:var(--s1);border-radius:var(--r-pill);color:var(--smoke)}
+.anim-toggle[aria-checked="true"]{color:var(--on-brass);background:var(--brass)}
+.reveal-rows .arow{animation:fx-row 420ms var(--spring) both}
+@keyframes fx-row{0%{transform:translateY(18px) scale(.96);opacity:0}100%{transform:none;opacity:1}}
+.reveal-rows .arow:nth-child(2){animation-delay:0ms}
+.reveal-rows .arow:nth-child(3){animation-delay:60ms}
+.reveal-rows .arow:nth-child(4){animation-delay:120ms}
+.reveal-rows .arow:nth-child(5){animation-delay:180ms}
+.reveal-rows .arow:nth-child(6){animation-delay:240ms}
+.reveal-rows .arow:nth-child(7){animation-delay:300ms}
+.reveal-rows .arow:nth-child(8){animation-delay:360ms}
+.reveal-rows .arow:nth-child(9){animation-delay:420ms}
+.reveal-rows .arow:nth-child(10){animation-delay:480ms}
+.reveal-rows .arow:nth-child(11){animation-delay:540ms}
+.reveal-rows .arow:nth-child(12){animation-delay:600ms}
+
+/* ---------------------------------------------------------------- Liquid Glass */
+/* Frosted, tinted by --tint, with a thin light edge. blur and saturate are fixed: only transform and opacity ever animate. */
+.glass,.sheet,.overlay-in.tools,.action-dock .btn.big:not(.disabled),.fx-victory .btn.big{
+  -webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.05),var(--lift-2)}
+.glass,.sheet,.overlay-in.tools{color:var(--candle);
+  background:linear-gradient(150deg,color-mix(in srgb,var(--tint,var(--brass)) 24%,rgba(37,28,22,.74)),rgba(27,20,16,.72))}
+.action-dock .btn.big:not(.disabled),.fx-victory .btn.big{background:color-mix(in srgb,var(--brass) 88%,transparent);color:var(--on-brass);border-color:rgba(255,255,255,.4);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 4px 0 var(--brass-lo)}
+/* soft specular highlight: an oversized sheen that slides with the tilt (transform only) */
+.glass{position:relative;overflow:hidden;isolation:isolate}
+.glass::after{content:"";position:absolute;inset:-60%;z-index:-1;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(255,255,255,.34),rgba(255,255,255,0) 70%);
+  transform:translate(calc(var(--tx,0) * -22%),calc(var(--ty,0) * -22% - 18%))}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .glass,.sheet,.overlay-in.tools{background:rgba(37,28,22,.96)}
+  .action-dock .btn.big:not(.disabled),.fx-victory .btn.big{background:var(--brass)}
+}
+html[data-lite="1"] .glass,html[data-lite="1"] .sheet,html[data-lite="1"] .overlay-in.tools{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(37,28,22,.96)}
+html[data-lite="1"] .action-dock .btn.big,html[data-lite="1"] .fx-victory .btn.big{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--brass)}
+html[data-lite="1"] .glass::after{display:none}
+
+/* ---------------------------------------------------------------- effects layer (fx.js) */
+#fx{position:fixed;inset:0;z-index:70;pointer-events:none;overflow:hidden}
+.fx-scene{position:absolute;inset:0;pointer-events:none}
+.fx-scene::before{content:"";position:absolute;inset:0;opacity:0;will-change:opacity}
+@keyframes fx-wash{0%{opacity:0}30%,65%{opacity:1}100%{opacity:0}}
+/* night falls: dusk wash, moon drops in, stars twinkle on */
+.fx-night::before{background:radial-gradient(120% 90% at 50% 0,#243456,#0A0F1E 72%);animation:fx-wash 1100ms ease-in-out both}
+.fx-moon{position:absolute;top:14%;left:50%;width:min(34vw,150px);margin-left:calc(min(34vw,150px) / -2);animation:fx-moon 1100ms var(--ease-out) both;will-change:transform,opacity}
+.fx-moon svg{display:block;width:100%;height:auto;filter:drop-shadow(0 0 18px rgba(241,230,210,.55))}
+@keyframes fx-moon{0%{transform:translateY(-70%) scale(.6);opacity:0}30%{transform:scale(1.08);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:translateY(10%);opacity:0}}
+.fx-star{position:absolute;width:14px;height:14px;background:#F7D58A;opacity:0;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);
+  animation:fx-star 950ms ease-out var(--d) both;will-change:transform,opacity}
+@keyframes fx-star{0%{opacity:0;transform:scale(0) rotate(0)}35%{opacity:1;transform:scale(var(--s)) rotate(40deg)}100%{opacity:0;transform:scale(calc(var(--s) * .7)) rotate(80deg)}}
+/* day breaks: warm wash, sun bursts up, rays fan out */
+.fx-day::before{background:radial-gradient(circle at 50% 38%,rgba(255,226,140,.9),rgba(224,174,82,.4) 45%,transparent 78%);animation:fx-wash 1100ms ease-in-out both}
+.fx-sun,.fx-v-sun::before{content:"";position:absolute;left:50%;top:38%;width:min(40vw,170px);aspect-ratio:1;margin:calc(min(40vw,170px) / -2) 0 0 calc(min(40vw,170px) / -2);border-radius:50%;
+  background:radial-gradient(circle,#FFF4C2 0 38%,#F7D58A 62%,#E0AE52);animation:fx-sun 1100ms var(--spring) both;will-change:transform,opacity}
+@keyframes fx-sun{0%{transform:scale(.2);opacity:0}35%{transform:scale(1.18);opacity:1}65%{transform:scale(1);opacity:1}100%{transform:scale(1.1);opacity:0}}
+.fx-rays,.fx-v-sun::after{content:"";position:absolute;left:50%;top:38%;width:130vmax;height:130vmax;margin:-65vmax 0 0 -65vmax;
+  background:repeating-conic-gradient(rgba(247,213,138,.6) 0 6deg,transparent 6deg 18deg);
+  -webkit-mask:radial-gradient(circle,#000,transparent 55%);mask:radial-gradient(circle,#000,transparent 55%);
+  animation:fx-rays 1100ms ease-out both;will-change:transform,opacity}
+@keyframes fx-rays{0%{transform:scale(.15) rotate(0);opacity:0}30%{opacity:1}100%{transform:scale(1) rotate(28deg);opacity:0}}
+
+/* pop-out reveal: a glass card springs out, a stamp slams on it */
+.fx-out{display:grid;place-items:center}
+.fx-out::before{background:rgba(8,5,3,.5);animation:fx-wash 1200ms ease-in-out both}
+.fx-in{position:relative;width:min(86vw,340px);perspective:900px}
+.fx-out .fx-in{animation:fx-spring-out 1200ms ease-out both;will-change:transform,opacity}
+@keyframes fx-spring-out{0%{transform:scale(.3) rotateX(38deg);opacity:0}24%{transform:scale(1.13) rotateX(-6deg);opacity:1}38%{transform:scale(.97) rotateX(2deg)}52%,82%{transform:scale(1);opacity:1}100%{transform:scale(.94) translateY(-16px);opacity:0}}
+.fx-card,.fx-v-card{display:grid;justify-items:center;gap:var(--s2);padding:30px 22px 26px;border-radius:32px;text-align:center;
+  transform:rotateX(calc(var(--ty,0) * -7deg)) rotateY(calc(var(--tx,0) * 9deg));transition:transform 160ms ease-out}
+.fx-out.is-vote .fx-card{--tint:var(--brass)}
+.fx-out.is-night .fx-card{--tint:var(--mafia)}
+.fx-pop-ico .ui-ico{width:56px;height:56px;vertical-align:0;color:var(--candle)}
+.fx-pop-name{font:800 clamp(2.25rem,12vw,3.5rem)/1 var(--font-display);overflow-wrap:anywhere}
+.fx-pop-why{font-size:var(--fs-lg);font-weight:700;color:var(--candle)}
+.fx-pop-role{margin-top:var(--s1);padding:4px 16px;border-radius:var(--r-pill);background:var(--candle);color:var(--card-ink);font-weight:800;font-size:var(--fs-md)}
+.fx-stamp{position:absolute;top:14px;right:10px;padding:2px 10px;border:3px solid var(--mafia);border-radius:8px;color:var(--mafia);background:rgba(27,20,16,.55);
+  font:800 var(--fs-md)/1.2 var(--font-display);text-transform:uppercase;letter-spacing:.06em;transform:rotate(-8deg);animation:fx-slam 340ms var(--spring) 260ms both;will-change:transform,opacity}
+@keyframes fx-slam{0%{transform:rotate(-8deg) scale(2.8);opacity:0}60%{transform:rotate(-8deg) scale(.9);opacity:1}100%{transform:rotate(-8deg) scale(1);opacity:1}}
+.fx-shake{animation:fx-shake 320ms ease-out both}
+@keyframes fx-shake{0%,100%{transform:none}15%{transform:translate(-5px,2px)}30%{transform:translate(4px,-2px)}45%{transform:translate(-3px,1px)}60%{transform:translate(2px,-1px)}}
+
+/* particles: at most 18 per burst, all on transform + opacity, removed with their parent */
+.fx-burst{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none}
+.fx-p{position:absolute;left:-5px;top:-7px;width:10px;height:14px;border-radius:2px;background:var(--c);opacity:0;
+  animation:fx-p 1000ms cubic-bezier(.15,.7,.3,1) var(--d) both;will-change:transform,opacity}
+.fx-burst.is-sparks .fx-p{width:8px;height:8px;border-radius:50%;top:-4px;left:-4px}
+@keyframes fx-p{0%{opacity:1;transform:translate(0,0) rotate(0) scale(.4)}70%{opacity:1}100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + 60px)) rotate(var(--r)) scale(1)}}
+
+/* victory card: every screen at once, springs out and stays until closed */
+.fx-victory{position:absolute;inset:0;z-index:1;pointer-events:auto;display:grid;place-items:center;padding:var(--s4);overflow:auto;
+  background:rgba(8,5,3,.92);animation:rc-fade 250ms linear both}
+.fx-victory.is-town{--tint:var(--brass);background:linear-gradient(180deg,rgba(35,52,88,.95),rgba(125,86,30,.95))}
+.fx-victory.is-mafia{--tint:var(--mafia);background:radial-gradient(120% 80% at 50% 30%,rgba(122,31,38,.96),rgba(18,4,10,.97))}
+.fx-victory.is-third{--tint:var(--third);background:linear-gradient(180deg,rgba(36,20,72,.96),rgba(14,8,32,.97))}
+.fx-victory.is-none{--tint:var(--smoke)}
+.fx-victory .fx-in{width:min(92vw,400px);animation:fx-spring-stay 760ms ease-out both;will-change:transform,opacity}
+@keyframes fx-spring-stay{0%{transform:scale(.3) rotateX(38deg);opacity:0}38%{transform:scale(1.1) rotateX(-5deg);opacity:1}60%{transform:scale(.97) rotateX(2deg)}100%{transform:scale(1);opacity:1}}
+.fx-v-sun{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.fx-victory:not(.is-town) .fx-v-sun{display:none}
+.fx-v-ico .ui-ico{width:64px;height:64px;vertical-align:0;color:var(--tint)}
+.fx-v-you{font:800 clamp(3rem,17vw,5rem)/.95 var(--font-display);animation:fx-slam-flat 380ms var(--spring) 380ms both;will-change:transform,opacity}
+.fx-v-you.is-win{color:var(--brass-hi)}
+.fx-v-you.is-loss{color:var(--smoke)}
+@keyframes fx-slam-flat{0%{transform:scale(2.6) rotate(-6deg);opacity:0}60%{transform:scale(.92) rotate(-6deg);opacity:1}100%{transform:scale(1) rotate(-3deg);opacity:1}}
+.fx-v-team{font:800 clamp(1.75rem,9vw,2.5rem)/1.05 var(--font-display);color:var(--candle)}
+.fx-v-reason{color:var(--candle);font-size:var(--fs-md);max-width:30ch}
+.fx-v-actions{display:grid;gap:var(--s2);width:100%;margin-top:var(--s3)}
+
+/* low-end: flat 2D pops, no 3D, no rays */
+html[data-lite="1"] .fx-card,html[data-lite="1"] .fx-v-card,html[data-lite="1"] .rcard[data-tilt]{transform:none;transition:none}
+html[data-lite="1"] .fx-rays,html[data-lite="1"] .fx-v-sun{display:none}
+html[data-lite="1"] .fx-out .fx-in,html[data-lite="1"] .fx-victory .fx-in{animation-name:fx-pop-flat}
+html[data-lite="1"] .rcard.is-flipping .rcard-inner{animation:rc-pop-flat 300ms var(--ease-out) both}
+@keyframes fx-pop-flat{0%{transform:scale(.6);opacity:0}45%{transform:scale(1.08);opacity:1}70%{transform:scale(1)}100%{transform:scale(1);opacity:1}}
+html[data-lite="1"] .fx-out .fx-in{animation-name:fx-pop-flat-out}
+@keyframes fx-pop-flat-out{0%{transform:scale(.6);opacity:0}25%{transform:scale(1.08);opacity:1}40%{transform:scale(1)}80%{transform:scale(1);opacity:1}100%{transform:scale(.96);opacity:0}}
+
+/* pointer / device tilt on the role card (set by fx.js, no idle loop) */
+.rcard[data-tilt]{transform:perspective(1400px) rotateX(calc(var(--ty,0) * -5deg)) rotateY(calc(var(--tx,0) * 7deg));transition:transform 160ms ease-out}
+
+/* animations off (host toggle) or reduced motion: everything lands in its final state */
+html[data-fx="off"] *,html[data-fx="off"] *::before,html[data-fx="off"] *::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important}
+html[data-fx="off"] [data-tilt]{transform:none!important}
+html[data-fx="off"] .rcard-inner,html[data-fx="off"] .rcard[data-face="back"] .rcard-inner{transform:none!important;animation:none!important}
+html[data-fx="off"] .rcard-face,html[data-fx="off"] .rcard-face.rcard-back{transform:none;-webkit-backface-visibility:visible;backface-visibility:visible}
+html[data-fx="off"] .rcard[data-face="front"] .rcard-back,html[data-fx="off"] .rcard[data-face="back"] .rcard-front{visibility:hidden}
+html[data-fx="off"] .rcard.is-flipping .rcard-front::after{display:none}
+html[data-fx="off"] .fx-scene{display:none}
+@media (prefers-reduced-motion:reduce){
+  [data-tilt]{transform:none!important}
+  .fx-scene{display:none}
+  .btn:active,.pk:active{transform:none}.pk[aria-pressed="true"]{transform:none}
+}

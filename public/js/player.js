@@ -58,9 +58,9 @@ function playing(v) {
 // is-flipping / is-unflipping run the one orchestrated motion on the render where it was tapped.
 function roleCard(v) {
   const me = v.me; const r = me.role; const shown = !!S.ui.reveal;
-  const motion = S.ui.anim === 'reveal' ? ' is-flipping' : S.ui.anim === 'hide' ? ' is-unflipping' : '';
+  const motion = S.ui.anim === 'reveal' ? ' is-flipping' : S.ui.anim === 'hide' ? ' is-unflipping' : S.ui.anim === 'deal' ? ' is-popping' : '';
   const team = me.team.length ? `<p class="note">Your team: ${me.team.map((t) => `<b>${esc(t.name)}</b>${t.role ? ` (${esc(t.role.name)})` : ''}${t.alive ? '' : ` ${ui('skull')} out`}`).join(', ')}</p>` : '';
-  return `<div class="rcard a-${r.alignment}${motion}" data-face="${shown ? 'front' : 'back'}">
+  return `<div class="rcard a-${r.alignment}${motion}" data-tilt data-face="${shown ? 'front' : 'back'}">
       <div class="rcard-inner">
         <div class="rcard-face rcard-front" ${shown ? '' : 'aria-hidden="true"'}>
           <span class="rcard-index rcard-index-tl" aria-hidden="true">${ico(r)}</span>
@@ -118,7 +118,7 @@ function guide(g) {
 function tableSide(v) {
   const people = v.sharedBoard
     ? `<section class="block"><h2 class="block-title">The table</h2>${board(v, false)}</section>`
-    : `<section class="block"><header class="block-head"><h2 class="block-title">Players</h2><span class="tally">${v.players.length}</span></header>
+    : `<section class="block"><header class="block-head"><h2 class="block-title">Players</h2><span class="tally" data-tick="players">${v.players.length}</span></header>
       <ul class="people">${v.players.map((p) => `<li class="person ${p.alive ? '' : 'is-dead'}"><span class="person-name">${esc(p.name)}</span>${p.alive ? '' : `<span class="person-status" aria-label="out of the game">${ui('skull')}</span>`}</li>`).join('')}</ul></section>`;
   const log = v.publicLog.length
     ? `<ol class="log">${[...v.publicLog].reverse().map((l) => `<li class="logl"><span class="logl-text">${esc(l.text)}</span></li>`).join('')}</ol>`
@@ -160,8 +160,9 @@ function cardPicker(me) {
 function over(v) {
   const me = v.me; const w = v.winner;
   const side = { town: 'Town wins', mafia: 'Mafia wins', killer: 'Serial Killer wins', cult: 'Cult wins', none: 'Nobody wins' }[w?.side] || `${esc(w?.side || 'Nobody')} wins`;
-  return `<section class="win"><span class="win-mark">${ui(me.won ? 'trophy' : 'crown')}</span><h2 class="phase-title">${me.won ? 'You won' : side}</h2>
+  const ink = { town: 'a-town', mafia: 'a-mafia', none: '' }[w?.side] ?? 'a-third';
+  return `<section class="win ${ink}"><span class="win-mark">${ui(me.won ? 'trophy' : 'crown')}</span><h2 class="phase-title">${me.won ? 'You won' : side}</h2>
       ${me.won ? `<p class="muted">${side}.</p>` : ''}<p class="muted">${esc(w?.reason || '')}</p></section>
-    <section class="block"><h2 class="block-title">Final roles</h2>${v.players.map((p) => `<div class="arow"><span class="arow-glyph">${p.role ? ico(p.role) : initial(p.name)}</span>
+    <section class="block${S.ui.anim === 'roles' ? ' reveal-rows' : ''}"><h2 class="block-title">Final roles</h2>${v.players.map((p) => `<div class="arow"><span class="arow-glyph">${p.role ? ico(p.role) : initial(p.name)}</span>
       <span class="arow-name"><b>${esc(p.name)}</b> <span class="muted">${esc(p.role?.name || 'Role unknown')}</span></span>${p.alive ? '' : `<span class="arow-mark" aria-label="dead">${ui('skull')}</span>`}</div>`).join('')}</section>`;
 }

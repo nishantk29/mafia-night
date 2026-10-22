@@ -73,6 +73,13 @@ export function reduce(room, actor, a) {
     return { ok: true };
   }
 
+  // The victory card's "Play again": the host or any seated player, once the game is over. Same players, back to the lobby.
+  if (t === 'playAgain') {
+    if (!host && !(actor.playerId && playerById(room, actor.playerId))) return err('Not in this room.');
+    if (room.phase !== 'over') return err('The game is not over.');
+    resetDeal(room); return { ok: true };
+  }
+
   if (!host) return err('Host only.');
 
   // ---- host ----
@@ -292,6 +299,28 @@ function assignTargets(room) {
       const pick = pool.length ? pool[randInt(pool.length)] : null; p.target = pick?.id || null;
     }
   }
+}
+
+// ---------- game-over event ----------
+// Sent once, by the room, to every connected socket the moment the game ends, so every phone and the table screen
+// show the victory card together. Public facts only; `won` is added for a player's own phone and is never in anyone else's.
+const TEAM_NAME = { town: 'Town', mafia: 'The Mafia', killer: 'The Serial Killer', cult: 'The Cult', none: 'Nobody' };
+export function gameOverEvent(room, playerId = null) {
+  const w = room.winner || { side: 'none', reason: '' };
+  const theme = w.side === 'town' || w.side === 'mafia' ? w.side : w.side === 'none' ? 'none' : 'third';
+  const ev = { type: 'gameOver', side: w.side, team: TEAM_NAME[w.side] || w.side, theme, reason: w.reason || '' };
+  if (playerId) ev.won = finalWinners(room).some((x) => x.id === playerId);
+  return ev;
+}
+export const justEnded = (phaseBefore, room) => phaseBefore !== 'over' && room.phase === 'over';
+
+// Everything the room sends one socket after a change: its view, plus the game-over event when the game just ended.
+export function messagesFor(room, att, connected = new Set(), announce = false) {
+  if (!att?.who) return [];
+  const host = att.who === 'host';
+  const out = [{ type: 'view', view: host ? viewForHost(room, connected) : viewForPlayer(room, att.playerId, connected) }];
+  if (announce && room.phase === 'over') out.push(gameOverEvent(room, host ? null : att.playerId));
+  return out;
 }
 
 export function roleCard(roleId) {

@@ -1,0 +1,179 @@
+// Motion: night and day scenes, pop-out reveals, the victory card, confetti. See DESIGN.md section 18.
+// Rules: CSS 3D transforms only; animate transform and opacity only; will-change lives only on elements that are
+// mid-animation; at most 18 particles per burst (8 on low-end); nothing loops while idle; every effect is gone by 1.2s
+// except the victory card, which stays until it is closed. Effects never take input (pointer-events:none).
+import { S, esc, store } from './state.js';
+import { ui } from './ui_icons.js';
+import { ROLE_BY_ID } from './roles.js';
+
+const $html = document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+const KEY = 'mafia.anim';
+
+export const lowEnd = () => (navigator.hardwareConcurrency || 99) <= 4 || (navigator.deviceMemory || 99) <= 4;
+export const animOn = () => store.get(KEY) !== 'off' && !reduced.matches;
+// <html data-fx="on|off">: motion. <html data-lite="1">: low-end device, flat 2D pops and solid (not frosted) backgrounds.
+export function syncFx() { $html.dataset.fx = animOn() ? 'on' : 'off'; $html.dataset.lite = lowEnd() ? '1' : '0'; }
+export function setAnim(on) { store.set(KEY, on ? 'on' : 'off'); syncFx(); }
+reduced.addEventListener?.('change', syncFx);
+syncFx();
+
+const full = () => $html.dataset.fx === 'on' && $html.dataset.lite === '0';
+const maxParticles = () => (lowEnd() ? 8 : 18);
+const rand = (a, b) => a + Math.random() * (b - a);
+const layer = () => document.getElementById('fx');
+const drop = (el, ms) => setTimeout(() => el.remove(), ms);
+
+function add(html, ms) {
+  const host = layer(); if (!host) return null;
+  const el = document.createElement('div');
+  el.innerHTML = html; const node = el.firstElementChild;
+  host.append(node);
+  if (ms) drop(node, ms);
+  return node;
+}
+
+// ---------------------------------------------------------------- particles
+const PALETTE = {
+  town: ['#E0AE52', '#F7D58A', '#8DB6E8', '#F4E9D3'],
+  mafia: ['#F26B66', '#FF9F43', '#B3262E', '#F4E9D3'],
+  third: ['#B996F0', '#E8DCFF', '#E0AE52', '#F4E9D3'],
+  none: ['#BFAE95', '#F4E9D3', '#8C7A64'],
+  ink: ['#F4E9D3', '#BFAE95'],
+};
+// One burst from the middle of `parent`: n small pieces flying out on transform + opacity, removed with their parent.
+function burst(parent, theme, n = 18, mode = 'confetti') {
+  const count = Math.min(n, maxParticles());
+  const colors = PALETTE[theme] || PALETTE.town;
+  const box = document.createElement('div'); box.className = `fx-burst is-${mode}`;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('i'); p.className = 'fx-p';
+    const a = rand(0, Math.PI * 2); const d = rand(90, 190);
+    p.style.cssText = `--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d - 40).toFixed(0)}px;--r:${rand(-360, 360).toFixed(0)}deg;--c:${colors[i % colors.length]};--d:${(i * 8) % 120}ms`;
+    box.append(p);
+  }
+  parent.append(box);
+  return box;
+}
+
+// ---------------------------------------------------------------- scenes
+const MOON = '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="#F1E6D2" d="M42 6a27 27 0 1 0 16 41A23 23 0 0 1 42 6z"/></svg>';
+export function night() {
+  if (!animOn()) return;
+  const stars = Array.from({ length: Math.min(12, maxParticles()) }, (_, i) =>
+    `<i class="fx-star" style="left:${rand(4, 96).toFixed(0)}%;top:${rand(4, 62).toFixed(0)}%;--s:${rand(.5, 1.2).toFixed(2)};--d:${(i * 45) % 400}ms"></i>`).join('');
+  add(`<div class="fx-scene fx-night" aria-hidden="true"><span class="fx-moon">${MOON}</span>${stars}</div>`, 1150);
+}
+export function day() {
+  if (!animOn()) return;
+  add('<div class="fx-scene fx-day" aria-hidden="true"><span class="fx-rays"></span><span class="fx-sun"></span></div>', 1150);
+}
+
+// ---------------------------------------------------------------- pop-out reveal (voted out or killed)
+// items: [{ name, how: 'vote' | 'night', role?: string }]. Public facts only: callers pass a role only when the room shows it.
+export function popOut(items) {
+  if (!animOn() || !items.length) return;
+  const vote = items.every((i) => i.how === 'vote');
+  const names = items.map((i) => esc(i.name)).join(' and ');
+  const role = items.length === 1 && items[0].role ? `<p class="fx-pop-role">${esc(items[0].role)}</p>` : '';
+  const node = add(`<div class="fx-scene fx-out ${vote ? 'is-vote' : 'is-night'}" aria-hidden="true">
+    <div class="fx-in"><div class="fx-card glass" data-tilt>
+      <span class="fx-stamp">${vote ? 'Voted out' : 'Killed'}</span>
+      <span class="fx-pop-ico">${ui('skull')}</span>
+      <h2 class="fx-pop-name">${names}</h2>
+      <p class="fx-pop-why">${vote ? 'was voted out' : 'did not survive the night'}</p>${role}
+    </div></div></div>`, 1200);
+  if (!node) return;
+  if (full()) shake();
+  if (full()) burst(node.querySelector('.fx-in'), vote ? 'ink' : 'mafia', 10, 'sparks');
+}
+
+// A short shake of the page content (not the fixed bars), on dramatic beats.
+export function shake() {
+  if (!full()) return;
+  // transform on an ancestor would re-anchor position:fixed children (the action dock), so those are left out
+  const els = [...document.querySelectorAll('#app > main > *')].flatMap((el) => (el.classList.contains('pane-game') ? [...el.children].filter((c) => !c.classList.contains('action-dock')) : [el]));
+  els.forEach((el) => { el.classList.remove('fx-shake'); void el.offsetWidth; el.classList.add('fx-shake'); el.addEventListener('animationend', () => el.classList.remove('fx-shake'), { once: true }); });
+}
+
+// ---------------------------------------------------------------- victory card
+let victoryEl = null;
+export const victoryOpen = () => !!victoryEl;
+const REASON_ICON = { town: 'sun', mafia: 'fedora', third: 'sparkle', none: 'skull' };
+export function showVictory(ev) {
+  closeVictory();
+  const host = layer(); if (!host) return;
+  const you = ev.won === true ? 'You won!' : ev.won === false ? 'You lost' : '';
+  const el = document.createElement('div');
+  el.className = `fx-victory is-${ev.theme}${animOn() ? '' : ' is-still'}`;
+  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'fx-v-team');
+  el.innerHTML = `<div class="fx-v-sun" aria-hidden="true"></div>
+    <div class="fx-in"><div class="fx-v-card glass" data-tilt>
+      <span class="fx-v-ico">${ui(REASON_ICON[ev.theme] || 'sparkle')}</span>
+      ${you ? `<p class="fx-v-you ${ev.won ? 'is-win' : 'is-loss'}">${you}</p>` : ''}
+      <h2 class="fx-v-team" id="fx-v-team">${esc(ev.team)} ${ev.theme === 'none' ? '' : 'won'}</h2>
+      ${ev.reason ? `<p class="fx-v-reason">${esc(ev.reason)}</p>` : ''}
+      <div class="fx-v-actions"><button type="button" class="btn big" data-a="playAgain">Play again</button>
+        <button type="button" class="btn ghost" data-a="closeVictory">Close</button></div>
+    </div></div>`;
+  host.append(el); victoryEl = el;
+  if (animOn()) { const b = burst(el.querySelector('.fx-in'), ev.theme, 18, ev.theme === 'mafia' ? 'sparks' : 'confetti'); drop(b, 1300); }
+  el.querySelector('[data-a="playAgain"]').focus({ preventScroll: true });
+}
+export function closeVictory() { victoryEl?.remove(); victoryEl = null; }
+
+// ---------------------------------------------------------------- reading changes between two views
+// Called when a new view arrives. Everything here uses what that viewer is already allowed to see.
+export function observe(prev, next) {
+  if (!animOn() || !prev || !next || prev.kind !== next.kind || prev.code !== next.code || next.kind === 'gone') return;
+  if (next.phase === 'lobby' || prev.phase === 'lobby') { if (prev.phase === 'over' && next.phase === 'lobby') closeVictory(); return; }
+  let delay = 0;
+  if (next.phase === 'night' && prev.phase !== 'night') { night(); }
+  else if (next.phase === 'day' && prev.phase !== 'day') { day(); delay = 650; }
+  if (next.phase === 'over') return; // the victory card takes the stage
+  const was = new Map((prev.players || []).map((p) => [p.id, p]));
+  const out = [];
+  for (const p of next.players || []) {
+    const b = was.get(p.id);
+    if (!b || !b.alive || p.alive) continue;
+    const vote = next.kind === 'host' ? p.deathCause === 'condemned' : p.cause === 'condemned';
+    let role = null;
+    if (next.kind === 'host') { if (next.config?.rules?.revealOnDeath !== false && !p.roleHidden) role = ROLE_BY_ID[p.roleId]?.name || null; }
+    else role = p.role?.name || null;
+    out.push({ name: p.name, how: vote ? 'vote' : 'night', role });
+  }
+  if (out.length) setTimeout(() => popOut(out), delay);
+}
+
+// ---------------------------------------------------------------- after every render
+const ticks = new Map();
+// Numbers marked data-tick roll in when their value changes (vote counts, tallies).
+export function afterRender() {
+  document.querySelectorAll('[data-tick]').forEach((el) => {
+    const k = el.dataset.tick; const v = el.textContent;
+    if (animOn() && ticks.has(k) && ticks.get(k) !== v) {
+      el.classList.add('is-tick');
+      el.addEventListener('animationend', () => el.classList.remove('is-tick'), { once: true });
+    }
+    ticks.set(k, v);
+  });
+  // will-change is only set by these classes: drop them as soon as the motion ends.
+  document.querySelectorAll('.is-flipping,.is-unflipping,.is-popping').forEach((el) => {
+    const inner = el.querySelector('.rcard-inner') || el;
+    inner.addEventListener('animationend', () => el.classList.remove('is-flipping', 'is-unflipping', 'is-popping'), { once: true });
+  });
+}
+
+// ---------------------------------------------------------------- pointer / device tilt (no idle loop)
+let raf = 0; let tx = 0; let ty = 0;
+const flush = () => {
+  raf = 0;
+  document.querySelectorAll('[data-tilt]').forEach((el) => { el.style.setProperty('--tx', tx.toFixed(2)); el.style.setProperty('--ty', ty.toFixed(2)); });
+};
+function tilt(x, y) {
+  if (!full() || !document.querySelector('[data-tilt]')) return;
+  tx = Math.max(-1, Math.min(1, x)); ty = Math.max(-1, Math.min(1, y));
+  if (!raf) raf = requestAnimationFrame(flush);
+}
+addEventListener('pointermove', (e) => tilt((e.clientX / innerWidth - .5) * 2, (e.clientY / innerHeight - .5) * 2), { passive: true });
+addEventListener('deviceorientation', (e) => { if (e.gamma != null) tilt(e.gamma / 30, ((e.beta || 45) - 45) / 30); }, { passive: true });

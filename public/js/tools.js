@@ -98,7 +98,7 @@ function votes(v) {
       return `<li class="vote-row ${n && n === top ? 'is-top' : ''} ${n >= need ? 'is-majority' : ''}">
         <span class="vote-name" data-raw>${esc(p.name)}</span>
         <button type="button" class="icon-btn" data-a="vote" data-id="${p.id}" data-v="-1" aria-label="One fewer vote for ${esc(p.name)}" ${n ? '' : 'disabled'}>${ui('minus')}</button>
-        <b class="vote-n" aria-label="${n} votes">${n}</b>
+        <b class="vote-n" data-tick="vote-${p.id}" aria-label="${n} votes">${n}</b>
         <button type="button" class="icon-btn" data-a="vote" data-id="${p.id}" data-v="1" aria-label="One more vote for ${esc(p.name)}">${ui('plus')}</button>
       </li>`; }).join('')}</ul>
     ${top >= need ? `<p class="note is-warn">${ui('gavel')} <span><b data-raw>${esc(alive.find((p) => (tally[p.id] || 0) === top).name)}</b> has a majority.</span></p>` : ''}
