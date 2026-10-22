@@ -212,14 +212,10 @@ export function reduce(room, actor, a) {
       if (ids.length !== slot.remaining) return err(`Pick exactly ${slot.remaining}.`);
       const picked = ids.map((id) => playerById(room, id));
       if (picked.some((p) => !p || p.roleId)) return err('One of those players is already matched.');
-      for (const p of picked) {
-        p.roleId = a.roleId;
-        if (ROLE_BY_ID[a.roleId].needsTarget) {
-          const pool = room.players.filter((q) => q.id !== p.id);
-          p.target = pool.length ? pool[randInt(pool.length)].id : null;
-        }
-      }
+      for (const p of picked) p.roleId = a.roleId;
       finalizeBlind(room);
+      // Targets need every faction known, or an Executioner could be handed a Mafia target.
+      if (room.players.every((q) => q.roleId)) assignTargets(room);
       log(room, `${ROLE_BY_ID[a.roleId].name} identified.`);
       return { ok: true };
     }
