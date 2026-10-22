@@ -16,6 +16,7 @@
 import { ROLES, ROLE_BY_ID, factionOf, registerRoles } from '../public/js/roles.js';
 import { DEFAULT_RULES } from '../public/js/engine.js';
 import { CATALOGUE, rng, planCoverage, pickNightActions, livePreviews, nightProblems, disguiseLeaks } from './sim-lib.mjs';
+import { knowledge, chooseStep, morningClaims, dayVote } from './sim-agents.mjs';
 
 const BASE = process.env.BASE || 'http://localhost:8787';
 const WS = BASE.replace(/^http/, 'ws');
@@ -31,6 +32,9 @@ if (!Number.isInteger(SEED) || SEED <= 0) {
 }
 // LADDER=1: every player count 5..12, PER games each, tier 0 (classic) .. 4 (everything) within each count.
 const LADDER = !!process.env.LADDER; const PER = Number(process.env.PER || 5);
+// AGENTS=1: every seat is a scripted agent that decides its night action and its vote from what its own phone was
+// sent (see sim-agents.mjs) instead of the storyteller picking at random. No language model is called.
+const AGENTS = !!process.env.AGENTS;
 const MAX_ROUNDS = 25;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -136,9 +140,30 @@ const until = async (fn, what, ms = 20000) => { const t = Date.now(); while (Dat
 // ---------- one game ----------
 async function playGame(plan) {
   const { g, R, n, modeKind, strategy, customs, roles, rules } = plan;
-  const out = { g, problems: [], notes: [], rounds: 0, winner: null, maxFrame: 0 };
+  const out = { g, problems: [], notes: [], rounds: 0, winner: null, maxFrame: 0, agent: { condemned: 0, mafiaCondemned: 0, nobody: 0, claims: 0, nightSteps: 0 } };
   const problem = (msg) => { if (!out.problems.includes(msg)) out.problems.push(msg); };
   const usesCustom = roles.some((id) => id.startsWith('c_'));
+  // What every seat knows right now: its phone's last frame, or just its card for a seat without a phone.
+  const seatKnowledge = () => {
+    const know = new Map();
+    for (const x of host.last().players) {
+      const ph = phones.find((p) => p.joined?.playerId === x.id && !p.closed);
+      const v = ph?.last();
+      const r = x.roleId && ROLE_BY_ID[x.roleId];
+      know.set(x.id, knowledge(v?.kind === 'player' ? v : null, { id: x.id, shownRoleId: r ? (r.seesAs || r.id) : null }));
+    }
+    return know;
+  };
+  let claims = []; // what was said at the table this game
+  const agentDay = async () => {
+    const al = host.last().players.filter((x) => x.alive);
+    const know = seatKnowledge();
+    claims = claims.filter((c) => al.some((x) => x.id === c.by)).concat(morningClaims(R, al, know));
+    out.agent.claims += claims.length;
+    const pick = dayVote(R, al, know, claims);
+    if (pick) { out.agent.condemned++; if (factionOf(host.last().players.find((x) => x.id === pick).roleId) === 'mafia') out.agent.mafiaCondemned++; await act({ type: 'condemn', playerId: pick }); }
+    else { out.agent.nobody++; await act({ type: 'noCondemn' }); }
+  };
   Object.assign(out, { n, mode: modeKind, strategy, rules: Object.entries(rules).filter(([k, v]) => v !== DEFAULT_RULES[k]).map(([k, v]) => `${k}:${v ? 'on' : 'off'}`) });
 
   const { code, hostKey } = await (await fetch(`${BASE}/api/create`, { method: 'POST' })).json();
@@ -300,7 +325,8 @@ async function playGame(plan) {
       await act({ type: 'startDay' });
       if (host.last().phase !== 'day') problem(`day start did not start a day (phase ${host.last().phase})`);
       const al = host.last().players.filter((x) => x.alive);
-      if (R.chance(0.7)) await act({ type: 'condemn', playerId: R.pick(al).id }); else await act({ type: 'noCondemn' });
+      if (AGENTS) await agentDay();
+      else if (R.chance(0.7)) await act({ type: 'condemn', playerId: R.pick(al).id }); else await act({ type: 'noCondemn' });
       await checkSecrecy();
     }
   }
@@ -331,7 +357,11 @@ async function playGame(plan) {
     // Night actions as the console records them: random targets, sometimes skipped, now and then a dead target.
     // What the console would tell each investigator live is worked out before the night resolves.
     const night = host.last();
-    const actions = pickNightActions(R, night, { odd: 0.05 });
+    let actions;
+    if (AGENTS) {
+      const know = seatKnowledge(); actions = {};
+      for (const st of night.script.filter((x) => x.kind === 'action')) { const a = chooseStep(R, night, st, know, claims); if (a) { actions[st.key] = a; out.agent.nightSteps++; } }
+    } else actions = pickNightActions(R, night, { odd: 0.05 });
     const previews = livePreviews(night, actions);
     const before = night.players.filter((x) => x.alive).length;
     await act({ type: 'submitNight', actions });
@@ -370,11 +400,12 @@ async function playGame(plan) {
     if (host.last().phase === 'over') break;
     const dayAlive = host.last().players.filter((x) => x.alive);
     for (const p of dayAlive) if (ROLE_BY_ID[p.roleId]?.day && R.chance(0.3)) await act({ type: 'useDay', playerId: p.id });
-    if (R.chance(0.8) && dayAlive.length) await act({ type: 'condemn', playerId: R.pick(dayAlive).id });
+    if (AGENTS) await agentDay();
+    else if (R.chance(0.8) && dayAlive.length) await act({ type: 'condemn', playerId: R.pick(dayAlive).id });
     else await act({ type: 'noCondemn' });
     // Odd host moves: condemn a dead player (must be refused or harmless), revive then kill again.
     if (R.chance(0.1)) { const dead = host.last().players.find((x) => !x.alive); if (dead) await act({ type: 'condemn', playerId: dead.id }, { expectError: true }); }
-    if (R.chance(0.05)) { const dead = host.last().players.find((x) => !x.alive); if (dead) { await act({ type: 'revive', playerId: dead.id }); await act({ type: 'kill', playerId: dead.id, cause: 'storyteller' }); } }
+    if (!AGENTS && R.chance(0.05)) { const dead = host.last().players.find((x) => !x.alive); if (dead) { await act({ type: 'revive', playerId: dead.id }); await act({ type: 'kill', playerId: dead.id, cause: 'storyteller' }); } }
     await checkSecrecy();
   }
 
@@ -416,6 +447,11 @@ console.log(`\n${results.length} games in ${((Date.now() - t0) / 1000).toFixed(1
 LAT.sort((a, b) => a - b);
 console.log('host action round-trip ms: median', LAT[LAT.length >> 1], '· p99', LAT[Math.floor(LAT.length * 0.99)], '· max', LAT.at(-1), `· ${LAT.length} actions`);
 console.log('winners:', JSON.stringify(wins), '· largest frame:', Math.max(...results.map((r) => r.maxFrame || 0)), 'bytes');
+if (AGENTS) {
+  const sum = (k) => results.reduce((t, r) => t + (r.agent?.[k] || 0), 0);
+  console.log(`agents: ${sum('nightSteps')} night choices · ${sum('claims')} table claims · days: ${sum('condemned')} condemned (${sum('mafiaCondemned')} of them Mafia), ${sum('nobody')} nobody`);
+}
+if (process.env.RESULTS) (await import('node:fs')).writeFileSync(process.env.RESULTS, JSON.stringify(results.map(({ g, n, mode, strategy, rounds, winner, problems, notes, agent, rules, ms }) => ({ g, n, mode, strategy, rounds, winner, problems, notes, agent, rules, ms })), null, 1));
 // Role coverage: every built-in role should have reached a player somewhere in the run.
 let uncovered = [];
 if (ONLY === null && !LADDER) {
