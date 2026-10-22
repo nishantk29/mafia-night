@@ -1,0 +1,66 @@
+/* Printable card guide. Self-contained: light paper, the app's own fonts and team colours for the card art. */
+@font-face{font-family:"Big Shoulders Display";font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/big-shoulders-display-var.woff2) format("woff2")}
+@font-face{font-family:"Alegreya Sans";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/alegreya-sans-400.woff2) format("woff2")}
+@font-face{font-family:"Alegreya Sans";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/alegreya-sans-700.woff2) format("woff2")}
+
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:#F4E9D3;color:#1B1410;font:16px/1.45 "Alegreya Sans",system-ui,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h1,h2,h3{font-family:"Big Shoulders Display","Alegreya Sans",sans-serif;text-transform:uppercase;letter-spacing:.03em;margin:0}
+a{color:#7A1F26}
+.bar{max-width:860px;margin:0 auto;padding:20px 16px 8px}
+.bar h1{font-size:2.2rem;margin:.2em 0}
+.back{display:inline-block;min-height:44px;line-height:44px}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:12px 0}
+.controls label{display:grid;gap:4px;font-weight:700}
+.controls select,.controls button{min-height:44px;font:inherit;padding:0 12px;border:1px solid #866D52;border-radius:6px;background:#fff;color:#1B1410}
+.controls button{background:#1B1410;color:#F4E9D3;font-weight:700;cursor:pointer}
+.fine{font-size:.9rem;color:#4A3A2C}
+
+.page{max-width:860px;margin:16px auto;padding:20px 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.guide h2{font-size:2rem}
+.guide h2 small{font:400 1rem "Alegreya Sans",sans-serif;text-transform:none;letter-spacing:0;color:#4A3A2C;margin-left:8px}
+.guide h3{font-size:1.15rem;margin:18px 0 6px;border-bottom:2px solid #1B1410}
+.key{width:100%;border-collapse:collapse;font-size:.95rem}
+.key th,.key td{text-align:left;padding:4px 8px;border-bottom:1px solid #C9B99C;vertical-align:top}
+.key .c{font-weight:700;white-space:nowrap;font-size:1.1rem}
+.key .red,.corner.red{color:#B3262E}
+.key .t-mafia td:nth-child(3){color:#7A1F26;font-weight:700}
+.script,.setup{padding-left:1.4em;margin:6px 0}
+.script .note{color:#4A3A2C;font-style:italic}
+.script .tag{font-weight:700;font-style:normal;text-transform:uppercase;font-size:.75rem;border:1px solid currentColor;border-radius:3px;padding:0 4px}
+.script .cards{font-weight:700;white-space:nowrap}
+.script li,.setup li{margin:3px 0;break-inside:avoid}
+.key tr{break-inside:avoid}
+
+/* Role cards: 63 x 88 mm, 3 x 3 per page */
+.sheet{display:grid;grid-template-columns:repeat(3,63mm);grid-auto-rows:88mm;width:189mm;max-width:none;padding:0;gap:0;justify-content:center}
+.pcard{position:relative;width:63mm;height:88mm;border:.2mm solid #1B1410;padding:3mm;display:flex;flex-direction:column;background:#F4E9D3;overflow:hidden;break-inside:avoid}
+.pcard .cardart{flex:1 1 0;min-height:0;aspect-ratio:auto;border-radius:1.5mm}
+.pcard-name{font:800 14pt "Big Shoulders Display",sans-serif;text-transform:uppercase;text-align:center;margin-top:1.5mm;line-height:1.1}
+.pcard-team{font-size:7pt;text-align:center;text-transform:uppercase;letter-spacing:.1em;color:#4A3A2C}
+.pcard p{margin:1mm 0 0;font-size:7.5pt;line-height:1.25;text-align:center}
+.corner{position:absolute;z-index:2;font:700 9pt "Alegreya Sans",sans-serif;background:rgba(244,233,211,.92);padding:0 1mm;border-radius:1mm}
+.corner.tl{top:3.8mm;left:3.8mm}.corner.br{bottom:3.8mm;right:3.8mm;display:none}
+
+/* Card art (same recipe as the app's styles.css, so art.js output renders the same here) */
+.ico{display:inline-block;width:1.25em;height:1.25em;fill:currentColor}
+.ico.emo-fb{width:auto;height:auto;font-style:normal;line-height:1}
+.cardart,.cardart.a-town{--c1:#2C4466;--c2:#16233A;--c3:#0C121D;--ray:rgba(141,182,232,.10);--ray2:rgba(141,182,232,.22);--ink:#D7E6FA;--glow:rgba(141,182,232,.55)}
+.cardart.a-mafia{--c1:#7A1F26;--c2:#33090D;--c3:#12040A;--ray:rgba(242,107,102,.10);--ray2:rgba(242,107,102,.22);--ink:#FFD0CE;--glow:rgba(242,107,102,.55)}
+.cardart.a-third{--c1:#523A94;--c2:#241448;--c3:#0E0820;--ray:rgba(185,150,240,.10);--ray2:rgba(185,150,240,.24);--ink:#E8DCFF;--glow:rgba(185,150,240,.55)}
+.cardart{container-type:size;position:relative;display:grid;place-items:center;overflow:hidden;min-height:30mm;background:radial-gradient(circle at 50% 42%, var(--c1), var(--c2) 62%, var(--c3))}
+.cardart .bgart{position:absolute;inset:0;width:100%;height:100%}
+.cardart .ico.big{position:relative;width:min(58cqw, 66cqh);height:min(58cqw, 66cqh);color:var(--ink);filter:drop-shadow(0 0 3px var(--glow))}
+.cardart .ico.big.emo-fb{width:auto;height:auto;font-size:min(40cqw, 48cqh)}
+.cardart .portrait{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+@page{margin:6mm}
+@media print{
+  body{background:#fff}
+  .noprint{display:none}
+  .page{margin:0;box-shadow:none;max-width:none;padding:0;break-after:page}
+  .guide{padding:0 4mm}
+  .page:last-child{break-after:auto}
+  .sheet{margin:0 auto}
+}

@@ -167,6 +167,7 @@ function dealSetup(c, local) {
   if (local) {
     return `<section class="block deal-setup">
       <p class="deal-fixed">${ui('cards')} You’ll deal a real deck of playing cards and run the game from this device.</p>
+      <p class="deal-switch muted"><a href="/print.html" target="_blank" rel="noopener">Printable card guide</a>: a card key, setup steps and a script to read with eyes closed.</p>
       <p class="deal-switch muted">Want everyone to get their role on their own phone? <button type="button" class="linkish" data-a="hostLive">Host a game with a room code instead</button></p>
       <div class="followup followup--top">
         <h3 class="followup-q" id="q-flow">How does each player find out their role?</h3>
