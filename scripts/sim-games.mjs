@@ -7,7 +7,10 @@
 //   unframed, unblocked investigator gets the honest answer;
 // - no phone holding a disguised role is ever sent that role's real name, id or description.
 // The oracles live in sim-lib.mjs and also run in-process in test/sim-oracles.test.js.
-// Usage: BASE=http://localhost:8787 GAMES=50 SEED=1 node scripts/sim-games.mjs   (ONLY=7 replays one game)
+// Usage: BASE=http://localhost:8787 GAMES=100 SEED=1 node scripts/sim-games.mjs
+//   SEED must be a positive whole number. ONLY=7 replays one game, but only with the same GAMES and SEED (the
+//   coverage planner spreads roles across the whole plan). The run exits 1 unless every role was dealt; set
+//   ALLOW_UNDEALT=1 for short runs where not all roles fit.
 import { ROLES, ROLE_BY_ID, factionOf, registerRoles } from '../public/js/roles.js';
 import { DEFAULT_RULES } from '../public/js/engine.js';
 import { CATALOGUE, rng, planCoverage, pickNightActions, livePreviews, nightProblems, disguiseLeaks } from './sim-lib.mjs';
@@ -18,6 +21,12 @@ const GAMES = Number(process.env.GAMES || 50);
 const ONLY = process.env.ONLY ? Number(process.env.ONLY) : null;
 const PARALLEL = Number(process.env.PARALLEL || 5);
 const SEED = Number(process.env.SEED || 1);
+// Custom role ids are built from SEED (see customRoles), and sanitizeRole only accepts 4-12 safe characters,
+// so a zero, negative or fractional seed would silently turn custom roles into Villagers.
+if (!Number.isInteger(SEED) || SEED <= 0) {
+  console.error(`SEED must be a positive whole number (got ${JSON.stringify(process.env.SEED)})`);
+  process.exit(2);
+}
 const MAX_ROUNDS = 25;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -396,5 +405,7 @@ if (ONLY === null) {
   console.log(`roles dealt: ${CATALOGUE.length - missing.length} of ${CATALOGUE.length}`);
   if (UNPLACED.length) console.log(`  ${UNPLACED.length} roles did not fit in ${GAMES} games; run more games to deal them all`);
   if (uncovered.length) console.log(`  ✗ planned but never dealt: ${uncovered.join(', ')}`);
+  // The bar is every role dealt. Roles that did not fit count as missing too, unless the run opts out.
+  if (UNPLACED.length && process.env.ALLOW_UNDEALT !== '1') uncovered = missing;
 }
 process.exit(failed.length || uncovered.length ? 1 : 0);
