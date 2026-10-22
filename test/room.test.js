@@ -736,14 +736,17 @@ describe('blind card flow', () => {
     assert.equal(room.phase, 'day');
   });
 
-  test('blind Executioner always gets a town target, even when identified first', () => {
+  test('blind Executioner is never handed an already-identified Mafia player as target', () => {
     for (let i = 0; i < 40; i++) {
       const room = blindGame(['mafia', 'mafia', 'executioner', 'villager', 'villager', 'villager']);
       H(room, { type: 'startNight' });
-      assert.ok(H(room, { type: 'identifyRole', roleId: 'executioner', playerIds: [pid(room, 'Player1')] }).ok);
+      // script order: the Mafia team is identified before the Executioner wakes
+      const order = nightScript(room).filter((s) => s.kind === 'identify').map((s) => s.roleId);
+      assert.ok(order.indexOf('mafia') < order.indexOf('executioner'));
       assert.ok(H(room, { type: 'identifyRole', roleId: 'mafia', playerIds: [pid(room, 'Player2'), pid(room, 'Player3')] }).ok);
+      assert.ok(H(room, { type: 'identifyRole', roleId: 'executioner', playerIds: [pid(room, 'Player1')] }).ok);
       const exe = P(room, 'Player1');
-      assert.ok(exe.target, 'target assigned once everyone is matched');
+      assert.ok(exe.target, 'target known when the Executioner wakes');
       assert.equal(room.players.find((q) => q.id === exe.target).roleId, 'villager');
     }
   });

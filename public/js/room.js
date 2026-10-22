@@ -212,10 +212,16 @@ export function reduce(room, actor, a) {
       if (ids.length !== slot.remaining) return err(`Pick exactly ${slot.remaining}.`);
       const picked = ids.map((id) => playerById(room, id));
       if (picked.some((p) => !p || p.roleId)) return err('One of those players is already matched.');
-      for (const p of picked) p.roleId = a.roleId;
+      for (const p of picked) {
+        p.roleId = a.roleId;
+        if (ROLE_BY_ID[a.roleId].needsTarget) {
+          // The storyteller tells the target at this wake-up, so pick now, but never from players
+          // already identified as non-town (the Mafia team is identified before this step).
+          const pool = room.players.filter((q) => q.id !== p.id && !picked.includes(q) && (!q.roleId || factionOf(q.roleId) === 'town'));
+          p.target = pool.length ? pool[randInt(pool.length)].id : null;
+        }
+      }
       finalizeBlind(room);
-      // Targets need every faction known, or an Executioner could be handed a Mafia target.
-      if (room.players.every((q) => q.roleId)) assignTargets(room);
       log(room, `${ROLE_BY_ID[a.roleId].name} identified.`);
       return { ok: true };
     }
