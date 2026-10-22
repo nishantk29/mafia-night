@@ -23,6 +23,11 @@ describe('role-gaps', () => {
     assert.ok(!JSON.stringify(names).includes('SECRET'));
   });
 
+  test('a name with a JS-only escape is skipped, not the whole bundle', () => {
+    const bundle = '[{name:"Glass Cannon",description:"x"},{name:"Fool\\\'s Errand",description:"x"},{name:"\\x41gent",description:"x"},{name:"Mime",description:"x"}]';
+    assert.deepEqual(namesFromMafiaGG(bundle), ['Glass Cannon', 'Mime']);
+  });
+
   test('reads role headings (followed by an emoji) from a page, and nothing else', () => {
     const html = '<h2>How to play</h2><p>SECRET</p><h3>Glass Cannon</h3><span class="x" aria-hidden="true">💥</span><p>SECRET TEXT</p>'
       + '<h4>Tom &amp; Jerry</h4><span aria-hidden="true">🐭</span>';
@@ -135,6 +140,27 @@ describe('role-gaps picklist', () => {
         '', '## Site B', '- [ ] Lantern Keeper',
         '', '## Probably jokes or site-specific', '- [ ] Discord Mod (Site A)', '',
       ].join('\n'));
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  test('an option that needs a file name refuses another option in its place', () => {
+    for (const opt of ['--picklist', '--save', '--file']) {
+      let err;
+      try { execFileSync(process.execPath, [SCRIPT, opt, '--offline'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e) { err = e; }
+      assert.ok(err, `${opt} --offline should fail`);
+      assert.equal(err.status, 2);
+      assert.match(err.stderr, new RegExp(`${opt} needs a file name`));
+    }
+  });
+
+  test('--save does not overwrite a saved list when nothing was fetched', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'role-gaps-'));
+    try {
+      const list = join(dir, 'names.txt'); const saved = join(dir, 'saved.txt');
+      writeFileSync(list, 'Glass Cannon\n'); writeFileSync(saved, '# source: mafia.gg\nKeep Me\n');
+      const r = execFileSync(process.execPath, [SCRIPT, '--offline', '--file', list, '--save', saved], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      assert.match(r, /Glass Cannon/);
+      assert.equal(readFileSync(saved, 'utf8'), '# source: mafia.gg\nKeep Me\n');
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

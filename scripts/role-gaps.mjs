@@ -40,7 +40,9 @@ const isRoleName = (n) => n && n.length <= 40 && !/^\(.*\)$/.test(n);
 // mafia.gg is a single-page app; its role list ships in the app bundle as objects that start
 // {name:"...",description:...}. Only the name is taken.
 export function namesFromMafiaGG(bundle) {
-  return [...String(bundle).matchAll(/\{name:"((?:[^"\\]|\\.){1,60})",description:/g)].map((m) => JSON.parse(`"${m[1]}"`)).filter(isRoleName);
+  // A name with a JS-only escape (\', \x41) is not valid JSON; skip just that name rather than losing the source.
+  const unquote = (raw) => { try { return JSON.parse(`"${raw}"`); } catch { return null; } };
+  return [...String(bundle).matchAll(/\{name:"((?:[^"\\]|\\.){1,60})",description:/g)].map((m) => unquote(m[1])).filter(isRoleName);
 }
 
 // mafiarole.com shows each role as a heading followed by the role's emoji. Only the heading text is taken.
@@ -133,7 +135,7 @@ export async function fetchSource({ source, url, extract }) {
 async function main(argv) {
   const files = []; let save = null; let picklist = null; let offline = false;
   for (let i = 0; i < argv.length; i++) {
-    if (['--file', '--save', '--picklist'].includes(argv[i]) && i + 1 >= argv.length) { console.error(`${argv[i]} needs a file name.`); return 2; }
+    if (['--file', '--save', '--picklist'].includes(argv[i]) && (i + 1 >= argv.length || argv[i + 1].startsWith('--'))) { console.error(`${argv[i]} needs a file name.`); return 2; }
     if (argv[i] === '--file') files.push(argv[++i]);
     else if (argv[i] === '--save') save = argv[++i];
     else if (argv[i] === '--picklist') picklist = argv[++i];
@@ -144,8 +146,10 @@ async function main(argv) {
   if (!offline) for (const s of SOURCES) { const g = await fetchSource(s); if (g) groups.push(g); }
   for (const f of files) groups.push(...parseList(readFileSync(f, 'utf8'), f));
   if (!groups.length) { console.error('No role names to compare. Run with network access, or pass a list with --file.'); return 2; }
-  if (save) {
-    const fetched = groups.filter((g) => SOURCES.some((s) => s.source === g.source));
+  const fetched = groups.filter((g) => SOURCES.some((s) => s.source === g.source));
+  // Nothing was fetched (offline, or every source failed): don't overwrite a saved list with an empty one.
+  if (save && !fetched.length) console.error(`Nothing was fetched, so ${save} was left as it is.`);
+  else if (save) {
     writeFileSync(save, fetched.map((g) => `# source: ${g.source}\n${g.names.join('\n')}\n`).join('\n'));
     console.error(`Saved ${fetched.reduce((t, g) => t + g.names.length, 0)} names to ${save}.`);
   }
