@@ -215,7 +215,9 @@ export function reduce(room, actor, a) {
       for (const p of picked) {
         p.roleId = a.roleId;
         if (ROLE_BY_ID[a.roleId].needsTarget) {
-          const pool = room.players.filter((q) => q.id !== p.id);
+          // The storyteller tells the target at this wake-up, so pick now, but never from players
+          // already identified as non-town (the Mafia team is identified before this step).
+          const pool = room.players.filter((q) => q.id !== p.id && !picked.includes(q) && (!q.roleId || factionOf(q.roleId) === 'town'));
           p.target = pool.length ? pool[randInt(pool.length)].id : null;
         }
       }
