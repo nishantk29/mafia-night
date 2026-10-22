@@ -1237,3 +1237,16 @@ New `S.ui` fields (state.js): `sideTab:'table'`, `dealMore:false`, `roleTeam:'al
 - `npm test`: 232 pass. PWA: Lighthouse installable; `#/local` works offline after one load.
 - Screenshots: Playwright MCP needs Chrome (`npx playwright install chrome`); the Claude browser pane works with
   `resize_window` as a fallback.
+
+---
+
+## 18. Transit-style look, motion and Liquid Glass (supersedes the "no new radii/motion" rule in the intro)
+
+The design freeze is lifted; the pre-redesign look is tagged `pre-transit-redesign`.
+
+- **Look**: flat saturated blocks from the existing palette (phase header: brass by day, town blue at night; the win block takes the winner's team colour), 24 to 28px cards, pill buttons and picks, heavy type, big numbers (vote counts, timer). Springy presses use `--spring`.
+- **Motion** (`public/js/fx.js`, `#fx` layer): role card deal pop and flip, night falling (moon, stars), day breaking (sun burst), pop-out reveal with a stamp for a vote or a kill, victory card, number tick. Only `transform` and `opacity` animate. `will-change` exists only inside animating classes. At most 18 particles per burst (8 on low-end). No idle loops: tilt comes only from pointer or `deviceorientation`, throttled with rAF. Every effect is gone by 1.2s except the victory card. Effects never take input.
+- **Switches**: `html[data-fx="off"]` (host appbar toggle, saved per device, or `prefers-reduced-motion`) skips all motion. `html[data-lite="1"]` (`hardwareConcurrency <= 4` or `deviceMemory <= 4`) uses flat 2D pops, fewer particles and solid backgrounds.
+- **Liquid Glass** (`.glass`, `.sheet`, the Tools sheet, the main action button, victory buttons): blur(18px) saturate(1.5), thin light border, tinted by `--tint`, specular sheen that slides with the tilt. Blur is never animated. Not used on lists; `@supports` and low-end fall back to a solid 96% background.
+- **Secrets**: the pop-out shows a role only if the viewer already sees it (`revealOnDeath`, `roleHidden`). The game-over event carries the team, the reason and, on a player's own phone only, `won`.
+- **Game over**: the room sends `{type:'gameOver'}` to every socket right after the final view (`messagesFor` in `room.js`). The card has Play again (`playAgain`: back to the lobby with the same players) and Close, which reveals the final roles.

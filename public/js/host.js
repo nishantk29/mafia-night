@@ -10,6 +10,7 @@ import { previewNight, setupWarnings, balanceOf, DEFAULT_RULES } from './engine.
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { toolsButton, toolsPanel } from './tools.js';
+import { animOn } from './fx.js';
 
 const pname = (v, id) => v.players.find((p) => p.id === id)?.name || '?';
 const rname = (id) => ROLE_BY_ID[id]?.name || id;
@@ -34,6 +35,7 @@ export function hostScreen(v, local) {
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
     <span class="phase-badge">${ui(picon)} ${plabel}</span>${v.phase === 'lobby' ? '' : toolsButton()}
+    <button type="button" class="icon-btn anim-toggle" data-a="toggleAnim" role="switch" aria-checked="${animOn()}" aria-label="Animations" title="Animations ${animOn() ? 'on' : 'off'}">${ui('sparkle')}</button>
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
     <section class="pane pane-game" aria-label="Game">${body}
@@ -78,7 +80,7 @@ function lobby(v, local) {
     ? `<ul class="people">${v.players.map((p) => `<li class="person ${p.offline || p.connected ? '' : 'is-offline'}"><span class="person-name">${esc(p.name)}</span>${status(p)}<button type="button" class="icon-btn" data-a="rmPlayer" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">${ui('x')}</button></li>`).join('')}</ul>`
     : empty('user', local ? 'Nobody’s here yet. Add everyone’s names below.' : 'Nobody’s here yet. Share the code, or add names for people without phones.');
   const players = `<section class="block players">
-    <header class="block-head"><h2 class="block-title">Players</h2>${n ? `<span class="tally">${plural(n, 'player')}</span>` : ''}</header>
+    <header class="block-head"><h2 class="block-title">Players</h2>${n ? `<span class="tally" data-tick="players">${plural(n, 'player')}</span>` : ''}</header>
     ${people}
     <label class="field"><span>${local ? 'Add players (one per line, or separated by commas)' : 'Add players without phones (one per line, or separated by commas)'}</span>
       <textarea data-i="names" rows="2" placeholder="Sam, Priya, Jo">${esc(S.ui.draft.names || '')}</textarea></label>
@@ -468,7 +470,7 @@ function over(v) {
       ${why ? `<span class="meta">${ui('trophy')} ${/ team wins$/.test(why.reason) ? 'Won' : esc(why.reason)}</span>` : ''}</div>`; }).join('');
   return {
     body: `<section class="win ${ink}"><span class="win-mark">${ui('crown')}</span><h2 class="phase-title">${side}</h2><p class="muted">${esc(w?.reason || '')}</p></section>
-      <section class="block"><h2 class="block-title">Final roles</h2>${rows}</section>`,
+      <section class="block${S.ui.anim === 'roles' ? ' reveal-rows' : ''}"><h2 class="block-title">Final roles</h2>${rows}</section>`,
     dock: `<button type="button" class="btn big" data-a="newGame">New game with the same players</button>`,
   };
 }
