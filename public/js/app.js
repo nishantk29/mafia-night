@@ -86,6 +86,7 @@ function screen() {
 
 function home() {
   const hostCodes = Object.keys(localStorage).filter((k) => k.startsWith('mafia.host.')).map((k) => k.slice(11));
+  const playCodes = Object.keys(localStorage).filter((k) => k.startsWith('mafia.player.')).map((k) => k.slice(13));
   return `<main class="wrap home">
     <div class="home-hero">
       <div class="card-fan" aria-hidden="true">${`<span class="rcard-back"><span class="rcard-back-mark">${ui('brand')}</span></span>`.repeat(3)}</div>
@@ -99,9 +100,10 @@ function home() {
         ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
       <section class="path path-join"><h2 class="path-title">Join a game</h2>
         <div class="join-row"><label class="field"><span>Room code</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="ABCDEF" value="${esc(S.ui.draft.joinCode || '')}"></label>
-        <button type="button" class="btn ghost" data-a="goJoin">Join</button></div></section>
+        <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
+        ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
-        <p class="muted">Use a deck of playing cards and this one screen.</p></section>
+        <p class="muted">Use a deck of playing cards and this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
       <p class="home-faq"><a href="#/faq">How it works and FAQ</a></p>
     </div>
     <p class="credits">Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT).</p>
@@ -193,8 +195,9 @@ async function route() {
   } else if (kind === 'faq') S.mode = 'faq';
   else {
     S.mode = 'home';
-    for (const k of Object.keys(localStorage).filter((x) => x.startsWith('mafia.host.'))) {
-      const code = k.slice(11);
+    // Drop resume links for rooms that have closed.
+    for (const k of Object.keys(localStorage).filter((x) => x.startsWith('mafia.host.') || x.startsWith('mafia.player.'))) {
+      const code = k.slice(k.lastIndexOf('.') + 1);
       fetch(`/api/room/${code}`).then((r) => { if (!r.ok) { store.del(k); if (S.mode === 'home') S.render(); } }).catch(() => {});
     }
   }

@@ -71,7 +71,7 @@ export function faqScreen() {
   const groups = GROUPS.map(([title, qs]) => `<section class="faq-group"><h2 class="block-title">${title}</h2>
     ${qs.map(([q, a]) => `<details class="faq-q"><summary>${q}${ui('caret-down')}</summary><div class="faq-a">${a}</div></details>`).join('')}</section>`).join('');
   return `<header class="appbar">
-    <a class="appbar-mark" href="#/" aria-label="Mafia Night home">${ui('brand')}</a>
+    <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">How it works</div>
   </header>
   <main class="wrap faq">

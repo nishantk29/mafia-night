@@ -123,8 +123,10 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   for (const p of ps) { for (const f of p.frames) assert.ok(!f.includes('deckKey":[{'), 'claim flow must not publish the key'); assert.equal(p.last().deckKey, null); }
   ok('claim flow keeps the card key secret');
   const map = host.last().deck.map;
-  ps[0].send({ type: 'claimCard', card: 'RJ' });
-  await until(() => ps[0].errors.length || map.some((m) => m.card === 'RJ'), 'wrong card');
+  // The deck is random, so pick a wrong card that is certainly not dealt (6 candidates, 5 cards in play).
+  const wrong = ['RJ', 'BJ', 'AS', 'KH', '2C', '3D'].find((c) => !map.some((m) => m.card === c));
+  ps[0].send({ type: 'claimCard', card: wrong });
+  await until(() => ps[0].errors.includes('That card is not in this game.'), 'wrong card');
   ps[0].send({ type: 'claimCard', card: map[0].card }); await until(() => ps[0].last().me.role, 'claim');
   ps[1].send({ type: 'claimCard', card: map[0].card }); await until(() => ps[1].errors.includes('Someone already has that card.'), 'dup claim');
   ok('a card can be claimed once; duplicates refused');

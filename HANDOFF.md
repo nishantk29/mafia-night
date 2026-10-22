@@ -87,6 +87,8 @@ Read this before changing anything. Visual design (tokens, layouts, components) 
   - Coin and dice, and a leave-game link.
 - **Tools (storyteller):** talk timer, vote counter with the majority line, random player, coin, dice.
 - **Ways out:** start over (local mode), switch to phones, leave a game. There is also a FAQ page at `#/faq`.
+  - The logo on every screen is labelled "Home". Going home keeps your seat or room.
+  - The home page lists "Resume room" for rooms this device hosts and "Back to your seat in room" for rooms it joined (keys `mafia.host.*` / `mafia.player.*`). Links to closed rooms are dropped.
 
 ## How to verify (do all of this before deploying)
 
@@ -105,13 +107,18 @@ Read this before changing anything. Visual design (tokens, layouts, components) 
 
 ## Deploy
 
-- Run `npm run deploy`. The Cloudflare token is in 1Password Private: "Cloudflare - Agents API token + R2".
-- Read it with `op item get "<name>" --format json`. `op read` breaks on the '+' in the name.
+- **Preferred: GitHub Actions.** Run `gh workflow run deploy.yml --repo nishantk29/mafia-night`, or use the Actions tab → Deploy → Run workflow.
+  - It runs `npm test`, then `npm run deploy`, then the live smoke test.
+  - It reads the repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, so no 1Password is needed.
+  - It runs only when started by hand, never on push. Only Nishant or his own Claude sessions start it; Grokbot doesn't deploy.
+  - Watch it with `gh run watch`.
+- **Fallback from the Mac:** run `npm run deploy` yourself. The Cloudflare token is in 1Password, vault Dev-Services: "Cloudflare API token and R2" (see README for the passwordless deploy command).
+- Read it with `op item get "<name>" --vault Dev-Services --fields credential --reveal` (and `--fields "Account ID"`). The old Private item had a '+' in its name that broke `op read`; the renamed one doesn't.
 - Pass it as an env var. Never print it or save it anywhere.
 - If op says "authorization timeout", Nishant needs to unlock 1Password.
 - Commit with a clear message and push to `main`.
 
-## Done on 2026-10-21 (branch `claude/continue-sim-upgrades`, not merged, not deployed)
+## Done on 2026-10-21 (branch `grokbot/sim-upgrades`, PR #1; not merged, not deployed)
 
 - **Simulator upgrades:** all five items. The pure parts are in `scripts/sim-lib.mjs`, shared with `test/sim-oracles.test.js`. Results:
   - 100 of 100 clean on seeds 1, 2 and 3.
@@ -136,7 +143,8 @@ Read this before changing anything. Visual design (tokens, layouts, components) 
 - **Full playability review** of every phase on phone and desktop, in both themes. This includes a browser check that the console's live "Tell them now" results still render: `roomFromView` moved from host.js to room.js.
 - **Chat:** Nishant hasn't decided. The recommendation was no general chat for in-person play (it invites cheating), and maybe dead-player chat only. Ask him first.
 - **Old questions for Nishant:** re-enable DNSSEC at Spaceship? Delete the unused pending Cloudflare zone? Ask; don't do either alone.
-- **Deploy:** everything after commit 1d10a07 is undeployed. That includes 61c251f and this branch's commits, which also still need merging to `main`. Nishant wants one deploy at the end.
+- **Local-mode privacy wording** (2026-10-21): local mode now says "Private to this device" in the appbar, with a note in the lobby. Check whether it's deployed by looking for that text on the live site.
+- **Deploy:** production was last deployed from `main` at c585c3b (GitHub Actions run 39593454056, 2026-10-21). Everything from PR #1 (`grokbot/sim-upgrades`: simulator upgrades, engine fixes, role-gaps helper) is undeployed until it is merged to `main` and the Deploy workflow is run. Nishant wants one deploy at the end.
 
 ## Where memory lives
 

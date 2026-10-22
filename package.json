@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "test": "node --test test/",
+    "test": "node --test \"test/**/*.test.js\"",
     "deploy": "node -e \"const f=require('fs'),s='public/sw.js',q=String.fromCharCode(39);f.writeFileSync(s,f.readFileSync(s,'utf8').replace(/const VERSION = '[^']*'/,'const VERSION = '+q+'mafia-'+Date.now()+q))\" && wrangler deploy",
     "assets": "node scripts/build-assets.mjs",
     "art:brief": "node scripts/art-brief.mjs",
