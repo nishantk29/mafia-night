@@ -6,11 +6,12 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { previewNight, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES } from './engine.js';
+import { previewNight, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES, cardInfo } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { toolsButton, toolsPanel } from './tools.js';
 import { animOn } from './fx.js';
+import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
 
 const pname = (v, id) => v.players.find((p) => p.id === id)?.name || '?';
 const rname = (id) => ROLE_BY_ID[id]?.name || id;
@@ -35,7 +36,7 @@ export function hostScreen(v, local) {
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
     <span class="phase-badge">${ui(picon)} ${plabel}</span>${v.phase === 'lobby' ? '' : toolsButton()}
-    <button type="button" class="icon-btn anim-toggle" data-a="toggleAnim" role="switch" aria-checked="${animOn()}" aria-label="Animations" title="Animations ${animOn() ? 'on' : 'off'}">${ui('sparkle')}</button>
+    <button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
     <section class="pane pane-game" aria-label="Game">${body}
@@ -51,7 +52,19 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}`;
+}
+
+// Settings sheet: one labelled switch for now. Same storage as before (fx.js setAnim).
+function settingsSheet() {
+  const on = animOn();
+  return `<div class="sheet-bg" data-a="closeSettings"><div class="sheet is-entering" role="dialog" aria-modal="true" aria-labelledby="settings-title" data-stop>
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><h2 class="sheet-title" id="settings-title">Settings</h2><button type="button" class="icon-btn x-btn" data-a="closeSettings" aria-label="Close">${ui('x')}</button></div>
+    <div class="rules"><button type="button" class="rule" role="switch" aria-checked="${on}" data-a="toggleAnim">
+      <span class="rule-text"><span class="rule-title">Animations</span><span class="rule-desc">Night and day scenes, card flips and the win screen. Off keeps everything still.</span></span>
+      <span class="switch" aria-hidden="true"><i></i></span></button></div>
+  </div></div>`;
 }
 
 // ---------------- lobby ----------------
@@ -133,14 +146,58 @@ function lobby(v, local) {
     <p class="muted search-empty" hidden>No roles match that search.</p>
   </section>`;
 
+  const simple = S.ui.setupMode === 'simple';
+  const fitMsg = simple && c.mode === 'cards' ? deckFitText(c.roles) : '';
   const short = min - n;
-  const blocked = have === n && setupWarnings(c.roles, n).some((w) => w.level === 'error');
-  const label = n < min ? `Add ${plural(short, 'more player')}` : have < n ? `Pick ${plural(n - have, 'more role')}` : have > n ? `Remove ${plural(have - n, 'role')}` : blocked ? 'Fix the setup above first' : 'Deal roles';
+  const blocked = have === n && (setupWarnings(c.roles, n).some((w) => w.level === 'error') || !!fitMsg);
+  const label = n < min ? `Add ${plural(short, 'more player')}` : have < n ? `Pick ${plural(n - have, 'more role')}` : have > n ? `Remove ${plural(have - n, 'role')}` : blocked ? (fitMsg ? 'Lower a count first' : 'Fix the setup above first') : 'Deal roles';
   const ready = n >= min && have === n && !blocked;
   return {
-    body: `${joinCode}${players}${dealSetup(c, local)}${gameStyle(c, local)}${roles}`,
+    body: simple
+      ? `${joinCode}${players}${setupChoice()}${simplePanel(v, local, need, fitMsg)}`
+      : `${joinCode}${players}${setupChoice()}${dealSetup(c, local)}${gameStyle(c, local)}${roles}`,
     dock: btn('big', 'deal', label, { on: ready }),
   };
+}
+
+// Simple or Complex, the first question of setup.
+function setupChoice() {
+  const cur = S.ui.setupMode;
+  const opt = (v, l, d) => `<button type="button" class="seg-btn" role="radio" aria-checked="${cur === v}" tabindex="${cur === v ? 0 : -1}" data-a="setupMode" data-v="${v}"><b>${l}</b><small>${d}</small></button>`;
+  return `<section class="block setup-mode"><h2 class="block-title" id="q-setup">Setup</h2>
+    <div class="seg" role="radiogroup" aria-labelledby="q-setup">${opt('simple', 'Simple', 'Mafia, Doctor, Cop, Villager')}${opt('complex', 'Complex', 'Every role, full control')}</div></section>`;
+}
+
+// Simple setup: four roles with suggested counts, plus the optional playing-card key.
+function simplePanel(v, local, need, fitMsg) {
+  const c = v.config;
+  const counts = countsOf(c.roles);
+  const sug = simpleCounts(need);
+  const have = c.roles.length;
+  const tallyState = have === need ? 'ok' : have < need ? 'short' : 'over';
+  const rows = SIMPLE_ROLES.map((r) => `<li class="deck-item">${roleChip(ROLE_BY_ID[r.id])}<span class="stepper">
+      <button type="button" class="icon-btn" data-a="simpleStep" data-id="${r.id}" data-v="-1" aria-label="One fewer ${r.name}">${ui('minus')}</button><b class="stepper-n">${counts[r.id]}</b>
+      <button type="button" class="icon-btn" data-a="simpleStep" data-id="${r.id}" data-v="1" aria-label="One more ${r.name}">${ui('plus')}</button></span></li>`).join('');
+  const cards = c.mode === 'cards';
+  const key = cards && !fitMsg && have ? `<ul class="card-key">${simpleCardKey(c.roles).map((k) => `<li><b>${k.name}</b> ${k.cards.map((id) => cardInfo(id).label).join(' ')}</li>`).join('')}</ul>` : '';
+  const flow = cards ? `<div class="followup"><h3 class="followup-q" id="q-flow">How does each player find out their role?</h3>${choices('q-flow', 'cardFlow', c.cardFlow, [
+    { v: 'blind', icon: 'eye', rec: true, title: 'They check the card key', desc: 'Each player finds their card on the key. You learn who’s who on night 1.' },
+    local ? { v: 'claim', icon: 'pencil', title: 'You enter each player’s card', desc: 'Players show you their card in private and you record it.' }
+      : { v: 'claim', icon: 'phone', title: 'They enter their card on their phone', desc: 'Each player taps their card on their own phone. You see every role right away.' },
+  ])}</div>` : '';
+  const toggle = local ? '' : `<button type="button" class="rule" role="switch" aria-checked="${cards}" data-a="simpleCards">
+      <span class="rule-text"><span class="rule-title">Use playing cards</span><span class="rule-desc">Deal from a normal deck. The app shows which card is which role.</span></span>
+      <span class="switch" aria-hidden="true"><i></i></span></button>`;
+  return `<section class="block roles simple-roles">
+    <header class="block-head"><h2 class="block-title">Roles</h2>
+      <span class="tally" data-state="${tallyState}">${ui(tallyState === 'ok' ? 'check' : 'warning')} ${have} of ${need} roles</span></header>
+    <div class="btn-row"><button type="button" class="btn ${have ? 'ghost' : ''}" data-a="simpleSuggest">${ui('sparkle')} Suggest for ${need} players</button></div>
+    <p class="muted">Suggested: ${SIMPLE_ROLES.map((r) => `${sug[r.id]} ${r.name}`).join(', ')}.</p>
+    <ul class="deck-list">${rows}</ul>
+    ${advice(c.roles, v.players.length)}
+    <div class="rules">${toggle}</div>
+    ${fitMsg ? `<p class="note is-warn">${ui('warning')} ${esc(fitMsg)}</p>` : ''}${key}${flow}
+  </section>`;
 }
 
 // "How do players get their roles?" A guided choice (DESIGN.md section 9).

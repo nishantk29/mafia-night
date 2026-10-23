@@ -55,6 +55,7 @@ const KEYS = {
   crosshair: ['ph', 'crosshair-bold'],
   search: ['ph', 'magnifying-glass-bold'],
   sparkle: ['ph', 'sparkle-bold'],
+  gear: ['ph', 'gear-bold'],
   wolf: ['game-icons', 'wolf-head'],
   fedora: ['game-icons', 'fedora'],
   play: ['ph', 'play-bold'],
