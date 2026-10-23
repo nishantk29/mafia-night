@@ -261,7 +261,8 @@ describe('phase machine', () => {
   });
   test('revive, kill, tags, notes, legend validation', () => {
     const room = dealt(['mafia', 'doctor', 'cop', 'villager', 'villager']);
-    const p = room.players[0];
+    // A Villager, not players[0]: if the deal made players[0] the Mafia, the kill ended the game and revive was refused (#21).
+    const p = room.players.find((x) => x.roleId === 'villager');
     room.phase = 'day';
     H(room, { type: 'kill', playerId: p.id, cause: 'host' });
     assert.equal(p.alive, false);
