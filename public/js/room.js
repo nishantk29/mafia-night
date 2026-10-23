@@ -264,8 +264,11 @@ export function reduce(room, actor, a) {
     }
     case 'revive': {
       const p = playerById(room, a.playerId); if (!p) return err('Bad player.');
-      p.alive = true; p.deathCause = null; p.roleHidden = false;
-      if (room.phase === 'over') { room.phase = 'day'; room.winner = null; }
+      if (!['day', 'night'].includes(room.phase)) return err('The game is not in play.');
+      if (p.alive) return err('Already alive.');
+      p.alive = true; p.deathCause = null; p.roleHidden = false; p.deathDay = null; p.deathNight = null;
+      room.pending = room.pending.filter((x) => x.playerId !== p.id); // no dead-player prompt for someone back in play
+      applyWinChecks(room);
       return { ok: true };
     }
     case 'useDay': {
