@@ -5,7 +5,7 @@ import {
   setupWarnings, DEFAULT_RULES, rulesOf,
 } from './engine.js';
 import { THEMES } from './theme.js';
-import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole } from './roles.js';
+import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
 import { roleGuide } from './role_guide.js';
 
 export const DOT_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white'];
@@ -48,6 +48,8 @@ function resetDeal(room) {
 // actor: { host: true } | { playerId } | { anon: true }
 export function reduce(room, actor, a) {
   registerRoles(room.config.customRoles);
+  migrateRoleIds(room);
+  if (a && typeof a.roleId === 'string') a = { ...a, roleId: resolveRoleId(a.roleId) };
   const host = !!actor.host;
   const err = (e) => ({ error: e });
   const t = a.type;
@@ -122,7 +124,7 @@ export function reduce(room, actor, a) {
       if (a.mode && ['app', 'cards'].includes(a.mode)) c.mode = a.mode;
       if (a.deckStyle && ['fixed', 'random'].includes(a.deckStyle)) c.deckStyle = a.deckStyle;
       if (a.cardFlow && ['blind', 'claim'].includes(a.cardFlow)) c.cardFlow = a.cardFlow;
-      if (Array.isArray(a.roles)) c.roles = a.roles.filter((r) => ROLE_BY_ID[r]).slice(0, MAX_PLAYERS);
+      if (Array.isArray(a.roles)) c.roles = a.roles.map(resolveRoleId).filter((r) => ROLE_BY_ID[r]).slice(0, MAX_PLAYERS);
       if (typeof a.sharedBoard === 'boolean') c.sharedBoard = a.sharedBoard;
       if (a.theme && THEMES[a.theme]) c.theme = a.theme;
       if (a.rules && typeof a.rules === 'object') {
@@ -186,8 +188,8 @@ export function reduce(room, actor, a) {
     }
     case 'setRole': { // manual correction by the host
       const p = playerById(room, a.playerId);
-      if (!p || !ROLE_BY_ID[a.roleId]) return err('Bad role.');
-      p.roleId = a.roleId; return { ok: true };
+      if (!p || !ROLE_BY_ID[resolveRoleId(a.roleId)]) return err('Bad role.');
+      p.roleId = resolveRoleId(a.roleId); return { ok: true };
     }
     case 'startNight': {
       if (!['dealt', 'day'].includes(room.phase)) return err('Cannot start a night now.');
@@ -348,7 +350,17 @@ export function viewForHost(room, connected = new Set()) {
 
 // Rebuilds enough of a room from the host's view to dry-run the night (live investigator results).
 // Shared by the storyteller console and the simulator, so both preview exactly the same way.
+// Old ids (see ROLE_ALIASES) in a stored room or host view are rewritten to the canonical role, in place.
+export function migrateRoleIds(room) {
+  const c = room?.config;
+  if (c?.roles) c.roles = c.roles.map(resolveRoleId);
+  for (const p of room?.players || []) { if (p.roleId) p.roleId = resolveRoleId(p.roleId); if (p.convertedFrom) p.convertedFrom = resolveRoleId(p.convertedFrom); }
+  if (room?.deck?.map) for (const m of room.deck.map) m.roleId = resolveRoleId(m.roleId);
+  return room;
+}
+
 export function roomFromView(v) {
+  migrateRoleIds(v);
   return {
     code: v.code, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, winner: null,
     players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },

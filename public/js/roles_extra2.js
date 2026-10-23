@@ -62,8 +62,6 @@ export function buildExtra2(R, A) {
     R('baker', 'Baker', '🥖', 'town', 'Each night you bake two loaves for players of your choice. If every Baker dies, the town starves.',
       { day: 'Baker hands out two loaves. If no Baker is alive, famine: players die over three days, and each loaf buys half a day.',
         onDeath: 'A Baker has died. If no Baker remains alive, announce a famine; the Storyteller kills the unfed by hand. Dismiss (pick nobody).' }),
-    R('civilian', 'Civilian', '🙂', 'town', 'An ordinary citizen. The Mafia win once more than half of the Civilians are dead.',
-      { onDeath: 'A Civilian has died. If more than half of all Civilians are now dead, the Mafia win; end the game by hand. Otherwise dismiss (pick nobody).' }),
     R('gallis', 'Gallis', '🪝', 'town', 'You think you are a plain Villager, but a single vote is enough to condemn you.',
       { seesAs: 'villager', day: 'Gallis is condemned by just ONE vote against them, never by a majority.' }),
     R('loudmouth', 'Loudmouth', '🗣️', 'town', 'You think you are a Villager. If anyone visits you at night, the Storyteller announces every visitor by name.',

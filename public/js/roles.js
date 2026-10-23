@@ -134,8 +134,54 @@ export const ROLES = [
 ROLES.push(...buildExtra(R, A));
 ROLES.push(...buildExtra2(R, A));
 
+// Retired ids that were exact twins of another role. Old setups, saved rooms and links still load.
+export const ROLE_ALIASES = { civilian: 'villager' };
+export const resolveRoleId = (id) => (typeof id === 'string' && Object.hasOwn(ROLE_ALIASES, id) ? ROLE_ALIASES[id] : id);
+
+// Near-duplicates share one picker entry. Every variant stays its own role (id, mechanics, night order, cues);
+// `group` is the shared key and `variant` an optional label for the picker.
+export const ROLE_GROUPS = [
+  { id: 'grandma', name: 'Grandma', ids: ['grandma', 'granny'], labels: { granny: 'Grandma, shoots visitors' } },
+  { id: 'bodyguard', name: 'Bodyguard', ids: ['bodyguard', 'muscle', 'mercenary'] },
+  { id: 'security_guard', name: 'Security Guard', ids: ['security_guard', 'bouncer', 'doorman', 'smuggler'] },
+  { id: 'jailer', name: 'Jailer', ids: ['jailer', 'kidnapper'] },
+  { id: 'drunk', name: 'Drunk', ids: ['drunk', 'hooker', 'collaborator'] },
+  { id: 'veteran', name: 'Veteran', ids: ['veteran', 'sentinel', 'prepper'] },
+  { id: 'parity_cop', name: 'Parity Cop', ids: ['parity_cop', 'bookkeeper', 'oracle'] },
+  { id: 'tracker', name: 'Tracker', ids: ['tracker', 'shadow'] },
+  { id: 'lookout', name: 'Lookout', ids: ['lookout', 'spy'] },
+  { id: 'hangman', name: 'Hangman', ids: ['hangman', 'defense_attorney', 'mob_lawyer'] },
+  { id: 'jester', name: 'Jester', ids: ['jester', 'patsy', 'poltergeist', 'zealot'] },
+  { id: 'executioner', name: 'Executioner', ids: ['executioner', 'rival', 'stalker', 'vendetta'] },
+  { id: 'survivor', name: 'Survivor', ids: ['survivor', 'hermit', 'opportunist', 'profiteer', 'vulture'] },
+  // Not exact twins (Traitor believes they are a Villager; Whisperer is Mafia, Telepath is Town): grouped, not merged.
+  { id: 'traitor', name: 'Traitor', ids: ['traitor', 'fifth_columnist'] },
+  { id: 'telepath', name: 'Telepath', ids: ['telepath', 'whisperer'] },
+];
+export const GROUP_BY_ID = Object.fromEntries(ROLE_GROUPS.map((g) => [g.id, g]));
+for (const g of ROLE_GROUPS) for (const id of g.ids) {
+  const r = ROLES.find((x) => x.id === id);
+  if (!r) throw new Error(`role group ${g.id}: unknown role ${id}`);
+  r.group = g.id;
+  if (g.labels?.[id]) r.variant = g.labels[id];
+}
+
 export const ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
-export const roleOf = (id) => ROLE_BY_ID[id];
+// Alias ids resolve to the canonical role in every lookup (non-enumerable, so role lists stay clean).
+for (const [old, id] of Object.entries(ROLE_ALIASES)) Object.defineProperty(ROLE_BY_ID, old, { value: ROLE_BY_ID[id], enumerable: false });
+export const roleOf = (id) => ROLE_BY_ID[resolveRoleId(id)];
+
+// Picker entries: one per ungrouped role, one per group (at the position of its first variant).
+export function pickerEntries(list = ROLES) {
+  const out = []; const seen = new Set();
+  for (const r of list) {
+    if (!r.group) { out.push({ role: r }); continue; }
+    if (seen.has(r.group)) continue;
+    seen.add(r.group);
+    out.push({ group: GROUP_BY_ID[r.group], variants: list.filter((x) => x.group === r.group) });
+  }
+  return out;
+}
 
 // ---------- custom roles (created in the host UI, stored with the room) ----------
 export const ACTION_TYPES = ['kill', 'protect', 'guard', 'alert', 'jail', 'block', 'blockVisitors', 'frame', 'clean',
@@ -155,7 +201,7 @@ export function sanitizeRole(x) {
   const w = Number(x.weight); if (w >= 1 && w <= 3) role.weight = Math.floor(w);
   if (x.meeting === 'mafia' && alignment === 'mafia') role.meeting = 'mafia';
   if (x.appearsAs === 'mafia' || x.appearsAs === 'innocent') role.appearsAs = x.appearsAs;
-  if (typeof x.seesAs === 'string' && ROLE_BY_ID[x.seesAs] && !ROLE_BY_ID[x.seesAs].custom) role.seesAs = x.seesAs;
+  if (typeof x.seesAs === 'string' && ROLE_BY_ID[x.seesAs] && !ROLE_BY_ID[x.seesAs].custom) role.seesAs = ROLE_BY_ID[x.seesAs].id;
   if (x.nightImmune) role.nightImmune = true;
   if (x.retaliate) role.retaliate = true;
   if (x.onDeath) role.onDeath = txt(x.onDeath, 120);

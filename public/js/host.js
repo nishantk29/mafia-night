@@ -2,7 +2,7 @@
 // Layout (DESIGN.md 6.2): app bar, then a console with the game pane and a side (table, who is who, log).
 // Phones show one pane at a time via the tab bar; tablets show game + side switch; wide screens show everything.
 import { S, esc, initial, loadLibrary } from './state.js';
-import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES } from './roles.js';
+import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY_ID } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
@@ -103,11 +103,21 @@ function lobby(v, local) {
   const custom = lib.map((x) => ROLE_BY_ID[x.id] || x);
   const filters = [['all', 'All'], ['town', 'Town'], ['mafia', 'Mafia'], ['third', 'Third party']].concat(custom.length ? [['custom', 'Yours']] : []);
   const list = team === 'custom' ? custom : team === 'all' ? [...ROLES, ...custom] : ROLES.filter((r) => r.alignment === team);
-  const tile = (r) => `<div class="role-tile a-${r.alignment} ${counts[r.id] ? 'is-picked' : ''}" data-name="${esc(r.name.toLowerCase())}" data-team="${r.alignment}">
-      <button type="button" class="role-add" data-a="addRole" data-id="${r.id}" aria-label="Add ${esc(r.name)}${counts[r.id] ? ` (${counts[r.id]} in the game)` : ''}"><span class="role-glyph">${ico(r)}</span><span class="role-name">${esc(r.name)}</span></button>
+  const vname = (r) => r.variant || r.name;
+  const tile = (r, inGroup = false) => `<div class="role-tile a-${r.alignment} ${counts[r.id] ? 'is-picked' : ''}" data-name="${esc((r.name + ' ' + (r.variant || '') + ' ' + (r.group ? GROUP_BY_ID[r.group].name : '')).toLowerCase())}" data-team="${r.alignment}">
+      <button type="button" class="role-add" data-a="addRole" data-id="${r.id}" aria-label="Add ${esc(vname(r))}${counts[r.id] ? ` (${counts[r.id]} in the game)` : ''}"><span class="role-glyph">${ico(r)}</span><span class="role-name">${esc(vname(r))}${inGroup ? `<small class="variant-team a-${r.alignment}">${esc(teamName(r.alignment))}</small>` : ''}</span></button>
+      ${inGroup && counts[r.id] ? `<button type="button" class="icon-btn role-minus" data-a="subRole" data-id="${r.id}" aria-label="One fewer ${esc(vname(r))}">${ui('minus')}</button>` : ''}
       ${counts[r.id] ? `<span class="role-count" aria-hidden="true">${counts[r.id]}</span>` : ''}
-      <button type="button" class="icon-btn role-info rc-i" data-a="info" data-id="${r.id}" aria-label="About ${esc(r.name)}">${ui('info')}</button>
+      <button type="button" class="icon-btn role-info rc-i" data-a="info" data-id="${r.id}" aria-label="About ${esc(vname(r))}">${ui('info')}</button>
     </div>`;
+  // A group is one picker entry; any number of its variants can be added, each counted on its own.
+  const entry = (e) => {
+    if (e.role) return tile(e.role);
+    const total = e.variants.reduce((n, v) => n + (counts[v.id] || 0), 0);
+    return `<details class="role-group ${total ? 'is-picked' : ''}" data-group="${e.group.id}" ${total ? 'open' : ''}>
+      <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="muted">${e.variants.length} variants</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
+      <div class="role-variants">${e.variants.map((v) => tile(v, true)).join('')}</div></details>`;
+  };
   const roles = `<section class="block roles">
     <header class="block-head"><h2 class="block-title">Roles</h2>
       <span class="tally" data-state="${tallyState}">${ui(tallyState === 'ok' ? 'check' : 'warning')} ${have} of ${need} roles</span></header>
@@ -119,7 +129,7 @@ function lobby(v, local) {
     ${deckList}${advice(c.roles, n)}
     <div class="role-filter" role="tablist" aria-label="Show roles from">${filters.map(([k, l]) => `<button type="button" role="tab" aria-selected="${team === k}" tabindex="${team === k ? 0 : -1}" class="${k === 'all' || k === 'custom' ? '' : `a-${k}`}" data-a="roleTeam" data-v="${k}">${l}</button>`).join('')}</div>
     <label class="search-field">${ui('search')}<input class="search" data-i="search" placeholder="Search roles" aria-label="Search roles" value="${esc(S.ui.search)}"></label>
-    <div class="role-grid">${list.map(tile).join('')}</div>
+    <div class="role-grid">${pickerEntries(list).map(entry).join('')}</div>
     <p class="muted search-empty" hidden>No roles match that search.</p>
   </section>`;
 
