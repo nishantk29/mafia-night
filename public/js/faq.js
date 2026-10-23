@@ -22,8 +22,6 @@ const GROUPS = [
     ['Is my game private?', `
       <p>On this device: nothing is sent to a server. The game is stored only in that browser on that device.</p>
       <p>In a room: each phone only ever receives its own role. Mafia, Masons and Cult members also see their teammates. The storyteller sees everyone. Once someone dies their role is shown to the table, unless a Janitor hid it.</p>`],
-    ['Can I play offline?', `
-      <p>Yes, on this device. Open the site once and add it to your home screen (see below). After that, “Run the game on this device” works with no internet. Room games need a connection for every phone, because the room lives on the server.</p>`],
     ['Someone’s phone died or they closed the tab. What now?', `
       <p>Open the same link on the same phone and they’re back in their seat with their role. If that doesn’t work (a different phone, or a private tab that was closed), the storyteller can remove their seat in the lobby and they join again. After the deal, play on: the storyteller still sees their role and can run it for them.</p>`],
   ]],
@@ -85,6 +83,16 @@ const GROUPS = [
       </ul>`],
     ['What does the app know about me?', `
       <p>You never make an account. A room game needs a name for your seat and a room code, and the room is kept on the server so every phone can reach it. Games on this device, your notes and your custom roles are saved in your own browser. Table Tools never leave your device.</p>`],
+  ]],
+  ['Playing Offline', [
+    ['Can I play without internet?', `
+      <ol>
+        <li>Open Mafia Night once while you’re online, or install it: on iPhone tap Share, then Add to Home Screen; on Android tap Install app.</li>
+        <li>After that it opens without internet.</li>
+        <li>For play without internet, choose This Device (Host-only mode): the Host’s phone deals and runs the night. Phones mode needs internet for now.</li>
+      </ol>
+      <p>On iPhone, the Home Screen app and Safari keep separate copies, so open the one you’ll use while you’re online.</p>
+      <span hidden>offline internet wifi wi-fi install no signal</span>`],
   ]],
   ['The app', [
     ['How do I install it?', `
