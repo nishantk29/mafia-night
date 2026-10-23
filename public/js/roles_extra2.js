@@ -29,8 +29,8 @@ export function buildExtra2(R, A) {
       { day: 'Invisible Man names a player. If that player has a night meeting, let them listen with names muted.' }),
 
     // --- cop variants ---
-    R('confused_cop', 'Confused Cop', '😵', 'town', 'You think you are a Cop, but your results are random noise.',
-      { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'random' }) }),
+    R('confused_cop', 'Confused Cop', '😵', 'town', 'Each night you check one player, but every check is a coin flip: heads gives the TRUE result, tails gives the OPPOSITE. Needs a regular Cop in the game.',
+      { requiresPartner: 'cop', action: A('investigate', 60.5, 'Confused Cop, open your eyes. Who do you check?', { check: 'random' }) }),
     R('naive_cop', 'Naive Cop', '🐑', 'town', 'You think you are a Cop, but everyone always looks innocent to you.',
       { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'naive' }) }),
     R('paranoid_cop', 'Paranoid Cop', '😰', 'town', 'You think you are a Cop, but everyone always looks guilty to you.',

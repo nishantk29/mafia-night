@@ -85,6 +85,11 @@ function planGame(g) {
   const customs = customRoles(R, g);
   registerRoles(customs);
   const roles = STRATEGIES[strategy](R, n, customs).map((id) => (ROLE_BY_ID[id] ? id : 'villager'));
+  // Pairing rule (requiresPartner): give the partner a villager's seat, or drop the role.
+  for (const [i, id] of roles.entries()) {
+    const need = ROLE_BY_ID[id].requiresPartner;
+    if (need && !roles.includes(need)) { const v = roles.indexOf('villager'); if (v >= 0) roles[v] = need; else roles[i] = 'villager'; }
+  }
   const rules = { revealOnDeath: R.chance(0.8), selfProtect: R.chance(0.7), firstNightKill: R.chance(0.8), dayStart: R.chance(0.15) };
   return { g, R, n, modeKind, strategy, customs, roles, rules };
 }

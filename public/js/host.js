@@ -238,7 +238,7 @@ function advice(roleIds, n) {
 
 // Steps that get a live result, and checks that are a coin flip by design.
 const LIVE = ['investigate', 'track', 'watch', 'autopsy'];
-const COIN = ['random', 'fake'];
+const COIN = ['fake'];
 
 // ---------------- dealt ----------------
 // Night 1, or day 1 under the "Start with a day" house rule (never with a blind card deal).
@@ -353,8 +353,27 @@ function liveResult(v, s, set) {
 }
 
 // Live answer for an investigator, worked out from the choices of everyone who woke earlier tonight.
+// Confused Cop: a 3D coin flip lands on the stored coin (set.flip), then the result, gesture and close-eyes cue fade in.
+// set.flipAt is when the target was entered; a re-render mid-flip joins the animation where it is instead of restarting it.
+const FLIP_MS = 1200;
+const coinAge = (set) => (animOn() && set.flipAt ? Date.now() - set.flipAt : Infinity);
+function coinEl(set) {
+  const heads = set.flip === 'heads'; const age = coinAge(set); const live = age < FLIP_MS;
+  return `<div class="coin-stage"><div class="coin3d${live ? ' is-flipping' : ''}" data-face="${heads ? 'heads' : 'tails'}" style="--coin-end:${heads ? 1080 : 1260}deg;${live ? `animation-delay:-${Math.round(age)}ms` : ''}" aria-hidden="true">
+    <span class="coin-face coin-heads">H</span><span class="coin-face coin-tails">T</span></div>
+    <p class="coin-label${live ? ' is-waiting' : ''}"${live ? ` style="animation-delay:${FLIP_MS - Math.round(age)}ms"` : ''} role="status">${heads ? 'Heads: TRUE answer' : 'Tails: FLIPPED answer'}</p></div>`;
+}
+function afterCoin(s, set, html) {
+  if (s.check !== 'random' || !html) return html;
+  const age = coinAge(set); const wait = age < FLIP_MS;
+  return `<div class="coin-after${wait ? ' is-waiting' : ''}"${wait ? ` style="animation-delay:${FLIP_MS - Math.round(age)}ms"` : ''}>${html}</div>`;
+}
 function tellNow(v, s, set) {
   if (s.kind !== 'action' || !LIVE.includes(s.type) || !set?.targets?.length) return '';
+  if (s.check === 'random' && set.flip) {
+    const res = liveResult(v, s, set);
+    return coinEl(set) + (res ? afterCoin(s, set, `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p></div>`) : '');
+  }
   if (COIN.includes(s.check) && !set.coin) {
     return `<div class="tell-now"><p class="note is-private">${ui('ear')} This result is a coin flip. Flip it now and say the answer as if it were true.</p>
       <button type="button" class="btn" data-a="coin" data-key="${s.key}">${ui('coin')} Flip a coin</button></div>`;
@@ -379,7 +398,7 @@ function cue(v, s, num, current, alive) {
         : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
     }
     return `<li class="cue is-done"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
-      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div>${tellNow(v, s, set)}${doneLines(v, s, set)}</li>`;
+      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div><div class="cue-after">${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}</div></li>`;
   }
   if (!current) {
     const what = s.kind === 'identify' ? 'Find who it is' : s.kind === 'info' ? 'Wake them up' : 'Record their choice';

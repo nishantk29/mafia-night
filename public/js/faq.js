@@ -41,7 +41,10 @@ const GROUPS = [
       </ol>
       <p>You don’t need to remember this: the night screen lists the order for you.</p>`],
     ['Some roles don’t know what they really are. How does that work?', `
-      <p>Roles like the Insane, Confused, Naive and Paranoid Cop, the Placebo Doctor or the Miller are told something other than the truth. Their phone and the card key show what they think they are. The table may know a fake Cop is in play, but never which player has it. The storyteller is told privately and the app gives that player the right (wrong) results.</p>`],
+      <p>Roles like the Insane, Naive and Paranoid Cop, the Placebo Doctor or the Miller are told something other than the truth. Their phone and the card key show what they think they are. The table may know a fake Cop is in play, but never which player has it. The storyteller is told privately and the app gives that player the right (wrong) results.</p>`],
+    ['What is the Confused Cop?', `
+      <p>An open role: the player knows they are the Confused Cop. They get their own turn right after the Cop. Each check is a coin flip made by the app: <b>heads</b> gives the TRUE result, <b>tails</b> gives the OPPOSITE. The storyteller sees the coin land, then gives the usual nod or shake. The player is never told how the coin landed, so they can never be sure.</p>
+      <p>The Confused Cop needs a regular Cop in the game. If you pick one without the other, the app blocks the deal and asks you to add a Cop.</p>`],
     ['The Hooker blocked one Mafia member. Does the kill still happen?', `
       <p>Yes, if any Mafia member is free to carry it out. Blocking one member only stops the kill when every Mafia member is blocked. Only one member actually visits the victim, so trackers and lookouts see one visitor, never the blocked one.</p>`],
   ]],

@@ -2,7 +2,7 @@
 import { S, esc, store, loadLibrary, saveLibrary } from './state.js';
 import { newRoom, reduce, viewForHost } from './room.js';
 import { registerRoles, ROLE_BY_ID } from './roles.js';
-import { rebalance, DEFAULT_RULES } from './engine.js';
+import { rebalance, DEFAULT_RULES, flipCoin } from './engine.js';
 import { themeOf, themeText, themeDom } from './theme.js';
 import { TOOL_ACTIONS, tickTools } from './tools.js';
 const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.me?.name].filter(Boolean);
@@ -323,7 +323,7 @@ const A = {
     else {
       const need = step.targets || 1;
       const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-      if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; delete n.picks[key]; n.focus = null; } else n.picks[key] = next;
+      if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; if (step.check === 'random') Object.assign(n.actions[key], { flip: flipCoin(), flipAt: Date.now() }); delete n.picks[key]; n.focus = null; } else n.picks[key] = next;
     }
     S.render();
   },

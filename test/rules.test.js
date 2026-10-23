@@ -106,7 +106,7 @@ describe('roles that do not know what they are', () => {
     }
   });
   test('result lines never name the disguised role; the explanation is a separate note', () => {
-    for (const roleId of ['insane_cop', 'confused_cop', 'naive_cop', 'paranoid_cop']) {
+    for (const roleId of ['insane_cop', 'naive_cop', 'paranoid_cop']) {
       const room = mk([['X', roleId], ['Mo', 'mafia'], ['Vic', 'villager'], ...filler(3)]);
       resolveNight(room, { [key(room, 'X')]: { targets: [id(room, 'Mo')], coin: 'innocent' } });
       const i = room.lastReport.info[0];
@@ -121,9 +121,9 @@ describe('roles that do not know what they are', () => {
     assert.equal(run('insane_cop', 'Mo'), 'Mo is NOT Mafia.');
     assert.equal(run('insane_cop', 'Vic'), 'Vic is MAFIA.');
   });
-  test('Confused Cop uses the storyteller\'s coin flip', () => {
-    const room = mk([['X', 'confused_cop'], ['Mo', 'mafia'], ...filler(4)]);
-    resolveNight(room, { [key(room, 'X')]: { targets: [id(room, 'Mo')], coin: 'innocent' } });
+  test('Confused Cop is open: heads is the true result, tails the opposite', () => {
+    const room = mk([['X', 'confused_cop'], ['C', 'cop'], ['Mo', 'mafia'], ...filler(3)]);
+    resolveNight(room, { [key(room, 'X')]: { targets: [id(room, 'Mo')], flip: 'tails' } });
     assert.equal(room.lastReport.info[0].text, 'Mo is NOT Mafia.');
   });
   test('the phone and the card key show the role they think they are', () => {
@@ -145,11 +145,12 @@ describe('roles that do not know what they are', () => {
     assert.match(insane.prompt, /^Cop, open your eyes/);
     assert.match(insane.hint, /2S is the Insane Cop/);
   });
-  test('two players answering to "Cop" get a tap-on-the-shoulder hint', () => {
+  test('two players who look like "Cop" get separate numbered calls, each with a private who-is-it hint', () => {
     const room = mk([['A', 'insane_cop'], ['B', 'cop'], ['Mo', 'mafia'], ...filler(3)]);
-    const cops = nightScript(room).filter((s) => s.prompt === 'Cop, wake up. Who do you check?');
+    const cops = nightScript(room).filter((s) => /^Cop \d, wake up\. Who do you check\?$/.test(s.prompt));
     assert.equal(cops.length, 2);
-    for (const s of cops) assert.match(s.hint, /Tap (A|B) on the shoulder/);
+    assert.deepEqual(cops.map((s) => s.prompt.slice(0, 5)), ['Cop 1', 'Cop 2']);
+    for (const s of cops) assert.match(s.hint, /^Cop \d is (A|B)\./);
   });
 });
 
@@ -212,18 +213,16 @@ describe('setup warnings', () => {
 
 describe('Cop, Detective and Confused Cop in one game', () => {
   const setup = () => mk([['Cop', 'cop'], ['Det', 'detective'], ['Con', 'confused_cop'], ['Mo', 'mafia'], ['Vic', 'villager'], ...filler(3)]);
-  test('both "Cops" hear the same call and get shoulder-tap hints; the Detective has its own call', () => {
+  test('the Confused Cop and the Detective each have their own call, apart from the Cop', () => {
     const steps = nightScript(setup()).filter((s) => s.kind === 'action');
-    const cops = steps.filter((s) => s.prompt === 'Cop, wake up. Who do you check?');
-    assert.equal(cops.length, 2);
-    for (const s of cops) assert.ok(s.hint);
-    assert.equal(steps.find((s) => s.roleId === 'detective').hint, undefined);
+    assert.equal(steps.filter((s) => s.prompt === 'Cop, wake up. Who do you check?').length, 1);
+    for (const r of ['cop', 'confused_cop', 'detective']) assert.equal(steps.find((s) => s.roleId === r).hint, undefined);
   });
   test('the real Cop gets the truth, the Confused Cop gets the coin, the Detective sees the true role', () => {
     const room = setup();
     resolveNight(room, {
       [key(room, 'Cop')]: { targets: [id(room, 'Mo')] },
-      [key(room, 'Con')]: { targets: [id(room, 'Mo')], coin: 'innocent' },
+      [key(room, 'Con')]: { targets: [id(room, 'Mo')], flip: 'tails' },
       [key(room, 'Det')]: { targets: [id(room, 'Con')] },
     });
     const by = (r) => room.lastReport.info.find((i) => i.roleId === r).text;
