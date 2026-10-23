@@ -109,7 +109,7 @@ export function appearsAs(room, p) {
 }
 
 // ---------- night script ----------
-// Ordered list of steps for the storyteller to walk through.
+// Ordered list of steps for the Host to walk through.
 export const isBlind = (room) => room.config?.mode === 'cards' && room.config?.cardFlow === 'blind';
 
 // Roles in the deck that nobody has been matched to yet: [{roleId, remaining}]
@@ -121,7 +121,7 @@ export function unidentifiedSlots(room) {
   return Object.entries(want).filter(([, n]) => n > 0).map(([roleId, remaining]) => ({ roleId, remaining }));
 }
 
-// House rules the storyteller can switch in the lobby.
+// House rules the Host can switch in the lobby.
 export const DEFAULT_RULES = { revealOnDeath: true, selfProtect: true, firstNightKill: true, dayStart: false };
 export const rulesOf = (room) => ({ ...DEFAULT_RULES, ...(room?.config?.rules || {}) });
 
@@ -155,7 +155,7 @@ export function nightScript(room) {
     if (firstNight && r.night1 && !seenInfo.has(r.id)) {
       seenInfo.add(r.id);
       const actors = alive.filter((q) => q.roleId === r.id).map((q) => q.id);
-      // Lines that call players awake are read aloud; everything else is a private note for the storyteller.
+      // Lines that call players awake are read aloud; everything else is a private note for the Host.
       const spoken = !r.seesAs && /open your eyes/i.test(r.night1);
       steps.push({ key: `n1:${r.id}`, kind: 'info', roleId: r.id, actors, prompt: r.night1, spoken, order: blindNow ? 105 : 5 });
     }
@@ -211,7 +211,7 @@ export function nightScript(room) {
   return steps.sort((a, b) => a.order - b.order);
 }
 
-// What the storyteller says out loud around a night step: { open, close }, or null when nobody wakes
+// What the Host says out loud around a night step: { open, close }, or null when nobody wakes
 // (private notes, announcements). Teams are called by their team name; lines already in the prompt are reused.
 const TEAM_NAME = { mafia: 'Mafia', cult: 'Cult', mason: 'Masons' };
 const ASK = {
@@ -235,7 +235,7 @@ export function stepCues(step) {
   return { open, close: /close your eyes/i.test(said) ? null : `${name}, close your eyes.` };
 }
 
-// The silent gesture the storyteller gives after a role's private choice is recorded: { kind, text }, or null.
+// The silent gesture the Host gives after a role's private choice is recorded: { kind, text }, or null.
 // `result` is the previewNight answer for investigators (null while a coin flip is pending). Yes/no results
 // (Mafia / not Mafia) get a nod or shake; every other private choice gets an acknowledging nod.
 export function stepGesture(step, result) {
@@ -262,7 +262,7 @@ export function doneStepLines(step, result) {
   return out;
 }
 
-// What the storyteller should tell an investigator right now, given only the choices made by roles that woke
+// What the Host should tell an investigator right now, given only the choices made by roles that woke
 // earlier tonight (steps before it in the script; at the same wake order, the ones listed first).
 // Runs the night on a copy of the room, so nothing changes.
 export function previewNight(room, actions, stepKey) {
@@ -470,8 +470,8 @@ export function resolveNight(room, actions) {
     }
   }
 
-  // 7) information. `text` is exactly what the storyteller says; `note` is for the storyteller only.
-  // Trackers and Lookouts only see visits by roles that woke before them: that is what the storyteller could
+  // 7) information. `text` is exactly what the Host says; `note` is for the Host only.
+  // Trackers and Lookouts only see visits by roles that woke before them: that is what the Host could
   // tell them live (previewNight), so the morning report and the phone must say the same.
   const wokeBy = (a) => active.filter((x) => x.idx <= a.idx);
   const sideName = (v) => (v === 'mafia' ? 'MAFIA' : 'NOT Mafia');

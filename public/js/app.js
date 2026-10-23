@@ -1,5 +1,5 @@
 // App shell: routing, transports (live WebSocket / local), event handling.
-import { S, esc, store, loadLibrary, saveLibrary } from './state.js';
+import { S, esc, store, loadLibrary, saveLibrary, buzz } from './state.js';
 import { newRoom, reduce, viewForHost, migrateRoleIds } from './room.js';
 import { registerRoles, ROLE_BY_ID } from './roles.js';
 import { rebalance, DEFAULT_RULES, flipCoin } from './engine.js';
@@ -15,6 +15,8 @@ import { faqScreen, wireFaqSearch } from './faq.js';
 import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn } from './fx.js';
 import { gameOverEvent } from './room.js';
 import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
+import { step, gameAwake, revealOnScroll } from './motion.js';
+import { createHold } from './hold.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -23,7 +25,7 @@ const $html = document.documentElement;
 // ---------------- rendering ----------------
 // The whole page is re-rendered on every update. Focus is recorded by the element's data attributes
 // and restored afterwards, so keyboard use (radiogroups, night picking, tabs) survives re-renders.
-const FOCUS_KEYS = ['a', 'k', 'v', 'id', 'key', 'i', 'c', 'pid'];
+const FOCUS_KEYS = ['a', 'k', 'v', 'id', 'key', 'i', 'c', 'pid', 'hold'];
 function focusSelector(el) {
   const parts = FOCUS_KEYS.filter((k) => el.dataset[k] != null).map((k) => `[data-${k}="${CSS.escape(el.dataset[k])}"]`);
   return parts.length ? parts.join('') : null;
@@ -46,12 +48,25 @@ function syncSimple() {
 }
 
 let pendingRender = false;
+// The private role card: shown only while pressed (or Space/Enter held), at most 3s, gone the moment the page is hidden.
+const hold = createHold((on) => {
+  document.querySelectorAll('.secret').forEach((s) => {
+    s.classList.toggle('is-open', on);
+    s.querySelectorAll('.rcard, .secret-rest').forEach((el) => { if (on) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', 'true'); el.toggleAttribute('inert', !on); });
+  });
+  if (on) buzz(12);
+});
+const endHold = (all) => { if (all) hold.cancel(); else hold.release(); if (pendingRender && !drag) setTimeout(() => S.render(), 0); };
 S.render = function render() {
-  if (drag) { pendingRender = true; return; } // a seat is being dragged: the drop renders
+  if (drag || hold.pressed || hold.shown) { pendingRender = true; return; } // a seat is being dragged or the role card is held: the end renders
   const a = document.activeElement;
   if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; return; }
   pendingRender = false;
   syncSimple();
+  step(paint);
+};
+function paint() {
+  const a = document.activeElement;
   const sel = a && a !== document.body && $app.contains(a) ? focusSelector(a) : null;
   const y = window.scrollY;
   const { phase, shell } = shellAttrs();
@@ -63,12 +78,15 @@ S.render = function render() {
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
   applyRoleSearch();
   afterRender();
+  revealOnScroll();
+  gameAwake((S.mode === 'host' || S.mode === 'local') && ['dealt', 'night', 'day'].includes(S.view?.phase));
+  if (opened === 'deal') buzz(18);
   window.scrollTo(0, y);
   // A dialog that just opened takes focus; otherwise focus goes back to the element that had it.
   const dialogClose = (opened === 'sheet' || opened === 'modal') && $app.querySelector('.sheet .x-btn, .modal .x-btn, .overlay-in .x-btn');
   if (dialogClose) dialogClose.focus({ preventScroll: true });
   else if (sel) refocus(sel, a.className);
-};
+}
 // Several elements can share data attributes (a seat on the table, in the seat list and in the roster):
 // prefer the one with the same classes, and only ever focus a visible one.
 function refocus(sel, cls) {
@@ -115,24 +133,25 @@ function home() {
       <p class="lede">Secret roles for Mafia and Werewolf, dealt to everyone’s phone. You get the script for the night.</p>
     </div>
     <div class="home-paths">
-      <section class="path path-host"><h2 class="path-title">Be the storyteller</h2>
+      <section class="path path-host" data-rv="h-host"><h2 class="path-title">Be the Host</h2>
         <p class="muted">You read the night aloud. Everyone else joins on their phone with a 6‑letter code.</p>
         <button type="button" class="btn big" data-a="hostLive">Host a game</button>
         ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
-      <section class="path path-join"><h2 class="path-title">Join with a code</h2>
-        <div class="join-row"><label class="field"><span>Code from the storyteller</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
+      <section class="path path-join" data-rv="h-join"><h2 class="path-title">Join with a code</h2>
+        <div class="join-row"><label class="field"><span>Code from the Host</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
         <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
         ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
-      <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
+      <section class="path path-local" data-rv="h-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
         <p class="muted">Run everything from this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
-      <a class="home-rules" href="#/faq"><span><b>Rules &amp; FAQ</b><small>Roles, play modes and tricky calls.</small></span>${ui('caret-down')}</a>
-      <section class="home-how"><h2 class="home-how-title">How to Play</h2>
+      <a class="home-rules" href="#/faq" data-rv="h-rules"><span><b>Rules &amp; FAQ</b><small>Roles, play modes and tricky calls.</small></span>${ui('caret-down')}</a>
+      <section class="home-how" data-rv="h-how"><h2 class="home-how-title">How to Play</h2>
         <ol class="how">
           <li><h3>Deal</h3><p>Host a game on this screen. Players join with the room code, and each gets a secret role.</p></li>
           <li><h3>Night</h3><p>Everyone closes their eyes. The Host wakes each role in turn and taps their pick.</p></li>
           <li><h3>Day</h3><p>At dawn the app shows who died. The table talks, then votes someone out with a majority.</p></li>
           <li><h3>Win</h3><p>Town wins when every Mafia member is gone. Mafia win when they match the rest of the table.</p></li>
-        </ol></section>
+        </ol>
+        <div class="how-dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></div></section>
     </div>
     <p class="credits">Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT).</p>
   </main>`;
@@ -211,7 +230,8 @@ function localTransport() {
 async function route() {
   closeTransport();
   closeVictory();
-  Object.assign(S.ui, { tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
+  hold.cancel();
+  Object.assign(S.ui, { tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
   const h = location.hash.replace(/^#\/?/, '');
   const [kind, arg] = h.split('/');
   S.code = null;
@@ -248,10 +268,14 @@ window.addEventListener('hashchange', route);
 const $tip = document.getElementById('tip') || document.createElement('div');
 $tip.id = 'tip'; $tip.setAttribute('role', 'tooltip');
 if (!$tip.isConnected) document.body.appendChild($tip);
-function hideTip() { $tip.classList.remove('on'); $tip.dataset.for = ''; }
+// Where the Popover API exists the tip lives in the top layer (above sheets and dialogs); elsewhere it is the same fixed div.
+const POP = typeof $tip.showPopover === 'function';
+if (POP) $tip.setAttribute('popover', 'manual');
+function hideTip() { $tip.classList.remove('on'); $tip.dataset.for = ''; if (POP) try { $tip.hidePopover(); } catch { /* not open */ } }
 function showTip(el) {
   const r = ROLE_BY_ID[el.dataset.id];
   if (!r) return;
+  if (POP) try { if (!$tip.matches(':popover-open')) $tip.showPopover(); } catch { /* already open */ }
   const uses = (n) => (n === 1 ? 'once per game' : `${n} times per game`);
   const bits = [];
   if (r.action) bits.push(`<p><b>Night:</b> ${esc(r.action.prompt)}${Number.isFinite(r.action.uses) ? ` <span class="muted">(${uses(r.action.uses)})</span>` : ''}</p>`);
@@ -322,11 +346,19 @@ const A = {
   hideKey() { S.ui.showKey = false; S.render(); },
   resetLocal() { if (confirm('Remove every player and role and start a fresh game on this device?')) { S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'resetLocal' }); } },
   leaveGame() {
-    if (!confirm('Leave this game on this phone? You can join again with the room code, but the storyteller may need to remove your old seat.')) return;
+    if (!confirm('Leave this game on this phone? You can join again with the room code, but the Host may need to remove your old seat.')) return;
     store.del(`mafia.player.${S.code}`); location.hash = '#/';
   },
   showCode() { S.ui.showCode = true; S.ui.anim = 'modal'; S.render(); },
   hideCode() { S.ui.showCode = false; S.render(); },
+  showQr() { S.ui.showQr = true; S.ui.anim = 'modal'; S.render(); },
+  hideQr() { S.ui.showQr = false; S.render(); },
+  // The system share sheet where there is one; otherwise (and if it fails) the link is copied.
+  async share(el) {
+    const url = el.dataset.v;
+    try { await navigator.share({ title: 'Mafia Night', text: 'Join my Mafia Night game', url }); }
+    catch (e) { if (e?.name !== 'AbortError') A.copy(el); }
+  },
   clearCard(el) { send({ type: 'clearCard', playerId: el.dataset.id }); },
   startNight() { S.ui.condemn = null; send({ type: 'startNight' }); },
   startDay() { send({ type: 'startDay' }); },
@@ -370,11 +402,11 @@ const A = {
   resolve() { send({ type: 'submitNight', actions: S.ui.night.actions }); },
   // day
   selCondemn(el) { S.ui.condemn = S.ui.condemn === el.dataset.id ? null : el.dataset.id; S.render(); },
-  condemn() { if (!S.ui.condemn) return; const id = S.ui.condemn; S.ui.condemn = null; send({ type: 'condemn', playerId: id }); },
+  condemn() { if (!S.ui.condemn) return; const id = S.ui.condemn; S.ui.condemn = null; buzz([30, 40, 30]); send({ type: 'condemn', playerId: id }); },
   noCondemn() { send({ type: 'noCondemn' }); S.toast('Nobody condemned today'); },
   pend(el) { send({ type: 'resolvePending', pendingId: el.dataset.pid, targetId: el.dataset.id || null }); },
   useDay(el) { send({ type: 'useDay', playerId: el.dataset.id }); },
-  declare() { const s = prompt('Who wins? Type town, mafia, or a player’s name.'); if (s) send({ type: 'declareWinner', side: s.toLowerCase(), reason: 'Declared by the Storyteller.' }); },
+  declare() { const s = prompt('Who wins? Type town, mafia, or a player’s name.'); if (s) send({ type: 'declareWinner', side: s.toLowerCase(), reason: 'Declared by the Host.' }); },
   playAgain() { closeVictory(); S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'playAgain' }); },
   closeVictory() { closeVictory(); S.ui.anim = 'roles'; S.render(); },
   setupMode(el) {
@@ -412,7 +444,6 @@ const A = {
   rename(el) { const n = prompt('New name'); if (n) send({ type: 'renamePlayer', playerId: el.dataset.id, name: n }); },
   legend(el) { const c = el.dataset.c; const n = prompt('What does this color mean?', S.view.config.legend[c]); if (n !== null) send({ type: 'setLegend', color: c, label: n }); },
   // player
-  reveal() { S.ui.reveal = !S.ui.reveal; S.ui.anim = S.ui.reveal ? 'reveal' : 'hide'; S.render(); },
   pickSuit(el) { const v = el.dataset.v || null; S.ui.claimSuit = v; if (suitOf(S.ui.claim) !== v) S.ui.claim = null; S.render(); },
   pickCard(el) { S.ui.claim = el.dataset.v; S.ui.claimSuit = suitOf(el.dataset.v); S.render(); },
   claim() { if (S.ui.claim) send({ type: 'claimCard', card: S.ui.claim }); },
@@ -509,10 +540,11 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
-    if ((S.ui.tools || S.ui.showKey || S.ui.showCode || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if ((S.ui.tools || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
     if (S.ui.showKey) { A.hideKey(); return; }
     if (S.ui.tools) { A.closeTools(); return; }
     if (S.ui.showCode) { A.hideCode(); return; }
+    if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
     if (S.ui.sheet) { const id = S.ui.sheet; A.closeSheet(); refocus(`[data-a="seat"][data-id="${CSS.escape(id)}"]`, ''); return; }
     return;
@@ -570,5 +602,25 @@ document.addEventListener('change', (ev) => {
     if (k === 'alignment' || k === 'action.type') { pendingRender = false; S.render(); }
   }
 });
+
+// ---------------- private role card: hold to reveal ----------------
+document.addEventListener('pointerdown', (ev) => {
+  const b = ev.target.closest?.('[data-hold]');
+  if (!b || !ev.isPrimary || ev.button > 0) return;
+  ev.preventDefault();
+  try { b.setPointerCapture(ev.pointerId); } catch { /* synthetic pointer */ }
+  hold.press();
+});
+for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) document.addEventListener(t, () => { if (hold.pressed) endHold(); });
+document.addEventListener('keydown', (ev) => {
+  if ((ev.key === ' ' || ev.key === 'Enter') && ev.target.closest?.('[data-hold]')) { ev.preventDefault(); if (!ev.repeat) hold.press(); }
+});
+document.addEventListener('keyup', (ev) => { if ((ev.key === ' ' || ev.key === 'Enter') && hold.pressed) endHold(); });
+document.addEventListener('contextmenu', (ev) => { if (ev.target.closest?.('[data-hold]')) ev.preventDefault(); });
+document.addEventListener('focusout', (ev) => { if (ev.target.closest?.('[data-hold]') && hold.pressed) endHold(); });
+// Anything that takes the screen away from the card blurs it at once.
+document.addEventListener('visibilitychange', () => { if (document.hidden) endHold(true); });
+addEventListener('pagehide', () => endHold(true));
+addEventListener('blur', () => endHold(true));
 
 route();

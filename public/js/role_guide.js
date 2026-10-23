@@ -25,12 +25,12 @@ const DO = {
 };
 // What comes back to them.
 const LEARN = {
-  investigate: (a) => (a.check === 'role' ? 'The storyteller silently shows you their role.'
-    : a.check === 'parity' ? 'The storyteller silently signals whether those two are on the same side.'
-      : 'The storyteller silently signals whether they look like Mafia.'),
-  track: () => 'The storyteller silently shows you who they visited.',
-  watch: () => 'The storyteller silently shows you who visited them.',
-  autopsy: () => 'The storyteller silently shows you their true role.',
+  investigate: (a) => (a.check === 'role' ? 'The Host silently shows you their role.'
+    : a.check === 'parity' ? 'The Host silently signals whether those two are on the same side.'
+      : 'The Host silently signals whether they look like Mafia.'),
+  track: () => 'The Host silently shows you who they visited.',
+  watch: () => 'The Host silently shows you who visited them.',
+  autopsy: () => 'The Host silently shows you their true role.',
 };
 
 function goal(r) {
@@ -55,11 +55,11 @@ export function roleGuide(roleId, rules = {}) {
   if (r.meeting === 'mafia') night.push(`Every night you wake with the Mafia. Agree silently on one player to kill and point at them together.${rules.firstNightKill === false ? ' On the first night you only meet each other: no kill.' : ''}`);
   if (r.meeting === 'cult') night.push('Every night you wake with the Cult. Agree silently on one player to recruit and point at them together.');
   if (r.meeting === 'mason') night.push('On the first night you open your eyes and meet the other Masons. You can trust each other.');
-  if (r.night1 && !r.meeting) night.push('On the first night the storyteller wakes you on your own to show you something. Keep it to yourself.');
+  if (r.night1 && !r.meeting) night.push('On the first night the Host wakes you on your own to show you something. Keep it to yourself.');
   // A team role's kill (Mafia) or recruit (Cult) is the team's shared pick above, not a second wake-up.
   const teamPick = a && ((r.meeting === 'mafia' && a.type === 'kill') || (r.meeting === 'cult' && a.type === 'convert'));
   if (a && !teamPick) {
-    const call = (r.meeting === 'mafia' || r.meeting === 'cult') ? 'Then, when the storyteller calls your role on its own' : 'When the storyteller calls your role';
+    const call = (r.meeting === 'mafia' || r.meeting === 'cult') ? 'Then, when the Host calls your role on its own' : 'When the Host calls your role';
     const act = (DO[a.type] || (() => 'point at your choice'))(a, rules);
     night.push(`${call}, open your eyes and ${act}.${a.uses !== Infinity && a.uses ? ` You can do this ${TIMES(a.uses)}.` : ''}`);
     if (LEARN[a.type]) night.push(LEARN[a.type](a));
@@ -68,13 +68,13 @@ export function roleGuide(roleId, rules = {}) {
   }
   if (!night.length) night.push('Keep your eyes shut all night. Nobody will call you.');
 
-  if (r.day) day.push(r.dayUses ? `You have a daytime power you can use ${TIMES(r.dayUses)}. Raise your hand and tell the storyteller when you use it.` : 'You have a daytime power. Raise your hand and tell the storyteller when you use it.');
+  if (r.day) day.push(r.dayUses ? `You have a daytime power you can use ${TIMES(r.dayUses)}. Raise your hand and tell the Host when you use it.` : 'You have a daytime power. Raise your hand and tell the Host when you use it.');
   day.push(r.sideWin === 'condemned' ? 'Act just suspicious enough that the town votes you out. Don’t make it obvious.'
     : r.alignment === 'third' && !r.meeting ? 'Talk and vote however helps you win. Nobody else shares your goal.'
       : factionOf(r.id) !== 'town' ? 'Talk, vote and blend in with the town.' : 'Talk, share what you know when it helps, and vote.');
 
-  if (r.onDeath) death.push('When you die, the storyteller gives you one last move before you go quiet.');
-  if (r.onCondemn) death.push('If the town votes you out, something happens. The storyteller handles it.');
+  if (r.onDeath) death.push('When you die, the Host gives you one last move before you go quiet.');
+  if (r.onCondemn) death.push('If the town votes you out, something happens. The Host handles it.');
   if (r.retaliate) death.push('If you are killed at night, whoever attacked you dies too.');
   if (r.nightImmune) death.push('You can’t be killed at night.');
   if (r.shield) death.push('If the town votes you out, nobody can be killed the night after.');

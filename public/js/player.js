@@ -32,7 +32,7 @@ export function playerScreen(v) {
   if (v.phase === 'over') hand = over(v);
   else if (v.phase === 'lobby') {
     hand = `<div class="waiting">${back()}<h2 class="phase-title">You’re in, ${esc(me.name)}</h2>
-      <p class="muted">Waiting for the storyteller to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
+      <p class="muted">Waiting for the Host to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
   } else hand = playing(v);
   return `${appbar(esc(me.name), `<span class="phase-badge">${ui(picon)} ${plabel}</span>${toolsButton()}`)}
   <main class="wrap seat-view">
@@ -49,20 +49,22 @@ function playing(v) {
   if (needsCard) return cardPicker(me);
   if (v.deckKey) {
     return `<section class="block find-card"><h2 class="block-title">Find your card</h2>
-      <p class="muted">Find your card in this key. The storyteller will call your role on night 1.</p>${key(v)}</section>`;
+      <p class="muted">Find your card in this key. The Host will call your role on night 1.</p>${key(v)}</section>`;
   }
-  return `<div class="waiting">${back()}<h2 class="phase-title">Waiting for the storyteller to deal.</h2></div>`;
+  return `<div class="waiting">${back()}<h2 class="phase-title">Waiting for the Host to deal.</h2></div>`;
 }
 
-// The deluxe black playing card. Both faces are always in the DOM; data-face sets the resting side and
-// is-flipping / is-unflipping run the one orchestrated motion on the render where it was tapped.
+// The deluxe black playing card, face up but blurred under a veil. It is readable only while the card is held
+// (pointer, or Space/Enter) and re-blurs on release, after 3s, or when the page loses focus: see hold.js and app.js.
+// Everything role-specific sits in aria-hidden, inert parts that app.js opens while the card is held.
 function roleCard(v) {
-  const me = v.me; const r = me.role; const shown = !!S.ui.reveal;
-  const motion = S.ui.anim === 'reveal' ? ' is-flipping' : S.ui.anim === 'hide' ? ' is-unflipping' : S.ui.anim === 'deal' ? ' is-popping' : '';
+  const me = v.me; const r = me.role;
+  const motion = S.ui.anim === 'deal' ? ' is-popping' : '';
+  const hid = 'aria-hidden="true" inert';
   const team = me.team.length ? `<p class="note">Your team: ${me.team.map((t) => `<b>${esc(t.name)}</b>${t.role ? ` (${esc(t.role.name)})` : ''}${t.alive ? '' : ` ${ui('skull')} out`}`).join(', ')}</p>` : '';
-  return `<div class="rcard a-${r.alignment}${motion}" data-tilt data-face="${shown ? 'front' : 'back'}">
+  return `<div class="secret"><div class="secret-card"><div class="rcard a-${r.alignment}${motion}" data-tilt data-face="front" ${hid}>
       <div class="rcard-inner">
-        <div class="rcard-face rcard-front" ${shown ? '' : 'aria-hidden="true"'}>
+        <div class="rcard-face rcard-front">
           <span class="rcard-index rcard-index-tl" aria-hidden="true">${ico(r)}</span>
           ${cardArt(r)}
           <div class="rcard-body">
@@ -75,16 +77,15 @@ function roleCard(v) {
         <div class="rcard-face rcard-back" aria-hidden="true"><span class="rcard-back-mark">${ui('brand')}</span></div>
       </div>
     </div>
-    ${shown ? `${me.target || team || me.knows.length ? `<div class="dossier">
+    <button type="button" class="secret-hold" data-hold aria-label="Hold to reveal your role. Press and hold, or hold Space or Enter. It hides again after 3 seconds."><span class="secret-veil" aria-hidden="true">${ui('eye')}<span>Swipe up to reveal</span><small>Make sure nobody is looking</small></span></button></div>
+    <div class="secret-rest" ${hid}>${me.target || team || me.knows.length ? `<div class="dossier">
       ${me.target ? `<p class="note">Your target: <b>${esc(me.target)}</b></p>` : ''}${team}
-      ${me.knows.length ? `<p class="note">The Mafia are: ${me.knows.map((t) => `<b>${esc(t.name)}</b>`).join(', ')}</p>` : ''}</div>` : ''}`
-    : '<p class="muted reveal-hint">Make sure nobody is looking, then turn your card over.</p>'}
-    <button type="button" class="btn big" data-a="reveal" aria-pressed="${shown}">${ui(shown ? 'eye-off' : 'eye')} ${shown ? 'Hide my role' : 'Show my role'}</button>
-    ${shown ? `${results(me.results)}${guide(me.guide)}` : ''}
+      ${me.knows.length ? `<p class="note">The Mafia are: ${me.knows.map((t) => `<b>${esc(t.name)}</b>`).join(', ')}</p>` : ''}</div>` : ''}
+    ${results(me.results)}${guide(me.guide)}</div></div>
     ${me.alive ? '' : `<p class="note is-out">${ui('skull')} You’re out of the game. Stay quiet and enjoy the show.</p>`}`;
 }
 
-// What the storyteller told this player at night, newest first. Only behind "Show my role".
+// What the Host told this player at night, newest first. Only readable while the card is held.
 function results(list) {
   if (!list?.length) return '';
   return `<section class="block my-results" aria-label="Your night results"><h3 class="block-title">${ui('ear')} What you learned</h3>

@@ -225,7 +225,7 @@ export function reduce(room, actor, a) {
       for (const p of picked) {
         p.roleId = a.roleId;
         if (ROLE_BY_ID[a.roleId].needsTarget) {
-          // The storyteller tells the target at this wake-up, so pick now, but never from players
+          // The Host tells the target at this wake-up, so pick now, but never from players
           // already identified as non-town (the Mafia team is identified before this step).
           const pool = room.players.filter((q) => q.id !== p.id && !picked.includes(q) && (!q.roleId || factionOf(q.roleId) === 'town'));
           p.target = pool.length ? pool[randInt(pool.length)].id : null;
@@ -290,7 +290,7 @@ export function reduce(room, actor, a) {
     }
     case 'declareWinner': {
       if (!['day', 'night'].includes(room.phase)) return err('The game is not in play.');
-      room.winner = { side: String(a.side || 'manual').slice(0, 20), reason: String(a.reason || 'Declared by the Storyteller.').slice(0, 120) };
+      room.winner = { side: String(a.side || 'manual').slice(0, 20), reason: String(a.reason || 'Declared by the Host.').slice(0, 120) };
       room.phase = 'over'; log(room, `Game over: ${room.winner.side} wins.`); return { ok: true };
     }
     case 'newGame': { resetDeal(room); return { ok: true }; }
@@ -354,7 +354,7 @@ export function viewForHost(room, connected = new Set()) {
 }
 
 // Rebuilds enough of a room from the host's view to dry-run the night (live investigator results).
-// Shared by the storyteller console and the simulator, so both preview exactly the same way.
+// Shared by the Host console and the simulator, so both preview exactly the same way.
 // Old ids (see ROLE_ALIASES) in a stored room or host view are rewritten to the canonical role, in place.
 export function migrateRoleIds(room) {
   const c = room?.config;

@@ -1047,7 +1047,7 @@ html.is-seat-dragging,html.is-seat-dragging *{cursor:grabbing!important}
 .balance .btn{margin-top:var(--s3)}
 @media (prefers-reduced-motion:reduce){.balance-dot{transition:none}}
 
-/* ---------- storyteller-only lines and live results (night) ---------- */
+/* ---------- Host-only lines and live results (night) ---------- */
 .note.is-private{font-size:var(--fs-sm);color:var(--smoke);padding-left:var(--s3);border-left:2px dashed var(--rule-strong)}
 .note.is-private > .ui-ico{color:var(--brass)}
 .tell-now{margin-top:var(--s2);display:grid;gap:var(--s2);justify-items:start}
@@ -1493,3 +1493,113 @@ html[data-fx="off"] .coin-after.is-waiting,html[data-fx="off"] .coin-label.is-wa
 .card-key li{padding:var(--s2) var(--s3);background:var(--panel-2);border-radius:var(--r-control)}
 .card-key b{margin-right:var(--s2)}
 .simple-roles .rules{margin-top:var(--s3)}
+
+/* ======================================================================================
+   Motion pass: step transitions, night rail, scroll reveals, join QR, hold-to-reveal role card, display face.
+   Transforms and opacity only. Every effect is off with prefers-reduced-motion or html[data-fx="off"].
+   ====================================================================================== */
+@font-face{font-family:"Limelight";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/limelight-400.woff2) format("woff2")}
+/* the noir display face: the logo and h1/h2-level headers only; body, UI, the role card and names keep Rubik */
+.wordmark,h1,h2,.phase-title,.block-title,.path-title,.sheet-title,.guide-title,.balance-title{font-family:"Limelight",var(--font-display);font-weight:400;letter-spacing:.012em;text-wrap:balance}
+.rcard-name,.fx-pop-name,.room-code,.code-show-code{font-family:var(--font-display);font-weight:800;letter-spacing:-.005em}
+
+/* step transitions: View Transitions where available, the same slide in plain CSS elsewhere */
+html[data-vt] .pane-game,html[data-vt] #app > main.wrap{view-transition-name:step}
+html[data-vt] .rcard,html[data-vt] .waiting .rcard-back{view-transition-name:role-card}
+html[data-vt] .home-rules,html[data-vt] .wrap.faq > .phase-title{view-transition-name:rules-card}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+::view-transition-old(step){animation:vt-out 160ms ease-in both}
+::view-transition-new(step){animation:vt-in 460ms var(--ease-pop) both}
+::view-transition-group(role-card),::view-transition-group(rules-card){animation-duration:520ms;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+@keyframes vt-out{to{opacity:0;transform:translateX(-26px)}}
+@keyframes vt-in{from{opacity:0;transform:translateX(40px)}}
+.step-in{animation:step-in 440ms var(--ease-pop) both}
+@keyframes step-in{from{opacity:0;transform:translateX(34px)}}
+
+/* night rail: a finished step fills its connector from the top and its marker springs */
+.cue.is-fill::before{transform-origin:top;animation:rail-fill 520ms var(--ease-out) both}
+.cue.is-fill .cue-n{animation:rail-pop 480ms var(--ease-pop) both}
+@keyframes rail-fill{from{transform:scaleY(0)}}
+@keyframes rail-pop{from{transform:scale(.6)}}
+
+/* FAQ: groups reveal as they scroll in. Scroll-driven where supported, else IntersectionObserver adds .rv-in. Fully visible without either. */
+@media (prefers-reduced-motion:no-preference){
+  @supports (animation-timeline:view()){
+    html[data-fx="on"] [data-rv]{animation:rv-in linear both;animation-timeline:view();animation-range:entry 0% entry 40%}
+  }
+}
+@keyframes rv-in{from{opacity:0;translate:0 34px}}
+.rv{opacity:0;translate:0 30px;transition:opacity 480ms ease-out,translate 480ms var(--ease-out)}
+.rv.rv-in,html[data-fx="off"] .rv{opacity:1;translate:none}
+html[data-fx="off"] .rv{transition:none}
+
+/* role picker: groups snap into place while scrolling the lobby; filter chips scroll sideways (and snap) on narrow phones */
+@media (prefers-reduced-motion:no-preference){
+  html[data-shell="host"][data-phase="lobby"]{scroll-snap-type:y proximity}
+  html[data-shell="host"][data-phase="lobby"] .role-group{scroll-snap-align:start;scroll-margin-top:calc(var(--appbar-h) + env(safe-area-inset-top) + var(--s3))}
+}
+@media (max-width:480px){
+  .role-filter{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+  .role-filter::-webkit-scrollbar{display:none}
+  .role-filter button{flex:none;scroll-snap-align:center}
+}
+
+/* join QR: black on white, a 4-module quiet zone is part of the SVG */
+.join-qr{display:block;width:min(100%,232px);margin-top:var(--s3);padding:0;border:0;border-radius:14px;overflow:hidden;background:#fff;box-shadow:var(--lift-2)}
+.join-qr svg,.qr-big svg{display:block;width:100%;height:auto}
+.qr-big{width:min(86vw,72dvh,640px);border-radius:18px;overflow:hidden;background:#fff}
+.qr-show .code-show-site b{color:var(--ink)}
+@media (hover:hover){.join-qr:hover{filter:brightness(.96)}}
+
+/* private role card: face up but blurred under a veil until it is held */
+.secret{display:grid;justify-items:center;gap:var(--s4);width:100%}
+.secret-card{position:relative;width:min(100%,360px);margin-inline:auto}
+.secret-card .rcard{width:100%;max-width:none}
+.secret-rest{display:grid;gap:var(--s4);justify-items:center;width:100%}
+.secret-rest:empty{display:none}
+.secret .rcard,.secret-rest{filter:blur(18px);transition:filter 260ms ease-out}
+.secret.is-open .rcard,.secret.is-open .secret-rest{filter:none}
+.secret-hold{position:absolute;inset:0;z-index:4;padding:0;border:0;border-radius:6% / 4.3%;background:transparent;color:var(--candle);touch-action:none;cursor:grab;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.secret-hold:focus-visible{outline:3px solid var(--brass);outline-offset:5px}
+.secret-hold:active{cursor:grabbing}
+.secret-veil{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:var(--s2);padding:var(--s4);text-align:center;border-radius:inherit;
+  background:rgba(11,11,13,.5);opacity:1;transition:opacity 220ms ease-out}
+.secret-veil .ui-ico{width:34px;height:34px;color:var(--brass);vertical-align:0}
+.secret-veil span{font-weight:800;font-size:var(--fs-lg);line-height:1.2}
+.secret-veil small{font-size:var(--fs-sm);color:var(--smoke)}
+.secret.is-open .secret-veil{opacity:0}
+@media (min-width:1024px){.secret-card{width:min(100%,420px)}}
+/* low-end phones: no filter; an opaque veil and a hidden dossier instead */
+html[data-lite="1"] .secret .rcard,html[data-lite="1"] .secret-rest{filter:none;transition:none}
+html[data-lite="1"] .secret:not(.is-open) .secret-rest{opacity:0}
+html[data-lite="1"] .secret-veil{background:#0B0B0D}
+@media (prefers-reduced-motion:reduce){
+  .secret .rcard,.secret-rest{transition:none}
+  .secret-veil{transition:opacity 120ms linear!important}
+  .step-in,.cue.is-fill::before,.cue.is-fill .cue-n{animation:none}
+}
+html[data-fx="off"] .secret .rcard,html[data-fx="off"] .secret-rest{transition:none}
+html[data-fx="off"] .secret-veil{transition:opacity 120ms linear}
+html[data-fx="off"] .step-in,html[data-fx="off"] .cue.is-fill::before,html[data-fx="off"] .cue.is-fill .cue-n{animation:none}
+
+/* numbers that roll keep a steady width */
+.tally,.vote-n,.stepper-n{font-variant-numeric:tabular-nums}
+
+/* the role tip as a popover: reset the UA popover box so the existing fixed positioning still applies */
+#tip[popover]{inset:auto;margin:0;overflow:visible;color:var(--candle);display:block;max-width:320px}
+#tip[popover]:not(:popover-open){display:none}
+
+/* How to Play: on narrow screens the four steps are swipeable cards that snap, with the next one peeking and dots below */
+.how-dots{display:none}
+@media (max-width:600px){
+  .how{display:flex;gap:12px;padding:0 0 var(--s2);background:none;border-radius:0;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;margin-inline:calc(var(--s4) * -1);padding-inline:var(--s4);scroll-padding-inline:var(--s4)}
+  .how::-webkit-scrollbar{display:none}
+  .how li{flex:none;width:78%;align-content:start;scroll-snap-align:start;padding:var(--s4) 20px;border-radius:24px;background:#A3101D}
+  .how li+li{border-top:0}
+  .how-dots{display:flex;justify-content:center;gap:var(--s2);padding-block:var(--s1)}
+  .how-dots i{width:8px;height:8px;border-radius:50%;background:var(--faint);opacity:.5;transition:opacity 200ms,transform 200ms}
+  .how-dots i.on{opacity:1;transform:scale(1.3);background:#FFD36B}
+}
+@media (prefers-reduced-motion:reduce){.how-dots i{transition:none}}
+html[data-fx="off"] .how-dots i{transition:none}

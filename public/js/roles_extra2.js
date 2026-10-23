@@ -1,7 +1,7 @@
 // More roles. `R` and `A` are the helpers from roles.js (R(id,name,emoji,alignment,blurb,opts), A(type,order,prompt,extra)).
 // Only engine-supported fields are used. Anything the engine cannot run by itself (votes, silencing, delayed kills,
-// guns, messages) is a `day` reminder, an `onDeath`/`onCondemn` prompt or a `night1` instruction the storyteller
-// adjudicates by hand. Informational triggers say "dismiss" so the storyteller does not pick a target
+// guns, messages) is a `day` reminder, an `onDeath`/`onCondemn` prompt or a `night1` instruction the Host
+// adjudicates by hand. Informational triggers say "dismiss" so the Host does not pick a target
 // (resolving a pending prompt with a target kills that player).
 export function buildExtra2(R, A) {
   return [
@@ -9,13 +9,13 @@ export function buildExtra2(R, A) {
     // TOWN
     // =====================================================================
 
-    // --- private messages / secret tips (storyteller relays) ---
-    R('agent', 'Agent', '📨', 'town', 'You can slip anonymous notes to anyone who is not on the town team. The Storyteller carries them.',
-      { day: 'Agent hands the Storyteller a note for one non-Town player; deliver it anonymously.' }),
-    R('telepath', 'Telepath', '🛰️', 'town', 'You can send anonymous private messages to any player through the Storyteller.',
-      { day: 'Telepath gives the Storyteller a private message for one player; deliver it with no sender named.' }),
-    R('penguin', 'Penguin', '🐧', 'town', 'Each night you waddle up to one player and whisper a secret. It is a harmless fun fact picked by the Storyteller.',
-      { day: 'Penguin names a player; at dawn the Storyteller whispers a random, harmless secret to them.' }),
+    // --- private messages / secret tips (Host relays) ---
+    R('agent', 'Agent', '📨', 'town', 'You can slip anonymous notes to anyone who is not on the town team. The Host carries them.',
+      { day: 'Agent hands the Host a note for one non-Town player; deliver it anonymously.' }),
+    R('telepath', 'Telepath', '🛰️', 'town', 'You can send anonymous private messages to any player through the Host.',
+      { day: 'Telepath gives the Host a private message for one player; deliver it with no sender named.' }),
+    R('penguin', 'Penguin', '🐧', 'town', 'Each night you waddle up to one player and whisper a secret. It is a harmless fun fact picked by the Host.',
+      { day: 'Penguin names a player; at dawn the Host whispers a random, harmless secret to them.' }),
     R('caroler', 'Caroler', '🎄', 'town', 'Each night you sing to one player. They hear a carol naming three players, at least one of them Mafia.',
       { day: 'Caroler names a player to sing to. At dawn tell that player three names with at least one Mafia, unless they went out visiting.' }),
     R('dreamer', 'Dreamer', '💭', 'town', 'Each night you dream. Sometimes it warns of three players with a Mafia among them, sometimes it clears one player.',
@@ -36,7 +36,7 @@ export function buildExtra2(R, A) {
     R('paranoid_cop', 'Paranoid Cop', '😰', 'town', 'You think you are a Cop, but everyone always looks guilty to you.',
       { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'paranoid' }) }),
 
-    // --- guns, vests and items (storyteller tracks) ---
+    // --- guns, vests and items (Host tracks) ---
     R('deputy', 'Deputy', '📛', 'town', 'You hold one secret gun to fire in daylight. Nobody learns you pulled the trigger.',
       { day: 'Deputy may shoot one player (once). Do not reveal who fired.', dayUses: 1 }),
     R('gunsmith', 'Gunsmith', '🔧', 'town', 'Each night you may hand a gun to one player. The holder fires it once by day, and half the time the shot stays anonymous.',
@@ -46,7 +46,7 @@ export function buildExtra2(R, A) {
         night1: 'Blacksmith vests: the engine only protects for one night. If you want a vest to last until it is used, keep track of it by hand.' }),
     R('tinkerer', 'Tinkerer', '⚙️', 'town', 'If nobody visits you in a night, you build a gun and arm yourself. If you are killed, your workshop is raided.',
       { day: 'If nobody visited the Tinkerer last night, they now hold a gun (one daytime shot).',
-        onDeath: 'The Tinkerer died and the workshop is raided: the Storyteller gives one player a gun, then dismiss (pick nobody).' }),
+        onDeath: 'The Tinkerer died and the workshop is raided: the Host gives one player a gun, then dismiss (pick nobody).' }),
     R('saboteur', 'Saboteur', '🧯', 'mafia', 'Each night you tamper with one player\'s gun. If they fire it, it blows up in their hand.',
       { meeting: 'mafia', day: 'Saboteur names a player; if that player holds a gun and shoots it, the shooter dies instead.' }),
 
@@ -61,10 +61,10 @@ export function buildExtra2(R, A) {
       { day: 'Keymaker gives a key to one player. The holder may lock in on one later night: nobody can visit them or jail them that night.' }),
     R('baker', 'Baker', '🥖', 'town', 'Each night you bake two loaves for players of your choice. If every Baker dies, the town starves.',
       { day: 'Baker hands out two loaves. If no Baker is alive, famine: players die over three days, and each loaf buys half a day.',
-        onDeath: 'A Baker has died. If no Baker remains alive, announce a famine; the Storyteller kills the unfed by hand. Dismiss (pick nobody).' }),
+        onDeath: 'A Baker has died. If no Baker remains alive, announce a famine; the Host kills the unfed by hand. Dismiss (pick nobody).' }),
     R('gallis', 'Gallis', '🪝', 'town', 'You think you are a plain Villager, but a single vote is enough to condemn you.',
       { seesAs: 'villager', day: 'Gallis is condemned by just ONE vote against them, never by a majority.' }),
-    R('loudmouth', 'Loudmouth', '🗣️', 'town', 'You think you are a Villager. If anyone visits you at night, the Storyteller announces every visitor by name.',
+    R('loudmouth', 'Loudmouth', '🗣️', 'town', 'You think you are a Villager. If anyone visits you at night, the Host announces every visitor by name.',
       { seesAs: 'villager', day: 'If anyone visited the Loudmouth last night, announce all their visitors by name to the table.' }),
     R('sleepwalker', 'Sleepwalker', '🌙', 'town', 'You think you are a Villager, but every night you wander to a random house. It does nothing but looks suspicious.',
       { seesAs: 'villager', night1: 'Sleepwalker: each night pick a random player as their "visit". It has no effect, but a Tracker can see it.' }),
@@ -110,7 +110,7 @@ export function buildExtra2(R, A) {
     R('illusionist', 'Illusionist', '🪞', 'mafia', 'You hold one gun. Once, pick a player to take the blame when you fire it.',
       { meeting: 'mafia', day: 'Illusionist may shoot once and pin it on a player of their choice (once).', dayUses: 1 }),
     R('interceptor', 'Interceptor', '🎣', 'mafia', 'Each night you stand outside one house. You kill one of its visitors, and the rest learn who you are.',
-      { meeting: 'mafia', night1: 'Interceptor: whoever visits their target tonight, the Storyteller kills ONE of them by hand and tells the others who the Interceptor is.',
+      { meeting: 'mafia', night1: 'Interceptor: whoever visits their target tonight, the Host kills ONE of them by hand and tells the others who the Interceptor is.',
         action: A('watch', 64, 'Interceptor, wake up. Whose house do you wait outside?') }),
     R('lawyer', 'Lawyer', '📑', 'mafia', 'Each night you clear a Mafia teammate. If a Cop looks at them, they read as innocent.',
       { meeting: 'mafia', day: 'Lawyer names a Mafia player. If a Cop checks them tonight, report "not Mafia".' }),
@@ -130,15 +130,15 @@ export function buildExtra2(R, A) {
       { meeting: 'mafia', day: 'Ventriloquist may send one private message that looks like it came from a player they name.' }),
     R('voodoo_lady', 'Voodoo Lady', '🪡', 'mafia', 'Each night you pick a player and a word. If they say that word tomorrow, they die.',
       { meeting: 'mafia', day: 'Voodoo Lady names a player and a secret word. If that player says it today, they die.' }),
-    R('whisperer', 'Whisperer', '🤫', 'mafia', 'You can send anonymous private messages to any players through the Storyteller.',
-      { meeting: 'mafia', day: 'Whisperer gives the Storyteller a note for one player; deliver it without naming the sender.' }),
+    R('whisperer', 'Whisperer', '🤫', 'mafia', 'You can send anonymous private messages to any players through the Host.',
+      { meeting: 'mafia', day: 'Whisperer gives the Host a note for one player; deliver it without naming the sender.' }),
     R('witch', 'Witch', '🕸️', 'mafia', 'Each night you curse a player. They die if anyone not on the Mafia team visits them that night.',
       { meeting: 'mafia', day: 'Witch names a player. If a non-Mafia player visits them tonight, the cursed player dies.' }),
 
     // =====================================================================
     // THIRD PARTY
     // =====================================================================
-    R('angel', 'Angel', '🌟', 'third', 'You guard one player for the whole game. Once you may take a hit for them. You win if they live. The Storyteller awards the win.',
+    R('angel', 'Angel', '🌟', 'third', 'You guard one player for the whole game. Once you may take a hit for them. You win if they live. The Host awards the win.',
       { needsTarget: true, night1: 'Secretly tell the Angel which player is their ward. If the ward is alive at game end, the Angel wins; award it by hand.',
         action: A('guard', 21, 'Angel, wake up. Do you shield your ward tonight?', { uses: 1 }) }),
     R('creepy_girl', 'Creepy Girl', '🧸', 'third', 'You hand a doll to one player. They pass it on each night. You win if you live and its original holder dies.',

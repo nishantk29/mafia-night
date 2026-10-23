@@ -22,6 +22,9 @@ const LIB_KEY = 'mafia.library';
 export function loadLibrary() { try { return JSON.parse(localStorage.getItem(LIB_KEY) || '[]'); } catch { return []; } }
 export function saveLibrary(list) { try { localStorage.setItem(LIB_KEY, JSON.stringify(list)); } catch { /* storage blocked */ } }
 
+// Haptics: a short buzz where the browser has one (Android Chrome); a no-op elsewhere.
+export const buzz = (pattern = 12) => { try { navigator.vibrate?.(pattern); } catch { /* not allowed */ } };
+
 export const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } },

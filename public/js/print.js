@@ -19,7 +19,7 @@ export function buildGuide(n) {
   return { n, roleIds, map, rows, steps: nightScript(room) };
 }
 
-// Script lines in wake order. Info steps that are not read aloud are notes for the storyteller.
+// Script lines in wake order. Info steps that are not read aloud are notes for the Host.
 function scriptLines(g) {
   return g.steps.filter((s) => s.prompt).map((s) => {
     const text = String(s.prompt).replace(/\s+/g, ' ').trim();
@@ -37,7 +37,7 @@ const narration = (g) => `<ol class="script">
 
 const setup = (g) => `<ol class="setup">
   <li>Take out the ${g.map.length} cards in the key and put the rest of the deck away. Shuffle them well.</li>
-  <li>Deal one card face down to each of the ${g.n} players. The storyteller does not play: they keep the key and read the script. (If the storyteller wants to play, ask a friend to read it.)</li>
+  <li>Deal one card face down to each of the ${g.n} players. The Host does not play: they keep the key and read the script. (If the Host wants to play, ask a friend to read it.)</li>
   <li>Each player peeks at their own card, remembers it, and puts it back face down. Nobody shows a card.</li>
   <li>Run the night script below, then let the table talk and vote someone out each day.</li>
 </ol>`;
@@ -77,7 +77,7 @@ export function render(root, params) {
   root.innerHTML = `<header class="bar noprint">
       <a class="back" href="/#/faq">← How it works</a>
       <h1>Printable card guide</h1>
-      <p>Play Mafia with a normal deck of cards. Pick a player count, then print the key and script for the storyteller, or the role cards to cut out.</p>
+      <p>Play Mafia with a normal deck of cards. Pick a player count, then print the key and script for the Host, or the role cards to cut out.</p>
       <div class="controls">
         <label>Players <select id="n">${COUNTS.map((c) => opt(c, c, all ? '' : n)).join('')}${view === 'guide' ? opt('all', 'All counts', all ? 'all' : '') : ''}</select></label>
         <label>Print <select id="view">${opt('guide', 'Card key and script', view)}${opt('sheet', 'Role card sheet, 9 per page', view)}</select></label>

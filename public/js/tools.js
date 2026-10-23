@@ -1,6 +1,6 @@
 // Table tools: talk timer, turn timer, vote counter, random player, coin and dice. They live on this device only
-// (nothing is sent to the room), so the storyteller can use them mid-game without changing the game.
-import { S, esc } from './state.js';
+// (nothing is sent to the room), so the Host can use them mid-game without changing the game.
+import { S, esc, buzz } from './state.js';
 import { ui } from './ui_icons.js';
 
 export const rnd = (n) => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
@@ -157,7 +157,7 @@ export const TOOL_ACTIONS = {
     keepAwake(); S.render();
   },
   turnNext() { passTurn(S.view, S.ui.turn?.endAt > 0); S.render(); },
-  vote(el) { if (S.ui.votesDay !== S.view?.day) { S.ui.votes = {}; S.ui.votesDay = S.view?.day; } const v = S.ui.votes; v[el.dataset.id] = Math.max(0, (v[el.dataset.id] || 0) + Number(el.dataset.v)); S.render(); },
+  vote(el) { if (S.ui.votesDay !== S.view?.day) { S.ui.votes = {}; S.ui.votesDay = S.view?.day; } const v = S.ui.votes; v[el.dataset.id] = Math.max(0, (v[el.dataset.id] || 0) + Number(el.dataset.v)); buzz(10); S.render(); },
   votesClear() { S.ui.votes = {}; S.render(); },
   pickPlayer() {
     const alive = (S.view?.players || []).filter((p) => p.alive);
