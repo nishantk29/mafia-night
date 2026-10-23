@@ -593,6 +593,7 @@ export function checkWin(room) {
   return null;
 }
 export function applyWinChecks(room) {
+  if (room.pending?.length) return; // a Hunter's shot (or other prompt) resolves first; resolvePending re-checks
   const w = checkWin(room);
   if (w && !room.winner) {
     room.winner = w; room.phase = 'over';

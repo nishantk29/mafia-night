@@ -83,3 +83,54 @@ describe('Janitor single use', () => {
     assert.equal(room.players.find((p) => p.name === 'V1').roleHidden, true);
   });
 });
+
+describe('rule risks: Hunter, revive, stalemate', () => {
+  test('Hunter lynched at 1 Mafia + 2 Town: no win until the shot resolves', () => {
+    const room = mk([['M', 'mafia'], ['H', 'hunter'], ['V', 'villager']]);
+    assert.ok(reduce(room, host, { type: 'condemn', playerId: id(room, 'H') }).ok);
+    assert.equal(room.winner, null); assert.equal(room.phase, 'day');
+    assert.equal(room.pending.length, 1);
+    reduce(room, host, { type: 'resolvePending', pendingId: room.pending[0].id, targetId: id(room, 'M') });
+    assert.equal(room.winner.side, 'town');
+  });
+  test('Hunter shot that lets Mafia reach parity ends the game after the shot', () => {
+    const room = mk([['M', 'mafia'], ['H', 'hunter'], ['V', 'villager'], ['W', 'villager']]);
+    reduce(room, host, { type: 'condemn', playerId: id(room, 'H') });
+    assert.equal(room.winner, null);
+    reduce(room, host, { type: 'resolvePending', pendingId: room.pending[0].id, targetId: id(room, 'V') });
+    assert.equal(room.winner.side, 'mafia');
+  });
+  test('Hunter killed at night: day starts, win waits for the shot', () => {
+    const room = mk([['M', 'mafia'], ['H', 'hunter'], ['V', 'villager']], 'night');
+    reduce(room, host, { type: 'kill', playerId: id(room, 'H') });
+    assert.equal(room.winner, null);
+    reduce(room, host, { type: 'resolvePending', pendingId: room.pending[0].id, targetId: null });
+    assert.equal(room.winner.side, 'mafia');
+  });
+  test('revive: back in counts and win check; no double revive; none after game over', () => {
+    const room = mk([['M', 'mafia'], ['V', 'villager'], ['W', 'villager'], ['X', 'villager']]);
+    reduce(room, host, { type: 'kill', playerId: id(room, 'V') });
+    assert.ok(reduce(room, host, { type: 'revive', playerId: id(room, 'V') }).ok);
+    assert.ok(reduce(room, host, { type: 'revive', playerId: id(room, 'V') }).error);
+    reduce(room, host, { type: 'kill', playerId: id(room, 'V') });
+    reduce(room, host, { type: 'kill', playerId: id(room, 'W') });
+    assert.equal(room.phase, 'over');
+    assert.ok(reduce(room, host, { type: 'revive', playerId: id(room, 'W') }).error);
+    assert.equal(room.winner.side, 'mafia');
+  });
+  test('revive drops a stale Hunter prompt', () => {
+    const room = mk([['M', 'mafia'], ['H', 'hunter'], ['V', 'villager'], ['W', 'villager']]);
+    reduce(room, host, { type: 'kill', playerId: id(room, 'H') });
+    assert.equal(room.pending.length, 1);
+    reduce(room, host, { type: 'revive', playerId: id(room, 'H') });
+    assert.equal(room.pending.length, 0);
+    assert.ok(room.players.find((p) => p.name === 'H').alive);
+  });
+  test('1 Mafia vs 1 Town ends at once; Host can declare in a no-winner position', () => {
+    assert.equal(checkWin(mk([['M', 'mafia'], ['V', 'villager']])).side, 'mafia');
+    const r2 = mk([['M', 'mafia'], ['K', 'killer'], ['V', 'villager']]);
+    assert.equal(checkWin(r2), null);
+    assert.ok(reduce(r2, host, { type: 'declareWinner', side: 'draw' }).ok);
+    assert.equal(r2.phase, 'over');
+  });
+});
