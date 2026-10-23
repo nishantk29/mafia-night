@@ -10,10 +10,10 @@ const PRECACHE = [
   SHELL,
   '/styles.css',
   '/manifest.webmanifest',
-  ...['app', 'art', 'art_manifest', 'board', 'engine', 'faq', 'fx', 'host', 'icon_data', 'player', 'print', 'role_guide', 'role_icons',
-    'roles', 'roles_extra', 'roles_extra2', 'room', 'state', 'theme', 'tools', 'ui_icons'].map((m) => `/js/${m}.js`),
+  ...['app', 'art', 'art_manifest', 'board', 'engine', 'faq', 'fx', 'hold', 'host', 'icon_data', 'motion', 'player', 'print', 'qr', 'role_guide',
+    'role_icons', 'roles', 'roles_extra', 'roles_extra2', 'room', 'state', 'theme', 'tools', 'ui_icons'].map((m) => `/js/${m}.js`),
   ...['rubik-var', 'big-shoulders-display-var', 'alegreya-sans-400', 'alegreya-sans-500', 'alegreya-sans-700',
-    'alegreya-sans-800', 'alegreya-italic-var'].map((f) => `/fonts/${f}.woff2`),
+    'alegreya-sans-800', 'alegreya-italic-var', 'limelight-400'].map((f) => `/fonts/${f}.woff2`),
   '/icons/favicon.svg', '/icons/favicon-32.png', '/icons/icon-192.png', '/icons/icon-512.png',
   '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png',
 ];

@@ -2,7 +2,7 @@
 // Rules: CSS 3D transforms only; animate transform and opacity only; will-change lives only on elements that are
 // mid-animation; at most 18 particles per burst (8 on low-end); nothing loops while idle; every effect is gone by 1.2s
 // except the victory card, which stays until it is closed. Effects never take input (pointer-events:none).
-import { S, esc, store } from './state.js';
+import { S, esc, store, buzz } from './state.js';
 import { ui } from './ui_icons.js';
 import { ROLE_BY_ID } from './roles.js';
 
@@ -19,7 +19,7 @@ reduced.addEventListener?.('change', syncFx);
 syncFx();
 
 const full = () => $html.dataset.fx === 'on' && $html.dataset.lite === '0';
-const maxParticles = () => (lowEnd() ? 8 : 18);
+const maxParticles = () => (lowEnd() ? 8 : 26);
 const rand = (a, b) => a + Math.random() * (b - a);
 const layer = () => document.getElementById('fx');
 const drop = (el, ms) => setTimeout(() => el.remove(), ms);
@@ -117,7 +117,8 @@ export function showVictory(ev) {
         <button type="button" class="btn ghost" data-a="closeVictory">Close</button></div>
     </div></div>`;
   host.append(el); victoryEl = el;
-  if (animOn()) { const b = burst(el.querySelector('.fx-in'), ev.theme, 18, ev.theme === 'mafia' ? 'sparks' : 'confetti'); drop(b, 1300); }
+  if (ev.won !== false) buzz([40, 50, 90]);
+  if (animOn()) { const b = burst(el.querySelector('.fx-in'), ev.theme, 26, ev.theme === 'mafia' ? 'sparks' : 'confetti'); drop(b, 1300); }
   el.querySelector('[data-a="playAgain"]').focus({ preventScroll: true });
 }
 export function closeVictory() { victoryEl?.remove(); victoryEl = null; }
@@ -147,6 +148,20 @@ export function observe(prev, next) {
 
 // ---------------------------------------------------------------- after every render
 const ticks = new Map();
+let railNight = null; let railDone = new Set(); let railSeen = false;
+// Count from the old number to the new one over ~450ms (rAF, one text node write per frame). Text around the number is kept.
+function rollUp(el, from, to) {
+  const a = /\d+/.exec(from); const b = /\d+/.exec(to);
+  if (!a || !b || a[0] === b[0]) return;
+  const x = +a[0]; const y = +b[0]; const t0 = performance.now(); const dur = 450;
+  const frame = (t) => {
+    if (!el.isConnected) return;
+    const p = Math.min(1, (t - t0) / dur); const n = Math.round(x + (y - x) * (1 - (1 - p) ** 3));
+    el.textContent = to.replace(/\d+/, n);
+    if (p < 1) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
 // Numbers marked data-tick roll in when their value changes (vote counts, tallies).
 export function afterRender() {
   document.querySelectorAll('[data-tick]').forEach((el) => {
@@ -154,9 +169,22 @@ export function afterRender() {
     if (animOn() && ticks.has(k) && ticks.get(k) !== v) {
       el.classList.add('is-tick');
       el.addEventListener('animationend', () => el.classList.remove('is-tick'), { once: true });
+      rollUp(el, ticks.get(k), v);
     }
     ticks.set(k, v);
   });
+  // The night rail: a step that just finished fills its connector once; steps already done stay filled.
+  const rail = document.querySelector('.cues[data-night]');
+  const night = rail ? rail.dataset.night : null;
+  if (night !== railNight) { railNight = night; railDone = new Set(); railSeen = false; }
+  if (rail) {
+    rail.querySelectorAll('.cue.is-done[data-ck]').forEach((li) => {
+      if (railSeen && animOn() && !railDone.has(li.dataset.ck)) li.classList.add('is-fill');
+      railDone.add(li.dataset.ck);
+    });
+    rail.querySelectorAll('.cue[data-ck]:not(.is-done)').forEach((li) => railDone.delete(li.dataset.ck));
+    railSeen = true;
+  }
   // will-change is only set by these classes: drop them as soon as the motion ends.
   document.querySelectorAll('.is-flipping,.is-unflipping,.is-popping').forEach((el) => {
     const inner = el.querySelector('.rcard-inner') || el;

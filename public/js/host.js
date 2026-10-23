@@ -11,6 +11,10 @@ import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { toolsButton, toolsPanel } from './tools.js';
 import { animOn } from './fx.js';
+import { qrSvg, joinUrl } from './qr.js';
+
+const qrCache = new Map();
+const qrFor = (url) => { if (!qrCache.has(url)) qrCache.set(url, qrSvg(url, `QR code for ${url}`)); return qrCache.get(url); };
 
 const pname = (v, id) => v.players.find((p) => p.id === id)?.name || '?';
 const rname = (id) => ROLE_BY_ID[id]?.name || id;
@@ -51,7 +55,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}`;
 }
 
 // ---------------- lobby ----------------
@@ -59,7 +63,7 @@ function lobby(v, local) {
   const n = v.players.length;
   const c = v.config;
   const min = v.limits.min;
-  const link = `${location.origin}/#/join/${v.code}`;
+  const link = joinUrl(location.origin, v.code);
   const counts = {};
   for (const id of c.roles) counts[id] = (counts[id] || 0) + 1;
   const lib = loadLibrary();
@@ -67,9 +71,12 @@ function lobby(v, local) {
   const joinCode = local ? `<p class="note local-note">${ui('phone')} <span>This game is saved only in this browser on this device. Nobody else can see it, and nothing is sent online. Opening the site somewhere else starts fresh.</span></p>` : `<section class="block join-code">
     <p class="muted">Players go to <b>${esc(joinSite())}</b> and enter</p>
     <div class="room-code code" aria-label="Room code ${esc(v.code.split('').join(' '))}">${esc(v.code)}</div>
+    <button type="button" class="join-qr" data-a="showQr" aria-label="Join QR code for room ${esc(v.code)}. Tap to enlarge.">${qrFor(link)}</button>
     <div class="join-actions">
       <button type="button" class="btn" data-a="showCode">${ui('expand')} Show code full screen</button>
       <button type="button" class="btn ghost" data-a="copy" data-v="${esc(link)}">${ui('copy')} Copy join link</button>
+      ${typeof navigator.share === 'function' ? `<button type="button" class="btn ghost" data-a="share" data-v="${esc(link)}">Share link</button>` : ''}
+      <button type="button" class="btn ghost" data-a="showQr">${ui('expand')} Show QR full screen</button>
     </div>
   </section>`;
 
@@ -312,6 +319,15 @@ function codeOverlay(v) {
     <p class="code-show-count">${joined ? `${plural(joined, 'player')} joined` : 'Waiting for players'}</p>
   </div></div>`;
 }
+// Full-screen join QR: players point their camera at it.
+function qrOverlay(v) {
+  const link = joinUrl(location.origin, v.code);
+  return `<div class="overlay code-show qr-show" data-a="hideQr"><div class="overlay-in${S.ui.anim === 'modal' ? ' is-entering' : ''}" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+    <button type="button" class="icon-btn x-btn" data-a="hideQr" aria-label="Close">${ui('x')}</button>
+    <p class="code-show-site" id="qr-title">Scan to join, or go to <b>${esc(joinSite())}</b> and enter <b class="code">${esc(v.code)}</b></p>
+    <div class="qr-big">${qrFor(link)}</div>
+  </div></div>`;
+}
 function keyOverlay(v) {
   if (!v.deck) return '';
   return `<div class="overlay key-show" data-a="hideKey"><div class="overlay-in${S.ui.anim === 'modal' ? ' is-entering' : ''}" role="dialog" aria-modal="true" aria-labelledby="key-title">
@@ -343,7 +359,7 @@ function night(v) {
   const body = `<header class="phase-head"><h2 class="phase-title">Night ${v.night}</h2>
       <p class="muted">${blind1 ? 'Read each line aloud. When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
       ${v.shield ? `<p class="note is-warn">${ui('shield')} Virgin shield: nobody can be killed tonight.</p>` : ''}</header>
-    ${steps.length ? `${sayLine(START_CUE)}<ol class="cues">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
+    ${steps.length ? `${sayLine(START_CUE)}<ol class="cues" data-night="${v.night}" style="--steps:${steps.length}">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
       : empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.')}`;
   const label = canResolve ? 'Wake everyone up' : idSteps.length ? 'Find every role first' : `${plural(pendingAct.length, 'step')} left`;
   return { body: body + (steps.length ? sayLine(END_CUE) : ''), dock: btn('big', 'resolve', canResolve ? `${ui('sun')} ${label}` : label, { on: canResolve, why: label }) };
@@ -407,12 +423,12 @@ function cue(v, s, num, current, alive) {
         ? (set.on ? (s.type === 'alert' ? 'On alert' : 'Yes') : (s.type === 'alert' ? 'Staying in' : 'No'))
         : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
     }
-    return `<li class="cue is-done"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
+    return `<li class="cue is-done" data-ck="${s.key}"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
       ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div><div class="cue-after">${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}</div></li>`;
   }
   if (!current) {
     const what = s.kind === 'identify' ? 'Find who it is' : s.kind === 'info' ? 'Wake them up' : 'Record their choice';
-    return `<li class="cue"><span class="cue-n">${num}</span><button type="button" class="cue-line" data-a="focusStep" data-key="${s.key}">${roleEl}<span class="meta">${what}</span></button></li>`;
+    return `<li class="cue" data-ck="${s.key}"><span class="cue-n">${num}</span><button type="button" class="cue-line" data-a="focusStep" data-key="${s.key}">${roleEl}<span class="meta">${what}</span></button></li>`;
   }
   const cues = stepCues(s);
   const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>` : '';
@@ -451,7 +467,7 @@ function cue(v, s, num, current, alive) {
         <button type="button" class="link" data-a="skip" data-key="${s.key}">Skip, nobody tonight</button>`;
     }
   }
-  return `<li class="cue is-current" aria-current="step"><span class="cue-n">${num}</span><div class="cue-body">${inner}</div></li>`;
+  return `<li class="cue is-current" data-ck="${s.key}" aria-current="step"><span class="cue-n">${num}</span><div class="cue-body">${inner}</div></li>`;
 }
 
 // ---------------- day ----------------
