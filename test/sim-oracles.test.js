@@ -118,13 +118,13 @@ describe('simulator helpers', () => {
   test('coin-flip checks always get a coin', () => {
     const room = newRoom('X', 'k');
     ok(room, { type: 'addPlayers', names: ['A', 'B', 'C', 'D', 'E', 'F'] });
-    ok(room, { type: 'setConfig', roles: ['confused_cop', 'wannabe', 'mafia', 'villager', 'villager', 'villager'] });
+    ok(room, { type: 'setConfig', roles: ['confused_cop', 'cop', 'wannabe', 'mafia', 'villager', 'villager'] });
     ok(room, { type: 'deal' }); ok(room, { type: 'startNight' });
     const v = viewForHost(room);
     const R = rng(1);
     for (let i = 0; i < 30; i++) {
       const acts = pickNightActions(R, v, { skip: 0 });
-      for (const s of v.script.filter((x) => ['random', 'fake'].includes(x.check))) assert.ok(['mafia', 'innocent'].includes(acts[s.key].coin));
+      for (const s of v.script.filter((x) => ['random', 'fake'].includes(x.check))) assert.ok(s.check === 'random' ? ['heads', 'tails'].includes(acts[s.key].flip) : ['mafia', 'innocent'].includes(acts[s.key].coin));
     }
   });
 

@@ -1437,3 +1437,23 @@ html[data-lite="1"] .block::before,html[data-lite="1"] .whisper::before,html[dat
 /* lead block rounder than the supporting panel */
 .path-host{border-radius:36px}
 .home-paths .path-join{border-radius:14px}
+
+/* Confused Cop coin flip (host night screen): transform + opacity only; fx off / reduced motion = no flip, result fades in */
+.coin-stage{display:grid;justify-items:center;gap:var(--s2);margin-top:var(--s3);perspective:600px}
+.coin3d{position:relative;width:76px;height:76px;transform-style:preserve-3d;will-change:transform;transform:rotateY(0)}
+.coin3d[data-face="tails"]{transform:rotateY(180deg)}
+.coin3d.is-flipping{animation:coinflip 1.2s var(--ease-out) both}
+.coin-face{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%;border:3px solid var(--brass-lo);background:var(--brass);color:var(--on-brass);
+  font-family:var(--font-display);font-weight:900;font-size:var(--fs-xl,2rem);-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.coin-tails{transform:rotateY(180deg);background:var(--brass-hi)}
+.coin-label{margin:0;font-weight:800;color:var(--brass-hi)}
+.cue-after{grid-column:1/-1;min-width:0;display:grid;gap:var(--s2)}
+.coin-after.is-waiting,.coin-label.is-waiting{opacity:0;animation:coinfade .3s var(--ease-out) forwards}
+@keyframes coinflip{from{transform:rotateY(0)}to{transform:rotateY(var(--coin-end))}}
+@keyframes coinfade{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .coin3d.is-flipping{animation:none}
+  .coin-after.is-waiting,.coin-label.is-waiting{opacity:1;animation:none}
+}
+html[data-fx="off"] .coin3d.is-flipping{animation:none}
+html[data-fx="off"] .coin-after.is-waiting,html[data-fx="off"] .coin-label.is-waiting{opacity:1;animation:none}

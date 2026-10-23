@@ -179,9 +179,30 @@ export function nightScript(room) {
       steps.push({ key: `act:${p.id}`, kind: 'action', roleId: r.id, actors: [p.id], ...r.action });
     }
   }
-  // Two people can answer to the same call (a Cop and an Insane Cop both hear "Cop, wake up"): wake them one by one.
+  // Several players who look like "Cop" (real, disguised, or the same type twice) each get their own neutral
+  // numbered call. Numbers follow a per-game shuffled rank stored on the room, so they never hint at the real role.
+  const looksCop = (st) => st.kind === 'action' && (ROLE_BY_ID[ROLE_BY_ID[st.roleId]?.seesAs] || ROLE_BY_ID[st.roleId])?.id === 'cop';
+  const copSteps = steps.filter(looksCop);
+  if (copSteps.length > 1) {
+    const rank = (st) => [...`${room.copSalt}:${st.actors[0]}`].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
+    copSteps.sort((a, b) => rank(a) - rank(b));
+    copSteps.forEach((st, i) => {
+      const label = `Cop ${i + 1}`;
+      st.prompt = st.prompt.replace(/^Cop,/, `${label},`);
+      st.order += i * 0.001;
+      st.hint = `${label} is ${nameOf(room, st.actors[0])}. Tap them on the shoulder so only they wake.`;
+    });
+  }
+  // Confused Cops are an open role: own calls, numbered only when there are several.
+  const confSteps = steps.filter((st) => st.kind === 'action' && st.roleId === 'confused_cop');
+  if (confSteps.length > 1) confSteps.forEach((st, i) => {
+    st.prompt = st.prompt.replace(/^Confused Cop,/, `Confused Cop ${i + 1},`);
+    st.order += i * 0.001;
+    st.hint = `Confused Cop ${i + 1} is ${nameOf(room, st.actors[0])}.`;
+  });
+  // Any other shared call (two Lookouts, say): wake them one by one.
   const said = {};
-  for (const st of steps) if (st.kind === 'action') (said[st.prompt] ||= []).push(st);
+  for (const st of steps) if (st.kind === 'action' && !st.hint) (said[st.prompt] ||= []).push(st);
   for (const group of Object.values(said)) if (group.length > 1) for (const st of group) {
     st.hint = `More than one player answers to this call. Tap ${st.actors.map((id) => nameOf(room, id)).join(' and ')} on the shoulder so only they wake.`;
   }
@@ -198,6 +219,8 @@ const ASK = {
   convert: 'Pick someone to recruit.', copyRole: 'Pick a dead player to copy.', investigate: 'Pick someone to investigate.',
   track: 'Pick someone to follow.', watch: 'Pick someone to watch.', autopsy: 'Pick a dead player to examine.',
 };
+// A fair crypto coin for roles whose answer is a coin flip. Decided once, when the target is entered.
+export const flipCoin = () => (randInt(2) ? 'heads' : 'tails');
 export const START_CUE = 'Everyone, close your eyes.';
 export const END_CUE = 'Everyone, open your eyes.';
 export function stepCues(step) {
@@ -276,6 +299,14 @@ export function setupWarnings(roleIds, playerCount) {
   const deceivers = roles.filter((r) => r.appearsAs === 'innocent' || r.action?.type === 'frame' || r.appearsAs === 'mafia');
   if (deceivers.length && !hasCheck) out.push({ level: 'tip', text: `${[...new Set(deceivers.map((r) => r.name))].join(', ')} only matter${deceivers.length === 1 ? 's' : ''} if someone investigates. Add a Cop or Detective.` });
   if (n >= 7 && !hasCheck) out.push({ level: 'tip', text: 'Nobody can investigate, so Town has to guess. Add a Cop for a classic game.' });
+  // Generic pairing rule: a role with requiresPartner needs that role in the game, or the deal is blocked.
+  for (const r of roles) {
+    const need = r.requiresPartner && ROLE_BY_ID[r.requiresPartner];
+    if (need && !has(need.id)) {
+      const text = `${r.name} needs a regular ${need.name} in the game. Add a ${need.name}.`;
+      if (!out.some((w) => w.text === text)) out.push({ level: 'error', text });
+    }
+  }
   if (has('placebo_doctor') && !has('doctor')) out.push({ level: 'tip', text: 'A Placebo Doctor works best with a real Doctor in the game.' });
   for (const r of roles.filter((x) => x.seesAs && x.seesAs !== 'villager')) {
     if (!has(r.seesAs)) out.push({ level: 'tip', text: `The ${r.name} thinks they are the ${ROLE_BY_ID[r.seesAs].name}, and there is no real ${ROLE_BY_ID[r.seesAs].name}. That's fine, but nobody will contradict them.` });
@@ -315,9 +346,9 @@ function addPending(room, p, text) {
   room.pending ||= [];
   room.pending.push({ id: 'pend' + (room.seq = (room.seq || 0) + 1), playerId: p.id, text });
 }
-export function log(room, text) {
+export function log(room, text, opts = {}) {
   room.log ||= [];
-  room.log.push({ night: room.night, day: room.day, phase: room.phase, text });
+  room.log.push({ night: room.night, day: room.day, phase: room.phase, text, ...(opts.private ? { private: true } : {}) });
   if (room.log.length > 400) room.log.splice(0, room.log.length - 400);
 }
 
@@ -337,7 +368,7 @@ export function resolveNight(room, actions) {
     const targets = [...new Set(raw.targets || [])].filter((id) => playerById(room, id) && (selfOk || !s.actors.includes(id)));
     const need = s.targets ?? 1;
     const on = need === 0 ? !!raw.on : targets.length >= need;
-    return { s, idx, targets, on, coin: raw.coin === 'mafia' || raw.coin === 'innocent' ? raw.coin : null };
+    return { s, idx, targets, on, coin: raw.coin === 'mafia' || raw.coin === 'innocent' ? raw.coin : null, flip: raw.flip === 'heads' || raw.flip === 'tails' ? raw.flip : null };
   }).filter((a) => a.on);
 
   // usage
@@ -445,12 +476,19 @@ export function resolveNight(room, actions) {
   for (const a of active.filter((x) => ['investigate', 'track', 'watch', 'autopsy'].includes(x.s.type))) {
     const actorIds = a.s.actors;
     const t = alivePlayer(a.targets[0]);
-    let text; let note = '';
+    let text; let note = ''; let coinInfo = null;
     if (a.s.type === 'investigate') {
       const chk = a.s.check;
       if (chk === 'alignment') text = `${t.name} is ${sideName(appearsAs(room, t))}.`;
       else if (chk === 'inverted') { text = `${t.name} is ${sideName(appearsAs(room, t) === 'mafia' ? 'innocent' : 'mafia')}.`; note = 'Insane Cop: this is the flipped result. Say it as if it were true.'; }
-      else if (chk === 'random') { text = `${t.name} is ${sideName(a.coin || (randInt(2) ? 'mafia' : 'innocent'))}.`; note = 'Confused Cop: a coin flip, not the truth. Say it as if it were true.'; }
+      else if (chk === 'random') {
+        // Open role: heads = the true Cop result, tails = the opposite. The flip is decided when the target is entered.
+        const flip = a.flip || flipCoin();
+        const truth = appearsAs(room, t);
+        text = `${t.name} is ${sideName(flip === 'heads' ? truth : truth === 'mafia' ? 'innocent' : 'mafia')}.`;
+        note = flip === 'heads' ? 'Confused Cop: coin landed Heads, this is the TRUE answer.' : 'Confused Cop: coin landed Tails, this is the FLIPPED answer.';
+        coinInfo = { flip, text: `Confused Cop ${nameOf(room, actorIds[0])} checked ${t.name}: coin landed ${flip === 'heads' ? 'Heads (true answer)' : 'Tails (flipped answer)'}.` };
+      }
       else if (chk === 'naive') { text = `${t.name} is ${sideName('innocent')}.`; note = 'Naive Cop: everyone looks innocent to them. Say it as if it were true.'; }
       else if (chk === 'paranoid') { text = `${t.name} is ${sideName('mafia')}.`; note = 'Paranoid Cop: everyone looks guilty to them. Say it as if it were true.'; }
       else if (chk === 'role') text = `${t.name} is the ${ROLE_BY_ID[t.roleId].name}.`;
@@ -470,7 +508,8 @@ export function resolveNight(room, actions) {
     } else if (a.s.type === 'autopsy') {
       text = `${t.name} was the ${ROLE_BY_ID[t.roleId].name}.`;
     }
-    rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note });
+    rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(coinInfo ? { flip: coinInfo.flip } : {}) });
+    if (coinInfo) { (rep.coins ||= []).push({ key: a.s.key, flip: coinInfo.flip, text: coinInfo.text }); log(room, `Night ${room.night}: ${coinInfo.text}`, { private: true }); }
   }
 
   // 8) apply deaths

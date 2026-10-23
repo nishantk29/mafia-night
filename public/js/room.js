@@ -21,7 +21,7 @@ export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
     config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
-    players: [], deck: null, phase: 'lobby', day: 0, night: 0,
+    players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
   };
 }
@@ -40,6 +40,7 @@ function addPlayer(room, name, offline) {
 
 function resetDeal(room) {
   for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; }
+  room.copSalt = Math.random(); // seeds the neutral "Cop 1/2/..." numbering for this game
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.usage = {}; room.dayUsed = {};
   room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.results = []; room.shield = false; room.framed = [];
 }
@@ -338,7 +339,7 @@ export function viewForHost(room, connected = new Set()) {
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
       deathCause: p.deathCause || null, roleHidden: !!p.roleHidden, convertedFrom: p.convertedFrom || null,
     })),
-    deck: room.deck, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
+    deck: room.deck, copSalt: room.copSalt, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
     report: room.lastReport, log: room.log.slice(-60), winner: room.winner, winners: over ? finalWinners(room) : [],
     sideWins: room.sideWins, usage: room.usage, dayUsed: room.dayUsed, shield: room.shield,
     limits: { min: MIN_PLAYERS, max: MAX_PLAYERS },
@@ -349,7 +350,7 @@ export function viewForHost(room, connected = new Set()) {
 // Shared by the storyteller console and the simulator, so both preview exactly the same way.
 export function roomFromView(v) {
   return {
-    code: v.code, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, winner: null,
+    code: v.code, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, winner: null,
     players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },
     shield: v.shield, dayUsed: { ...(v.dayUsed || {}) }, sideWins: [...(v.sideWins || [])], pending: [], log: [], framed: [],
   };
@@ -396,6 +397,6 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
       ? [...room.deck.map].sort((x, y) => FULL_DECK.indexOf(x.card) - FULL_DECK.indexOf(y.card)).map((m) => ({ card: m.card, role: roleCard(ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) })) : null, // disguised roles show what they think they are
     winner: over ? room.winner : null,
     winners: over ? finalWinners(room) : [],
-    publicLog: room.log.filter((l) => /died|condemned|Game over|taken down|eliminated|nobody/i.test(l.text)).slice(-20).map((l) => ({ night: l.night, day: l.day, text: l.text.replace(/\s*\(.*?\)\s*$/, '') })),
+    publicLog: room.log.filter((l) => !l.private && /died|condemned|Game over|taken down|eliminated|nobody/i.test(l.text)).slice(-20).map((l) => ({ night: l.night, day: l.day, text: l.text.replace(/\s*\(.*?\)\s*$/, '') })),
   };
 }

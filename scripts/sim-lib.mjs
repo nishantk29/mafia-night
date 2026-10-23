@@ -58,7 +58,7 @@ export function planCoverage(plans, R, catalogue = CATALOGUE) {
 
 // ---------- the night, as a storyteller would record it ----------
 export const LIVE = ['investigate', 'track', 'watch', 'autopsy'];
-export const COIN = ['random', 'fake'];
+export const COIN = ['fake'];
 // Who a step may pick, exactly as the console offers it: the living, minus the actors themselves (protectors
 // may pick themselves unless the "Doctors can protect themselves" house rule is off), or the dead for steps on the dead.
 export function candidates(view, step) {
@@ -78,6 +78,7 @@ export function pickNightActions(R, view, { skip = 0.15, odd = 0 } = {}) {
     if (pool.length < need) continue;
     actions[s.key] = { targets: R.shuffle(pool).slice(0, need).map((x) => x.id) };
     if (s.type === 'investigate' && COIN.includes(s.check)) actions[s.key].coin = R.pick(['mafia', 'innocent']);
+    if (s.type === 'investigate' && s.check === 'random') actions[s.key].flip = R.pick(['heads', 'tails']);
   }
   return actions;
 }
@@ -142,6 +143,7 @@ export function nightProblems(before, actions, after, previews) {
     else if (s.check === 'inverted' && !framed) want = `${a.name} is ${side(looks(a.roleId) === 'mafia' ? 'innocent' : 'mafia')}.`;
     else if (s.check === 'naive') want = `${a.name} is NOT Mafia.`;
     else if (s.check === 'paranoid') want = `${a.name} is MAFIA.`;
+    else if (s.check === 'random' && !framed) want = `${a.name} is ${side(actions[s.key].flip === 'heads' ? looks(a.roleId) : looks(a.roleId) === 'mafia' ? 'innocent' : 'mafia')}.`;
     else if (COIN.includes(s.check)) want = `${a.name} is ${side(actions[s.key].coin)}.`;
     else if (s.check === 'role') want = `${a.name} is the ${ROLE_BY_ID[a.roleId].name}.`;
     else if (s.check === 'parity' && !framed) want = `${a.name} and ${b.name} are ${looks(a.roleId) === looks(b.roleId) ? 'on the SAME side' : 'on DIFFERENT sides'}.`;
