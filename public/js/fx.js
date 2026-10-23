@@ -10,16 +10,19 @@ const $html = document.documentElement;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const KEY = 'mafia.anim';
 
-export const lowEnd = () => (navigator.hardwareConcurrency || 99) <= 4 || (navigator.deviceMemory || 99) <= 4;
+// Only the Animations switch and the phone's reduced-motion setting turn effects off. No core-count check: iPhones
+// report 4 cores and would lose every effect. The one downgrade left is blur, on phones with 2 GB of memory or less
+// (navigator.deviceMemory, Chrome/Android only; Safari never reports it).
+export const noBlur = () => (navigator.deviceMemory || 99) <= 2;
 export const animOn = () => store.get(KEY) !== 'off' && !reduced.matches;
-// <html data-fx="on|off">: motion. <html data-lite="1">: low-end device, flat 2D pops and solid (not frosted) backgrounds.
-export function syncFx() { $html.dataset.fx = animOn() ? 'on' : 'off'; $html.dataset.lite = lowEnd() ? '1' : '0'; }
+// <html data-fx="on|off">: motion. <html data-noblur="1">: solid (not frosted) panels and an opaque secret veil.
+export function syncFx() { $html.dataset.fx = animOn() ? 'on' : 'off'; $html.dataset.noblur = noBlur() ? '1' : '0'; }
 export function setAnim(on) { store.set(KEY, on ? 'on' : 'off'); syncFx(); }
 reduced.addEventListener?.('change', syncFx);
 syncFx();
 
-const full = () => $html.dataset.fx === 'on' && $html.dataset.lite === '0';
-const maxParticles = () => (lowEnd() ? 8 : 26);
+const full = () => $html.dataset.fx === 'on';
+const maxParticles = () => 26;
 const rand = (a, b) => a + Math.random() * (b - a);
 const layer = () => document.getElementById('fx');
 const drop = (el, ms) => setTimeout(() => el.remove(), ms);
@@ -226,7 +229,7 @@ addEventListener('pointermove', (e) => {
   if (!craf) craf = requestAnimationFrame(cardFlush);
 }, { passive: true });
 document.addEventListener('pointerleave', () => { cardReset(cardEl); cardEl = null; }, { passive: true });
-// device tilt: one pair of variables on the root, nudging every card slightly (skipped when animations are off or the device is low-end)
+// device tilt: one pair of variables on the root, nudging every card slightly (skipped when animations are off)
 let oraf = 0; let og = 0; let ob = 0;
 addEventListener('deviceorientation', (e) => {
   if (!full() || e.gamma == null) return;
