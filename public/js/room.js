@@ -122,7 +122,7 @@ export function reduce(room, actor, a) {
       if (!['lobby', 'dealt'].includes(room.phase)) return err('Cannot change the setup mid-game.');
       const c = room.config;
       if (a.mode && ['app', 'cards'].includes(a.mode)) c.mode = a.mode;
-      if (a.deckStyle && ['fixed', 'random'].includes(a.deckStyle)) c.deckStyle = a.deckStyle;
+      if (a.deckStyle && ['fixed', 'random', 'simple'].includes(a.deckStyle)) c.deckStyle = a.deckStyle;
       if (a.cardFlow && ['blind', 'claim'].includes(a.cardFlow)) c.cardFlow = a.cardFlow;
       if (Array.isArray(a.roles)) c.roles = a.roles.map(resolveRoleId).filter((r) => ROLE_BY_ID[r]).slice(0, MAX_PLAYERS);
       if (typeof a.sharedBoard === 'boolean') c.sharedBoard = a.sharedBoard;

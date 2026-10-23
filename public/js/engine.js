@@ -1,5 +1,6 @@
 // Pure game logic. Shared by the Cloudflare Worker, the browser (local mode) and node tests.
 import { ROLES, ROLE_BY_ID, factionOf } from './roles.js';
+import { simpleDeckMap } from './simple.js';
 
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 50;
@@ -76,6 +77,7 @@ const FIXED_POOL = { town: redHigh, mafia: blackHigh, third: ['RJ', 'BJ', ...[..
 
 // Returns [{card, roleId}] — one card per role slot.
 export function buildDeckMap(roleIds, style = 'random') {
+  if (style === 'simple') return simpleDeckMap(roleIds);
   if (roleIds.length > FULL_DECK.length) throw new Error('Too many roles for one deck');
   if (style === 'random') {
     const cards = shuffle(FULL_DECK).slice(0, roleIds.length);
