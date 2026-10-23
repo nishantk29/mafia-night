@@ -1414,3 +1414,26 @@ html[data-lite="1"] .block::before,html[data-lite="1"] .whisper::before,html[dat
 .tell-say.is-gesture .tell-tag{color:var(--smoke)}
 .tell-say.is-gesture b{font-family:var(--font-ui);font-style:normal;font-weight:700;color:var(--candle)}
 .cue.is-current .cue-body{border-radius:20px}
+
+/* follow-up: flat pills (no bottom lip anywhere; pressed state is transform only) */
+.btn,.btn.big,.btn.danger,.btn.big.danger,.modal-foot .btn:not(.ghost),.action-dock .btn.big,.fx-victory .btn.big{box-shadow:none}
+.action-dock .btn.big:active,.btn.big:active{box-shadow:none}
+.action-dock .btn.big:active{transform:scale(.97)}
+
+/* join row: input and button share one height and one pill language */
+.join-row{align-items:flex-end}
+.join-row .code-input{min-height:52px;height:52px;border-radius:var(--r-pill)}
+.join-row .btn{min-height:52px;height:52px;padding:0 var(--s5);background:var(--candle);border-color:var(--candle);color:#1A1A20}
+@media (hover:hover){.join-row .btn:hover{background:var(--smoke);border-color:var(--smoke)}}
+
+/* home link: bold with a drawn arrow instead of an underline */
+.path-link{text-decoration:none;font-weight:800;gap:var(--s2)}
+.path-link::after{content:"";flex:none;width:.5em;height:.5em;border:solid currentColor;border-width:2.5px 2.5px 0 0;transform:rotate(45deg) translate(-1px,1px);transition:transform 200ms var(--ease-out)}
+@media (hover:hover){.path-link:hover::after{transform:rotate(45deg) translate(1px,-1px)}}
+
+/* hero card back: flat graphic block */
+.card-fan .rcard-back{box-shadow:inset 0 0 0 6px var(--lacquer),inset 0 0 0 7px rgba(224,174,82,.6)}
+
+/* lead block rounder than the supporting panel */
+.path-host{border-radius:36px}
+.home-paths .path-join{border-radius:14px}

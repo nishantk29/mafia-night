@@ -102,7 +102,7 @@ function home() {
         <button type="button" class="btn big" data-a="hostLive">Host a game</button>
         ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
       <section class="path path-join"><h2 class="path-title">Join with a code</h2>
-        <div class="join-row"><label class="field"><span>Code on the storyteller’s screen</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
+        <div class="join-row"><label class="field"><span>Code from the storyteller</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
         <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
         ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
