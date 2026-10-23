@@ -12,8 +12,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const TEAM = { town: 'Town', mafia: 'Mafia', third: 'On their own' };
 const VIEWS = [['simple', 'Simple card key, one page'], ['guide', 'Complex card key and script'], ['sheet', 'Complex role cards, 9 per page']];
 
-// Some role text in the app still says "storyteller". The printed guide says Host (COPY-STYLE.md).
-export const hostWords = (s) => String(s ?? '').replace(/storyteller/gi, (w) => (w[0] === 'S' ? 'Host' : 'host'));
+// Safety net: if any role text ever says "story teller", the printed guide says Host (COPY-STYLE.md).
+export const hostWords = (s) => String(s ?? '').replace(/story\s?teller/gi, (w) => (w[0] === 'S' ? 'Host' : 'host'));
 const say = (s) => esc(hostWords(s));
 
 // Everything one Complex player count needs. The fixed key is used so a printed page stays true game after game.
@@ -45,7 +45,7 @@ const narration = (g) => `<ol class="script">
 
 const setup = (g) => `<ol class="setup">
   <li>Take out the ${g.map.length} cards in the key and put the rest of the deck away. Shuffle them well.</li>
-  <li>Deal one card face down to each of the ${g.n} players. The Host does not play: they keep the key and read the script. (If the Host wants to play, ask a friend to read it.)</li>
+  <li>Deal one card face down to each of the ${g.n} players. The Host doesn’t play: they keep the key and read the script. (If the Host wants to play, ask a friend to read it.)</li>
   <li>Each player peeks at their own card, remembers it, and puts it back face down. Nobody shows a card.</li>
   <li>Run the night script below, then let the table talk and vote someone out each day.</li>
 </ol>`;
@@ -113,7 +113,7 @@ const simpleSetup = () => `<ol class="setup">
   <li>Find your player count in the table. Take those cards in the key’s order and put the rest of the deck away.</li>
   <li>Shuffle them and deal one card face down to each player.</li>
   <li>Each player looks at their card in private, then puts it back face down. Nobody shows a card. The Host doesn’t look.</li>
-  <li>Put the key on the table for everyone to see. The Host does not play: they read the script below.</li>
+  <li>Put the key on the table for everyone to see. The Host doesn’t play: they read the script below.</li>
 </ol>`;
 
 const simpleNight = () => `<ol class="script">
