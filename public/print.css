@@ -16,6 +16,7 @@ a{color:#7A1F26}
 .controls select,.controls button{min-height:44px;font:inherit;padding:0 12px;border:1px solid #866D52;border-radius:6px;background:#fff;color:#1B1410}
 .controls button{background:#1B1410;color:#F4E9D3;font-weight:700;cursor:pointer}
 .fine{font-size:.9rem;color:#4A3A2C}
+[hidden]{display:none!important}
 
 .page{max-width:860px;margin:16px auto;padding:20px 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .guide h2{font-size:2rem}
@@ -32,6 +33,26 @@ a{color:#7A1F26}
 .script .cards{font-weight:700;white-space:nowrap}
 .script li,.setup li{margin:3px 0;break-inside:avoid}
 .key tr{break-inside:avoid}
+.key .cards{font-weight:700;word-spacing:.2em;font-size:1.05rem}
+.eyebrow{margin:0 0 2px;font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#7A1F26}
+
+/* Simple key: suggested counts, two tables side by side when there is room */
+.suggest-wrap{display:grid;gap:12px}
+.suggest{width:100%;border-collapse:collapse;font-size:.95rem}
+.suggest th,.suggest td{padding:3px 8px;border-bottom:1px solid #C9B99C;text-align:right}
+.suggest thead th{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em}
+.suggest th[scope=row]{text-align:left;font-weight:700}
+.suggest .over th,.suggest .over td{color:#B3262E}
+.suggest tr{break-inside:avoid}
+@media (min-width:560px){.suggest-wrap{grid-template-columns:repeat(3,1fr);gap:10px}}
+.simple-steps{display:grid;gap:0 16px}
+@media (min-width:560px){.simple-steps{grid-template-columns:1fr 1fr}}
+.simple h2 small{display:block;margin:2px 0 0 0;font-size:1rem}
+.simple h3{margin:10px 0 4px}
+.simple .suggest{font-size:.9rem}
+.simple .suggest th,.simple .suggest td{padding:1px 6px}
+.simple .key td{padding:3px 6px}
+.simple .script,.simple .setup{margin:4px 0}
 
 /* Role cards: 63 x 88 mm, 3 x 3 per page */
 .sheet{display:grid;grid-template-columns:repeat(3,63mm);grid-auto-rows:88mm;width:189mm;max-width:none;padding:0;gap:0;justify-content:center}
@@ -54,6 +75,13 @@ a{color:#7A1F26}
 .cardart .ico.big{position:relative;width:min(58cqw, 66cqh);height:min(58cqw, 66cqh);color:var(--ink);filter:drop-shadow(0 0 3px var(--glow))}
 .cardart .ico.big.emo-fb{width:auto;height:auto;font-size:min(40cqw, 48cqh)}
 .cardart .portrait{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* On screen the sheet is three cards across the page width (the 63 x 88 mm size is for paper only) */
+@media screen{
+  .sheet{width:100%;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:auto;gap:8px;padding:8px;justify-content:stretch}
+  .pcard{width:auto;height:auto;aspect-ratio:63/88;padding:2.5%}
+  .pcard .cardart{flex:1 1 0}
+}
 
 @page{margin:6mm}
 @media print{
