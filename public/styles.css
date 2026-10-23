@@ -125,7 +125,7 @@ b,strong{font-weight:700}
 /* =================================================================== chrome */
 .appbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:var(--s3);min-height:calc(var(--appbar-h) + env(safe-area-inset-top));
   padding:calc(env(safe-area-inset-top) + 10px) var(--gutter-r) 10px var(--gutter-l);
-  background:color-mix(in srgb, var(--room) 92%, transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  background:var(--room);
   border-bottom:1px solid var(--rule)}
 .appbar-mark{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:44px;height:44px;margin:-6px 0 -6px -10px;padding:0 var(--s1);border-radius:var(--r-control);color:var(--brass);text-decoration:none}
 .appbar-mark .ui-ico{width:22px;height:22px;vertical-align:0}
@@ -1164,13 +1164,13 @@ html[data-phase="night"] .pane-game .phase-head{background:var(--town)}
 
 /* ---------------------------------------------------------------- Liquid Glass */
 /* Frosted, tinted by --tint, with a thin light edge. blur and saturate are fixed: only transform and opacity ever animate. */
-.glass,.sheet,.overlay-in.tools,.action-dock .btn.big:not(.disabled),.fx-victory .btn.big{
+.glass,.sheet,.overlay-in.tools,.fx-victory .btn.big{
   -webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);
   border:1px solid rgba(255,255,255,.22);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.05),var(--lift-2)}
 .glass,.sheet,.overlay-in.tools{color:var(--candle);
   background:linear-gradient(150deg,color-mix(in srgb,var(--tint,var(--brass)) 24%,rgba(37,28,22,.74)),rgba(27,20,16,.72))}
-.action-dock .btn.big:not(.disabled),.fx-victory .btn.big{background:color-mix(in srgb,var(--brass) 88%,transparent);color:var(--on-brass);border-color:rgba(255,255,255,.4);
+.fx-victory .btn.big{background:color-mix(in srgb,var(--brass) 88%,transparent);color:var(--on-brass);border-color:rgba(255,255,255,.4);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 4px 0 var(--brass-lo)}
 /* soft specular highlight: an oversized sheen that slides with the tilt (transform only) */
 .glass{position:relative;overflow:hidden;isolation:isolate}
@@ -1179,10 +1179,10 @@ html[data-phase="night"] .pane-game .phase-head{background:var(--town)}
   transform:translate(calc(var(--tx,0) * -22%),calc(var(--ty,0) * -22% - 18%))}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .glass,.sheet,.overlay-in.tools{background:rgba(37,28,22,.96)}
-  .action-dock .btn.big:not(.disabled),.fx-victory .btn.big{background:var(--brass)}
+  .fx-victory .btn.big{background:var(--brass)}
 }
 html[data-lite="1"] .glass,html[data-lite="1"] .sheet,html[data-lite="1"] .overlay-in.tools{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(37,28,22,.96)}
-html[data-lite="1"] .action-dock .btn.big,html[data-lite="1"] .fx-victory .btn.big{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--brass)}
+html[data-lite="1"] .fx-victory .btn.big{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--brass)}
 html[data-lite="1"] .glass::after{display:none}
 
 /* ---------------------------------------------------------------- effects layer (fx.js) */
@@ -1280,4 +1280,72 @@ html[data-fx="off"] .fx-scene{display:none}
   [data-tilt]{transform:none!important}
   .fx-scene{display:none}
   .btn:active,.pk:active{transform:none}.pk[aria-pressed="true"]{transform:none}
+}
+
+/* ======================================================================================
+   Transit v2: matches the Game Night home page. Dark base, bold full-colour cards stacked like a route list,
+   Rubik titles, big numbers, one full-width pill at the bottom. Tilt/lift is transform only (fx.js, rAF).
+   Glass stays on sheets, pop-outs and overlays. Flat fallbacks: html[data-fx="off"], html[data-lite="1"].
+   ====================================================================================== */
+@font-face{font-family:"Rubik";src:url("/fonts/rubik-var.woff2") format("woff2");font-weight:500 900;font-style:normal;font-display:swap}
+:root{--font-display:"Rubik",system-ui,sans-serif;--font-ui:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --room:#0B0B0D;--room-night:#07070A;--panel:#1A1A20;--panel-2:#26262E;--rule:#3A3A46;--rule-strong:#8A8A9A;--faint:#A9A9B8;
+  --smoke:#C9C9D6;--candle:#FFF4E6;--brass:#F2C14E;--brass-hi:#FFD36B;--brass-lo:#B58A22;--on-brass:#2A0508;--ease-pop:cubic-bezier(.34,1.56,.64,1)}
+html{background:var(--room)}
+body{background:radial-gradient(120% 60% at 50% -10%,#1d1d24 0,var(--room) 70%) no-repeat,var(--room);font-weight:500}
+h1,h2,.block-title,.phase-title,.wordmark,.path-title,.sheet-title,.balance-title,.guide-title,.table-phase,.room-code{font-family:var(--font-display);font-weight:900;letter-spacing:-.025em}
+.block-title,.path-title{font-size:clamp(1.6rem,7vw,2.1rem);line-height:1.05}
+.phase-title{letter-spacing:-.03em}
+.wordmark{font-size:clamp(2.75rem,15vw,4.5rem);line-height:.95}
+.code,.vote-n,.appbar-timer,.tally,.room-code,.table-alive{font-family:var(--font-display);font-weight:900;font-variant-numeric:tabular-nums}
+.vote-n{font-size:clamp(2.5rem,12vw,3.5rem)}
+
+/* cards: each panel is a bold colour block in the Mafia palette (red, gold, wine) */
+.block,.whisper,.guide,.win,.path,.wrap.faq > .faq-group{--cb:#A3101D;--candle:#FFF4E6;--smoke:#F6D9CF;--faint:#F0CFC4;--brass:#FFD36B;--brass-hi:#FFE19A;--brass-lo:#B58A22;--on-brass:#2A0508;
+  --panel:rgba(0,0,0,.28);--panel-2:rgba(0,0,0,.4);--rule:rgba(255,255,255,.3);--rule-strong:rgba(255,255,255,.6);--focus:#fff;
+  --town:#D3E4FF;--mafia:#FFD0C8;--third:#E8DBFF;--team:#FFE19A}
+.block:nth-of-type(3n+2),.path-join{--cb:#F2C14E;--candle:#2A0508;--smoke:#4A1A12;--faint:#5A2A1C;--brass:#7A0A14;--brass-hi:#7A0A14;--brass-lo:#3A0509;--on-brass:#FFF4E6;
+  --panel:rgba(42,5,8,.1);--panel-2:rgba(42,5,8,.18);--rule:rgba(42,5,8,.35);--rule-strong:rgba(42,5,8,.7);--focus:#2A0508;
+  --town:#17317E;--mafia:#8A0C18;--third:#4B2A8A;--team:#7A0A14}
+.block:nth-of-type(3n),.whisper,.path-local{--cb:#6E0A14}
+.block,.whisper,.guide,.path,.wrap.faq > .faq-group{position:relative;isolation:isolate;overflow:clip;margin:0 0 14px;padding:22px 20px;border:0;border-radius:28px;
+  background:var(--cb);color:var(--candle);box-shadow:0 22px 34px -18px rgba(0,0,0,.75);max-width:none}
+.block::before,.whisper::before,.guide::before,.path::before,.wrap.faq > .faq-group::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 240' preserveAspectRatio='xMidYMid slice'%3E%3Ccircle cx='330' cy='40' r='140' fill='%23fff' opacity='.07'/%3E%3Cpath d='M-20 40L120-20H190L-20 120Z M-20 150L260-20H330L-20 230Z' fill='%23000' opacity='.14'/%3E%3C/svg%3E") center/cover no-repeat}
+.block:last-child{margin-bottom:14px}
+.pane-log .block{margin-top:0}
+.path + .path{border-top:0;padding-top:22px;margin-top:0}
+.path-link{color:var(--candle)}
+.pane-game .phase-head{background:#A3101D;color:#FFF4E6;box-shadow:0 22px 34px -18px rgba(0,0,0,.75)}
+html[data-phase="night"] .pane-game .phase-head{background:#17317E}
+.pane-game .phase-head .muted,.pane-game .phase-head .note,.pane-game .phase-head .note > .ui-ico{color:#FFF4E6}
+.win{--cb:var(--team,#F2C14E)}
+.faq-q{border-color:var(--rule)}
+.wrap.faq > .field{margin-bottom:14px}
+
+/* the badge on home */
+.home-badge{width:84px;height:84px;display:grid;place-items:center;border-radius:26px;background:#F2C14E;box-shadow:0 7px 0 #B58A22,0 14px 18px rgba(0,0,0,.35)}
+.home-badge svg{width:66px;height:66px}
+
+/* lift on press: one transform */
+.block,.whisper,.guide,.path,.wrap.faq > .faq-group{transform:perspective(900px) translateY(var(--lift,0px)) rotateX(var(--rx,calc(var(--ogy,0) * -4deg))) rotateY(var(--ry,calc(var(--ogx,0) * 5deg)));
+  transition:transform 380ms var(--ease-pop),box-shadow 380ms var(--ease-pop);touch-action:pan-y}
+.block[data-tilting],.whisper[data-tilting],.guide[data-tilting],.path[data-tilting]{transition:transform 90ms linear}
+.block:active,.whisper:active,.guide:active,.path:active{--lift:-3px}
+
+/* the main action: a big full-width pill, fixed at the bottom. No glass here. */
+.action-dock{background:linear-gradient(to bottom,transparent,var(--room) 42%);padding:var(--s5) 16px var(--s3)}
+.action-dock .btn.big{min-height:72px;border-radius:var(--r-pill);font-size:clamp(1.4rem,6vw,1.85rem);font-weight:900;background:var(--brass);color:var(--on-brass);
+  border:0;box-shadow:0 8px 0 var(--brass-lo),0 18px 24px -10px rgba(0,0,0,.7)}
+.action-dock .btn.big:active{transform:translateY(5px) scale(.98);box-shadow:0 3px 0 var(--brass-lo)}
+.action-dock .btn.big.disabled,.action-dock .btn.big[aria-disabled="true"]{background:var(--panel-2);color:var(--smoke);border:2px dashed var(--rule-strong);box-shadow:none}
+.wrap.join .btn.big,.card-picker .btn.big{position:sticky;bottom:max(14px,env(safe-area-inset-bottom));z-index:5;min-height:72px;font-weight:900;font-size:clamp(1.4rem,6vw,1.85rem)}
+.tabbar{background:var(--room);border-top:1px solid var(--rule)}
+
+/* flat fallbacks: animations off, reduced motion, low-end */
+html[data-fx="off"] .block,html[data-fx="off"] .whisper,html[data-fx="off"] .guide,html[data-fx="off"] .path,html[data-fx="off"] .wrap.faq > .faq-group,
+html[data-lite="1"] .block,html[data-lite="1"] .whisper,html[data-lite="1"] .guide,html[data-lite="1"] .path,html[data-lite="1"] .wrap.faq > .faq-group{transform:none;transition:none;box-shadow:none}
+html[data-lite="1"] .block::before,html[data-lite="1"] .whisper::before,html[data-lite="1"] .guide::before,html[data-lite="1"] .path::before{display:none}
+@media (prefers-reduced-motion:reduce){
+  .block,.whisper,.guide,.path,.wrap.faq > .faq-group{transform:none!important;transition:none}
+  .action-dock .btn.big:active{transform:none}
 }

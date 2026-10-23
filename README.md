@@ -1,6 +1,6 @@
 # Mafia Night
 
-Secret roles for Mafia / Werewolf, dealt to phones or to a regular deck of playing cards, with a storyteller console that runs the night.
+Secret roles for Mafia / Werewolf, dealt to phones, with a storyteller console that runs the night.
 
 Live: https://mafia-app.hatethespurs.workers.dev
 

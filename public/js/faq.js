@@ -11,10 +11,9 @@ const GROUPS = [
     ['What are the ways to deal?', `
       <ul>
         <li><b>On phones.</b> Tap Host a game. Players join with the room code and each phone shows one secret role.</li>
-        <li><b>A real deck, players look up their card.</b> The app matches each role to a playing card. Deal the cards face down. Each player taps the card they got on their own phone and sees only their role.</li>
-        <li><b>A real deck, the storyteller learns who is who.</b> The card key (which card is which role) is shown to the whole table, and you deal face down without looking. On night 1, as you call each role, the players with that card raise a hand and you tap them. The app builds the cast as you go.</li>
-        <li><b>No phones, no app?</b> Print the <a href="/print.html" target="_blank" rel="noopener">card guide</a> and play with a deck on the table.</li>
-        <li><b>Run on this device.</b> No phones at all: a deck of playing cards and the storyteller’s one screen. Choose “No phones? Run the game on this device” on the home page.</li>
+        <li><b>Card key, players look up their card.</b> The app matches each role to a card code. Each player taps the code they got on their own phone and sees only their role.</li>
+        <li><b>Card key, the storyteller learns who is who.</b> The card key (which code is which role) is shown to the whole table. On night 1, as you call each role, the players with that code raise a hand and you tap them. The app builds the cast as you go.</li>
+        <li><b>Run on this device.</b> No phones at all: the storyteller’s one screen. Choose “No phones? Run the game on this device” on the home page.</li>
       </ul>`],
     ['How do players join?', `
       <p>They go to <b>${SITE}</b> on their phone, type the 6-letter room code and their name. No account and no app to install. The storyteller can tap the room code at the top of their screen to show it full screen for the room.</p>`],
@@ -52,13 +51,10 @@ const GROUPS = [
     ['Which play mode should I pick?', `
       <ul>
         <li><b>Phones</b> if everyone has a phone and a connection. Nobody can peek at anyone else’s role and the app deals for you.</li>
-        <li><b>Physical deck, players look up their card</b> if you want real cards but still want each role kept secret by the app. The key is hidden; each player taps their card on their own phone.</li>
-        <li><b>Physical deck, blind deal</b> if players have no phones. The key is on the table, nobody looks at who holds what, and the cast is built on night 1 as people raise a hand when their card is called.</li>
+        <li><b>Card key, players look up their card</b> if you still want each role kept secret by the app. The key is hidden; each player taps their code on their own phone.</li>
+        <li><b>Card key, blind</b> if players have no phones. The key is on the table, nobody looks at who holds what, and the cast is built on night 1 as people raise a hand when their code is called.</li>
       </ul>
-      <p>You can switch between phones and a deck in the lobby before you deal.</p>`],
-    ['What is the printable card guide?', `
-      <p>A page you can print for a standard deck: for any player count from 5 to 30 it lists which cards to take out, which card is which role, the setup steps, and a script to read aloud while everyone’s eyes are closed. It also makes a sheet of role cards (63 × 88 mm, nine to a page) to cut out and tape to the cards. <a href="/print.html" target="_blank" rel="noopener">Open the card guide</a>.</p>
-      <p>The guide uses the “same key every game” card layout, so a printed page stays correct from game to game.</p>`],
+      <p>You can switch between phones and a card key in the lobby before you deal.</p>`],
     ['Can I add my own roles?', `
       <p>Yes. Tap New role in the lobby. Give it a name, a team and, if it acts at night, one of the night actions the app understands. It is saved on your device and sent to the room with the game.</p>`],
     ['How do I change where people sit?', `
@@ -82,8 +78,7 @@ const GROUPS = [
         <li>Handle a lost phone: remove a seat in the lobby, or run a player’s role for them after the deal.</li>
       </ul>`],
     ['What does the app know about me?', `
-      <p>You never make an account. A room game needs a name for your seat and a room code, and the room is kept on the server so every phone can reach it. Games on this device, your notes and your custom roles are saved in your own browser. Table Tools never leave your device.</p>
-      <p>The printable card guide is built entirely in your browser from the same rules the app uses; printing it sends nothing anywhere.</p>`],
+      <p>You never make an account. A room game needs a name for your seat and a room code, and the room is kept on the server so every phone can reach it. Games on this device, your notes and your custom roles are saved in your own browser. Table Tools never leave your device.</p>`],
   ]],
   ['The app', [
     ['How do I install it?', `
@@ -109,7 +104,20 @@ export function faqScreen() {
   <main class="wrap faq">
     <h1 class="phase-title">How it works and FAQ</h1>
     <p class="lede">Short answers for storytellers and players.</p>
+    <label class="field"><span>Search</span><input type="search" data-faq="search" placeholder="Try “tie”, “night”, “timer”" autocomplete="off"></label>
+    <p class="muted" data-faq="none" hidden>Nothing matches. Try a different word.</p>
     ${groups}
     <p class="faq-back"><a class="link" href="#/">Back to the home page</a></p>
   </main>`;
+}
+
+// Live filter for the FAQ screen: case-insensitive, opens matches, hides empty groups. Typing never re-renders.
+export function wireFaqSearch(root) {
+  root.addEventListener('input', (e) => {
+    if (e.target.dataset.faq !== 'search') return;
+    const q = e.target.value.trim().toLowerCase(); let any = false;
+    for (const d of root.querySelectorAll('.faq-q')) { const hit = !q || d.textContent.toLowerCase().includes(q); d.hidden = !hit; if (hit) any = true; if (q && hit) d.open = true; }
+    for (const g of root.querySelectorAll('.faq-group')) g.hidden = ![...g.querySelectorAll('.faq-q')].some((d) => !d.hidden);
+    const none = root.querySelector('[data-faq="none"]'); if (none) none.hidden = any;
+  });
 }

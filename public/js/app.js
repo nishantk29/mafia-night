@@ -11,7 +11,7 @@ import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
 import { hostScreen } from './host.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
-import { faqScreen } from './faq.js';
+import { faqScreen, wireFaqSearch } from './faq.js';
 import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn } from './fx.js';
 import { gameOverEvent } from './room.js';
 
@@ -93,8 +93,9 @@ function home() {
   return `<main class="wrap home">
     <div class="home-hero">
       <div class="card-fan" aria-hidden="true">${`<span class="rcard-back"><span class="rcard-back-mark">${ui('brand')}</span></span>`.repeat(3)}</div>
+      <span class="home-badge" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="#7A0A14" d="M6 20c0-5 8-7 26-5 18-2 26 0 26 5 0 15-9 26-18 24-4-1-6-6-8-6s-4 5-8 6C15 46 6 35 6 20z"/><ellipse cx="21" cy="26" rx="7" ry="4" fill="#F2C14E" transform="rotate(14 21 26)"/><ellipse cx="43" cy="26" rx="7" ry="4" fill="#F2C14E" transform="rotate(-14 43 26)"/></svg></span>
       <h1 class="wordmark">Mafia<br>Night</h1>
-      <p class="lede">Secret roles for Mafia and Werewolf, dealt to phones or a deck of playing cards. The app runs the night for you.</p>
+      <p class="lede">Secret roles for Mafia and Werewolf, dealt to phones. The app runs the night for you.</p>
     </div>
     <div class="home-paths">
       <section class="path path-host"><h2 class="path-title">Be the storyteller</h2>
@@ -106,7 +107,7 @@ function home() {
         <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
         ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
-        <p class="muted">Use a deck of playing cards and this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
+        <p class="muted">Run everything from this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
       <p class="home-faq"><a href="#/faq">How it works and FAQ</a></p>
     </div>
     <p class="credits">Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT).</p>
@@ -497,6 +498,7 @@ function setDeep(obj, path, val) {
   o[parts[parts.length - 1]] = val;
 }
 
+wireFaqSearch(document);
 document.addEventListener('input', (ev) => {
   const el = ev.target; const i = el.dataset.i; if (!i) return;
   if (i === 'names') S.ui.draft.names = el.value;

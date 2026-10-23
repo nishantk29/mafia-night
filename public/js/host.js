@@ -168,8 +168,7 @@ function dealSetup(c, local) {
     </div>`;
   if (local) {
     return `<section class="block deal-setup">
-      <p class="deal-fixed">${ui('cards')} You’ll deal a real deck of playing cards and run the game from this device.</p>
-      <p class="deal-switch muted"><a href="/print.html" target="_blank" rel="noopener">Printable card guide</a>: a card key, setup steps and a script to read with eyes closed.</p>
+      <p class="deal-fixed">${ui('cards')} You’ll hand out card codes and run the game from this device.</p>
       <p class="deal-switch muted">Want everyone to get their role on their own phone? <button type="button" class="linkish" data-a="hostLive">Host a game with a room code instead</button></p>
       <div class="followup followup--top">
         <h3 class="followup-q" id="q-flow">How does each player find out their role?</h3>
@@ -182,8 +181,8 @@ function dealSetup(c, local) {
     ${choices('q-mode', 'mode', c.mode, [
       { v: 'app', icon: 'phone', rec: true, title: 'On their phones',
         desc: 'Everyone joins with the room code and sees their role in private.' },
-      { v: 'cards', icon: 'cards', title: 'From a deck of playing cards',
-        desc: 'You hand out real cards. The app tells you which card is which role.' },
+      { v: 'cards', icon: 'cards', title: 'With a card key',
+        desc: 'You hand out card codes. The app tells you which code is which role.' },
     ])}
     ${c.mode === 'cards' ? `<div class="followup">
       <h3 class="followup-q" id="q-flow">How does each player find out their role?</h3>
@@ -269,9 +268,9 @@ function dealt(v, local) {
       : 'Each player enters their card on their phone. You can also choose it for them below.';
   const body = `<section class="block"><h2 class="block-title">Card key</h2>${keyTable(v)}
       <button type="button" class="btn ghost" data-a="showKey">${ui('eye')} Show the key to the table</button></section>
-    <section class="block"><h2 class="block-title">Deal the cards</h2>
-      <ol class="steps"><li>Take these ${v.deck.map.length} cards out of the deck and put the rest away.</li>
-        <li>Shuffle them and deal one face down to each player.</li><li>${step3}</li></ol>
+    <section class="block"><h2 class="block-title">Hand out the codes</h2>
+      <ol class="steps"><li>These ${v.deck.map.length} card codes are in play.</li>
+        <li>Give one to each player in private.</li><li>${step3}</li></ol>
       ${blind ? '<p class="muted">Then start night 1. As you call each role, tap who wakes up.</p>'
         : `<p class="muted">${claimed} of ${v.players.length} cards entered.</p>${assignList(v)}`}
     </section>`;

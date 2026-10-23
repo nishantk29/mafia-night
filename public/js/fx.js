@@ -177,3 +177,33 @@ function tilt(x, y) {
 }
 addEventListener('pointermove', (e) => tilt((e.clientX / innerWidth - .5) * 2, (e.clientY / innerHeight - .5) * 2), { passive: true });
 addEventListener('deviceorientation', (e) => { if (e.gamma != null) tilt(e.gamma / 30, ((e.beta || 45) - 45) / 30); }, { passive: true });
+
+// ---------------------------------------------------------------- card tilt and lift (pointer on hover devices, device tilt elsewhere)
+// Sets --rx/--ry on the card under the pointer; rAF-throttled, no idle loop. The seating board is never tilted: seats are dragged by coordinates.
+const CARDS = '.block,.whisper,.guide,.path,.faq-group';
+const cardOK = (el) => el && !el.querySelector('.board');
+let cardEl = null; let cx = 0; let cy = 0; let craf = 0;
+const cardFlush = () => {
+  craf = 0;
+  if (cardEl) { cardEl.style.setProperty('--rx', (cy * -5).toFixed(2) + 'deg'); cardEl.style.setProperty('--ry', (cx * 6).toFixed(2) + 'deg'); }
+};
+const cardReset = (el) => { if (!el) return; el.removeAttribute('data-tilting'); el.style.removeProperty('--rx'); el.style.removeProperty('--ry'); el.style.removeProperty('--lift'); };
+addEventListener('pointermove', (e) => {
+  if (!full() || e.pointerType === 'touch' || e.buttons) return;
+  const el = e.target.closest?.(CARDS);
+  if (el !== cardEl) { cardReset(cardEl); cardEl = cardOK(el) ? el : null; if (cardEl) { cardEl.dataset.tilting = ''; cardEl.style.setProperty('--lift', '-4px'); } }
+  if (!cardEl) return;
+  const r = cardEl.getBoundingClientRect();
+  cx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - .5) * 2)); cy = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - .5) * 2));
+  if (!craf) craf = requestAnimationFrame(cardFlush);
+}, { passive: true });
+document.addEventListener('pointerleave', () => { cardReset(cardEl); cardEl = null; }, { passive: true });
+// device tilt: one pair of variables on the root, nudging every card slightly (skipped when animations are off or the device is low-end)
+let oraf = 0; let og = 0; let ob = 0;
+addEventListener('deviceorientation', (e) => {
+  if (!full() || e.gamma == null) return;
+  const g = Math.max(-1, Math.min(1, e.gamma / 35)); const b = Math.max(-1, Math.min(1, ((e.beta || 45) - 45) / 35));
+  if (Math.abs(g - og) < .03 && Math.abs(b - ob) < .03) return;
+  og = g; ob = b;
+  if (!oraf) oraf = requestAnimationFrame(() => { oraf = 0; $html.style.setProperty('--ogx', og.toFixed(2)); $html.style.setProperty('--ogy', ob.toFixed(2)); });
+}, { passive: true });
