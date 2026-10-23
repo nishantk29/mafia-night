@@ -6,7 +6,7 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { previewNight, setupWarnings, balanceOf, DEFAULT_RULES } from './engine.js';
+import { previewNight, stepCues, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { toolsButton, toolsPanel } from './tools.js';
@@ -334,11 +334,15 @@ function night(v) {
   const body = `<header class="phase-head"><h2 class="phase-title">Night ${v.night}</h2>
       <p class="muted">${blind1 ? 'Read each line aloud. When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
       ${v.shield ? `<p class="note is-warn">${ui('shield')} Virgin shield: nobody can be killed tonight.</p>` : ''}</header>
-    ${steps.length ? `<ol class="cues">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
+    ${steps.length ? `${sayLine(START_CUE)}<ol class="cues">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
       : empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.')}`;
   const label = canResolve ? 'Wake everyone up' : idSteps.length ? 'Find every role first' : `${plural(pendingAct.length, 'step')} left`;
-  return { body, dock: btn('big', 'resolve', canResolve ? `${ui('sun')} ${label}` : label, { on: canResolve, why: label }) };
+  return { body: body + (steps.length ? sayLine(END_CUE) : ''), dock: btn('big', 'resolve', canResolve ? `${ui('sun')} ${label}` : label, { on: canResolve, why: label }) };
 }
+
+// A line the host reads aloud, in the same ear-icon style as the live answers.
+function sayLine(text) { return `<div class="tell-now"><p class="tell-say">${ui('ear')} Say: <b>${esc(text)}</b></p></div>`; }
+const closeCue = (s) => { const c = stepCues(s)?.close; return c ? sayLine(c) : ''; };
 
 // Live answer for an investigator, worked out from the choices of everyone who woke earlier tonight.
 function tellNow(v, s, set) {
@@ -368,17 +372,15 @@ function cue(v, s, num, current, alive) {
         : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
     }
     return `<li class="cue is-done"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
-      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div>${tellNow(v, s, set)}</li>`;
+      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div>${tellNow(v, s, set)}${closeCue(s)}</li>`;
   }
   if (!current) {
     const what = s.kind === 'identify' ? 'Find who it is' : s.kind === 'info' ? 'Wake them up' : 'Record their choice';
     return `<li class="cue"><span class="cue-n">${num}</span><button type="button" class="cue-line" data-a="focusStep" data-key="${s.key}">${roleEl}<span class="meta">${what}</span></button></li>`;
   }
-  const spoken = s.kind === 'identify' ? s.prompt.replace(/\s*Tap who (it is|they are)\.?\s*$/, '') : s.prompt;
+  const cues = stepCues(s);
   const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>` : '';
-  const say = s.kind === 'info' && !s.spoken
-    ? `<p class="note is-private">${ui('ear')} Just for you: ${esc(s.prompt)}</p>`
-    : `<p class="say">“${esc(spoken)}”</p>${hint}`;
+  const say = cues ? `${sayLine(cues.open)}${hint}` : `<p class="note is-private">${ui('ear')} Just for you: ${esc(s.prompt)}</p>`;
   let inner;
   if (s.kind === 'identify') {
     const picks = n.picks[s.key] || [];

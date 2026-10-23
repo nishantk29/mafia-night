@@ -188,6 +188,28 @@ export function nightScript(room) {
   return steps.sort((a, b) => a.order - b.order);
 }
 
+// What the storyteller says out loud around a night step: { open, close }, or null when nobody wakes
+// (private notes, announcements). Teams are called by their team name; lines already in the prompt are reused.
+const TEAM_NAME = { mafia: 'Mafia', cult: 'Cult', mason: 'Masons' };
+const ASK = {
+  kill: 'Pick someone to eliminate.', protect: 'Pick someone to protect.', guard: 'Pick someone to guard.',
+  alert: 'Go on alert tonight, or stay in?', jail: 'Pick someone to jail.', block: 'Pick someone to block.',
+  blockVisitors: 'Pick someone to shield from visitors.', frame: 'Pick someone to frame.', clean: 'Clean up tonight, or not?',
+  convert: 'Pick someone to recruit.', copyRole: 'Pick a dead player to copy.', investigate: 'Pick someone to investigate.',
+  track: 'Pick someone to follow.', watch: 'Pick someone to watch.', autopsy: 'Pick a dead player to examine.',
+};
+export const START_CUE = 'Everyone, close your eyes.';
+export const END_CUE = 'Everyone, open your eyes.';
+export function stepCues(step) {
+  if (!step || (step.kind === 'info' && !step.spoken)) return null;
+  const r = ROLE_BY_ID[step.roleId];
+  const said = String(step.prompt || '').replace(/\s*Tap who (it is|they are)\.?\s*$/, '');
+  const name = TEAM_NAME[r?.meeting] || /^(.+?),\s/.exec(said)?.[1] || (ROLE_BY_ID[r?.seesAs] || r)?.name || 'Everyone';
+  const open = /open your eyes/i.test(said) ? said
+    : `${name}, open your eyes.${step.kind === 'action' ? ` ${ASK[step.type] || 'Make your choice.'}` : ''}`;
+  return { open, close: /close your eyes/i.test(said) ? null : `${name}, close your eyes.` };
+}
+
 // What the storyteller should tell an investigator right now, given only the choices made by roles that woke
 // earlier tonight (steps before it in the script; at the same wake order, the ones listed first).
 // Runs the night on a copy of the room, so nothing changes.
