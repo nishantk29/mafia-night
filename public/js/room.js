@@ -41,7 +41,7 @@ function addPlayer(room, name, offline) {
 function resetDeal(room) {
   for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; }
   room.copSalt = Math.random(); // seeds the neutral "Cop 1/2/..." numbering for this game
-  room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.usage = {}; room.dayUsed = {};
+  room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.condemnedDay = null; room.usage = {}; room.dayUsed = {};
   room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.results = []; room.shield = false; room.framed = [];
 }
 
@@ -196,7 +196,7 @@ export function reduce(room, actor, a) {
       if (room.pending.length) return err('Resolve the pending prompts first.');
       const blindFirst = isBlind(room) && room.night === 0;
       if (!blindFirst && room.players.some((p) => !p.roleId)) return err('Every player needs a role first.');
-      room.night += 1; room.phase = 'night';
+      room.night += 1; room.phase = 'night'; room.condemnedDay = null;
       if (room.night === 1) {
         finalizeBlind(room);
         assignTargets(room);
@@ -246,13 +246,17 @@ export function reduce(room, actor, a) {
     }
     case 'condemn': {
       if (room.phase !== 'day') return err('It is not day.');
-      return condemn(room, a.playerId);
+      if (room.condemnedDay === room.day) return err('Someone was already condemned today.');
+      const r = condemn(room, a.playerId);
+      if (r.ok) room.condemnedDay = room.day;
+      return r;
     }
-    case 'noCondemn': { log(room, 'Nobody was condemned.'); return { ok: true }; }
+    case 'noCondemn': { if (!['day', 'night'].includes(room.phase)) return err('Not in play.'); log(room, 'Nobody was condemned.'); return { ok: true }; }
     case 'resolvePending': return resolvePending(room, a.pendingId, a.targetId);
     case 'kill': {
       const p = playerById(room, a.playerId);
       if (!p) return err('Bad player.');
+      if (!['day', 'night'].includes(room.phase)) return err('The game is not in play.');
       killPlayer(room, p.id, String(a.cause || 'eliminated').slice(0, 60));
       log(room, `${p.name} was eliminated (${a.cause || 'host'}).`);
       applyWinChecks(room);
@@ -285,6 +289,7 @@ export function reduce(room, actor, a) {
       room.config.legend[a.color] = String(a.label || '').replace(/[<>]/g, '').slice(0, 24); return { ok: true };
     }
     case 'declareWinner': {
+      if (!['day', 'night'].includes(room.phase)) return err('The game is not in play.');
       room.winner = { side: String(a.side || 'manual').slice(0, 20), reason: String(a.reason || 'Declared by the Storyteller.').slice(0, 120) };
       room.phase = 'over'; log(room, `Game over: ${room.winner.side} wins.`); return { ok: true };
     }
