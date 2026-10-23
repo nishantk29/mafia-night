@@ -44,7 +44,7 @@ export function hostScreen(v, local) {
     <button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
-    <section class="pane pane-game" aria-label="Game">${body}
+    <section class="pane pane-game" aria-label="Game">${v.stalemate ? `<section class="block stalemate"><p class="note">${ui('crown')} ${esc(v.stalemate.reason)}</p><div class="btn-row"><button type="button" class="btn" data-a="declare">Declare a winner</button></div></section>` : ''}${body}
       <div class="action-dock">${dock}</div>
     </section>
     <div class="side">
@@ -57,7 +57,21 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+}
+
+// Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
+// Serial Killer are left (v.stalemate), offering just those two and a draw: Nishant's rule, the Host decides.
+const DECLARE_SIDES = { town: 'Town', mafia: 'Mafia', killer: 'Serial Killer', cult: 'Cult', draw: 'Draw' };
+function declareSheet(v) {
+  const st = v.stalemate;
+  const sides = st ? st.sides : Object.keys(DECLARE_SIDES);
+  return `<div class="sheet-bg" data-a="closeDeclare"><div class="sheet is-entering" role="dialog" aria-modal="true" aria-labelledby="declare-title" data-stop>
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><h2 class="sheet-title" id="declare-title">Declare a winner</h2><button type="button" class="icon-btn x-btn" data-a="closeDeclare" aria-label="Close">${ui('x')}</button></div>
+    <p class="muted">${st ? esc(st.reason) : 'End the game now and choose who wins.'}</p>
+    <div class="btn-row declare-sides">${sides.map((k) => `<button type="button" class="btn ${k === 'draw' ? 'ghost' : ''}" data-a="declareSide" data-v="${k}">${k === 'draw' ? 'Draw' : `${DECLARE_SIDES[k]} wins`}</button>`).join('')}</div>
+  </div></div>`;
 }
 
 // Settings sheet: one labelled switch for now. Same storage as before (fx.js setAnim).
@@ -573,8 +587,8 @@ function day(v) {
 function over(v) {
   const w = v.winner;
   const winners = new Set(v.winners.map((x) => x.id));
-  const side = { town: 'Town wins', mafia: 'Mafia wins', killer: 'Serial Killer wins', cult: 'Cult wins', none: 'Nobody wins' }[w?.side] || `${esc(w?.side || 'Nobody')} wins`;
-  const ink = { town: 'a-town', mafia: 'a-mafia', none: '' }[w?.side] ?? 'a-third';
+  const side = { town: 'Town wins', mafia: 'Mafia wins', killer: 'Serial Killer wins', cult: 'Cult wins', none: 'Nobody wins', draw: 'It’s a draw' }[w?.side] || `${esc(w?.side || 'Nobody')} wins`;
+  const ink = { town: 'a-town', mafia: 'a-mafia', none: '', draw: '' }[w?.side] ?? 'a-third';
   const rows = v.players.map((p) => { const r = ROLE_BY_ID[p.roleId]; const why = v.winners.find((x) => x.id === p.id);
     return `<div class="arow ${winners.has(p.id) ? 'is-winner' : ''}"><span class="arow-glyph ${r ? `a-${r.alignment}` : ''}">${r ? ico(r) : initial(p.name)}</span>
       <span class="arow-name"><b>${esc(p.name)}</b> <span class="muted">${esc(r?.name || 'Role unknown')}</span></span>

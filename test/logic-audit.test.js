@@ -134,3 +134,30 @@ describe('rule risks: Hunter, revive, stalemate', () => {
     assert.equal(r2.phase, 'over');
   });
 });
+
+describe('Cult + Serial Killer stalemate: the Host decides (Nishant, 2026-10-23)', () => {
+  test('detected only when the Cult and the Serial Killer are the only sides alive', async () => {
+    const { stalemateOf } = await import('../public/js/engine.js');
+    const room = mk([['Cu', 'cult'], ['Sk', 'killer'], ['V', 'villager']]);
+    assert.equal(stalemateOf(room), null, 'a Villager is still alive');
+    room.players.find((p) => p.name === 'V').alive = false;
+    assert.equal(checkWin(room), null, 'no automatic winner');
+    assert.deepEqual(stalemateOf(room).sides, ['cult', 'killer', 'draw']);
+    room.phase = 'lobby';
+    assert.equal(stalemateOf(room), null, 'not outside play');
+  });
+  test('host view carries it; players never see it; Host picks Cult, Serial Killer or Draw', async () => {
+    const { viewForHost, viewForPlayer, gameOverEvent } = await import('../public/js/room.js');
+    for (const side of ['cult', 'killer', 'draw']) {
+      const room = mk([['Cu', 'cult'], ['Sk', 'killer'], ['V', 'villager']]);
+      reduce(room, host, { type: 'kill', playerId: id(room, 'V') });
+      assert.equal(room.phase, 'day');
+      assert.ok(viewForHost(room).stalemate);
+      assert.equal(viewForPlayer(room, id(room, 'Cu')).stalemate, undefined);
+      assert.ok(reduce(room, host, { type: 'declareWinner', side }).ok);
+      assert.equal(room.phase, 'over'); assert.equal(room.winner.side, side);
+      assert.equal(viewForHost(room).stalemate, null);
+      if (side === 'draw') assert.equal(gameOverEvent(room).theme, 'none');
+    }
+  });
+});

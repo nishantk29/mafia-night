@@ -1,7 +1,7 @@
 // Room state + reducer + per-viewer projections. Pure functions: used by the Durable Object and by local mode.
 import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
-  applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners,
+  applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
   setupWarnings, DEFAULT_RULES, rulesOf,
 } from './engine.js';
 import { THEMES } from './theme.js';
@@ -315,10 +315,10 @@ function assignTargets(room) {
 // ---------- game-over event ----------
 // Sent once, by the room, to every connected socket the moment the game ends, so every phone and the table screen
 // show the victory card together. Public facts only; `won` is added for a player's own phone and is never in anyone else's.
-const TEAM_NAME = { town: 'Town', mafia: 'The Mafia', killer: 'The Serial Killer', cult: 'The Cult', none: 'Nobody' };
+const TEAM_NAME = { town: 'Town', mafia: 'The Mafia', killer: 'The Serial Killer', cult: 'The Cult', none: 'Nobody', draw: 'A draw' };
 export function gameOverEvent(room, playerId = null) {
   const w = room.winner || { side: 'none', reason: '' };
-  const theme = w.side === 'town' || w.side === 'mafia' ? w.side : w.side === 'none' ? 'none' : 'third';
+  const theme = w.side === 'town' || w.side === 'mafia' ? w.side : w.side === 'none' || w.side === 'draw' ? 'none' : 'third';
   const ev = { type: 'gameOver', side: w.side, team: TEAM_NAME[w.side] || w.side, theme, reason: w.reason || '' };
   if (playerId) ev.won = finalWinners(room).some((x) => x.id === playerId);
   return ev;
@@ -352,6 +352,7 @@ export function viewForHost(room, connected = new Set()) {
     deck: room.deck, copSalt: room.copSalt, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
     report: room.lastReport, log: room.log.slice(-60), winner: room.winner, winners: over ? finalWinners(room) : [],
     sideWins: room.sideWins, usage: room.usage, dayUsed: room.dayUsed, shield: room.shield,
+    stalemate: stalemateOf(room),
     limits: { min: MIN_PLAYERS, max: MAX_PLAYERS },
   };
 }
