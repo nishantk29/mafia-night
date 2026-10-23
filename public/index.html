@@ -5,22 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mafia Night</title>
 <meta name="description" content="Deal secret roles for Mafia and Werewolf to phones, and run the night as storyteller.">
-<meta name="theme-color" content="#1B1410">
 <meta name="color-scheme" content="dark">
 <meta name="application-name" content="Mafia Night">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Mafia Night">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preload" href="/fonts/rubik-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/big-shoulders-display-var.woff2" as="font" type="font/woff2" crossorigin>
 <style>html{background:#1B1410;color-scheme:dark}</style>
 <link rel="stylesheet" href="/styles.css">
+<!-- pwa:start -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1B1410">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mafia Night">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+<script type="module" src="/pwa-install.js"></script>
+<script>if('serviceWorker'in navigator)addEventListener('load',function(){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){})});</script>
+<!-- pwa:end -->
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -31,21 +35,5 @@
 <div id="toast" role="status" aria-live="polite"></div>
 <noscript>This game needs JavaScript.</noscript>
 <script type="module" src="/js/app.js"></script>
-<script>
-// Offline support. Skipped on localhost so a dev server always serves fresh files;
-// run localStorage.sw = '1' in the console to test the service worker locally.
-(function () {
-  if (!('serviceWorker' in navigator)) return;
-  var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || /\.(localhost|test)$/.test(location.hostname);
-  var force = false;
-  try { force = localStorage.getItem('sw') === '1'; } catch (e) {}
-  if (local && !force) {
-    navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
-    if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf('mafia-') === 0) caches.delete(k); }); });
-    return;
-  }
-  addEventListener('load', function () { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); });
-})();
-</script>
 </body>
 </html>
