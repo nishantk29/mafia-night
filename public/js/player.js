@@ -49,7 +49,7 @@ function playing(v) {
   if (needsCard) return cardPicker(me);
   if (v.deckKey) {
     return `<section class="block find-card"><h2 class="block-title">Find your card</h2>
-      <p class="muted">Find the card you were dealt in this key. The storyteller will call your role on night 1.</p>${key(v)}</section>`;
+      <p class="muted">Find your card in this key. The storyteller will call your role on night 1.</p>${key(v)}</section>`;
   }
   return `<div class="waiting">${back()}<h2 class="phase-title">Waiting for the storyteller to deal.</h2></div>`;
 }
