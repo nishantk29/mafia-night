@@ -125,7 +125,14 @@ function home() {
         ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
         <p class="muted">Run everything from this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
-      <p class="home-faq"><a href="#/faq">How it works and FAQ</a></p>
+      <a class="home-rules" href="#/faq"><span><b>Rules &amp; FAQ</b><small>Roles, play modes and tricky calls.</small></span>${ui('caret-down')}</a>
+      <section class="home-how"><h2 class="home-how-title">How to Play</h2>
+        <ol class="how">
+          <li><h3>Deal</h3><p>Host a game on this screen. Players join with the room code, and each gets a secret role.</p></li>
+          <li><h3>Night</h3><p>Everyone closes their eyes. The Host wakes each role in turn and taps their pick.</p></li>
+          <li><h3>Day</h3><p>At dawn the app shows who died. The table talks, then votes someone out with a majority.</p></li>
+          <li><h3>Win</h3><p>Town wins when every Mafia member is gone. Mafia win when they match the rest of the table.</p></li>
+        </ol></section>
     </div>
     <p class="credits">Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT).</p>
   </main>`;
