@@ -592,6 +592,19 @@ export function checkWin(room) {
   }
   return null;
 }
+// Cult vs Serial Killer: when they are the only sides left, checkWin has no rule for it and the nights can loop.
+// Nishant's rule (2026-10-23): the Host decides each time. Returns the sides to offer, or null.
+export function stalemateOf(room) {
+  if (!['day', 'night'].includes(room.phase) || room.winner) return null;
+  if (room.players.some((p) => !p.roleId)) return null;
+  const alive = room.players.filter((p) => p.alive);
+  if (!alive.length) return null;
+  const sides = new Set(alive.map((p) => factionOf(p.roleId)));
+  if (sides.size === 2 && sides.has('cult') && sides.has('killer')) {
+    return { sides: ['cult', 'killer', 'draw'], reason: 'Only the Cult and the Serial Killer are left. Neither side can win, so the Host decides.' };
+  }
+  return null;
+}
 export function applyWinChecks(room) {
   if (room.pending?.length) return; // a Hunter's shot (or other prompt) resolves first; resolvePending re-checks
   const w = checkWin(room);

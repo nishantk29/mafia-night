@@ -187,7 +187,7 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; S.view = m.view; S.render(); observe(prev, m.view);
+        const prev = S.view; S.view = m.view; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
       else if (m.type === 'error') S.toast(m.error);
@@ -203,6 +203,12 @@ function wsTransport(code, helloFn) {
   };
 }
 
+// Cult + Serial Killer stalemate: open the Host's Declare a winner sheet once, the moment it starts.
+function autoDeclare(prev, view) {
+  if (view?.kind === 'host' && view.stalemate && !prev?.stalemate) { S.ui.declare = true; S.ui.anim = 'modal'; }
+  if (!view?.stalemate && prev?.stalemate) S.ui.declare = false;
+}
+
 function localTransport() {
   const KEY = 'mafia.local';
   let room;
@@ -210,7 +216,7 @@ function localTransport() {
   if (!room) { room = newRoom('LOCAL', 'local'); room.config.mode = 'cards'; }
   const emit = () => {
     store.set(KEY, JSON.stringify(room)); registerRoles(room.config.customRoles);
-    const prev = S.view; S.view = viewForHost(room, new Set()); S.render(); observe(prev, S.view);
+    const prev = S.view; S.view = viewForHost(room, new Set()); autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
     if (prev && prev.phase !== 'over' && room.phase === 'over') showVictory(gameOverEvent(room)); // single device: no server to announce it
   };
   setTimeout(emit, 0);
@@ -406,7 +412,13 @@ const A = {
   noCondemn() { send({ type: 'noCondemn' }); S.toast('Nobody condemned today'); },
   pend(el) { send({ type: 'resolvePending', pendingId: el.dataset.pid, targetId: el.dataset.id || null }); },
   useDay(el) { send({ type: 'useDay', playerId: el.dataset.id }); },
-  declare() { const s = prompt('Who wins? Type town, mafia, or a player’s name.'); if (s) send({ type: 'declareWinner', side: s.toLowerCase(), reason: 'Declared by the Host.' }); },
+  declare() { S.ui.declare = true; S.ui.anim = 'modal'; S.render(); },
+  closeDeclare() { S.ui.declare = false; S.render(); },
+  declareSide(el) {
+    const side = el.dataset.v; S.ui.declare = false;
+    const reason = S.view?.stalemate ? 'Only the Cult and the Serial Killer were left. The Host decided.' : 'Declared by the Host.';
+    send({ type: 'declareWinner', side, reason });
+  },
   playAgain() { closeVictory(); S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'playAgain' }); },
   closeVictory() { closeVictory(); S.ui.anim = 'roles'; S.render(); },
   setupMode(el) {
@@ -546,6 +558,7 @@ document.addEventListener('keydown', (ev) => {
     if (S.ui.showCode) { A.hideCode(); return; }
     if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
+    if (S.ui.declare) { A.closeDeclare(); return; }
     if (S.ui.sheet) { const id = S.ui.sheet; A.closeSheet(); refocus(`[data-a="seat"][data-id="${CSS.escape(id)}"]`, ''); return; }
     return;
   }
