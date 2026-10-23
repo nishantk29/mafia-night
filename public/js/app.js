@@ -92,18 +92,17 @@ function home() {
   const playCodes = Object.keys(localStorage).filter((k) => k.startsWith('mafia.player.')).map((k) => k.slice(13));
   return `<main class="wrap home">
     <div class="home-hero">
-      <div class="card-fan" aria-hidden="true">${`<span class="rcard-back"><span class="rcard-back-mark">${ui('brand')}</span></span>`.repeat(3)}</div>
-      <span class="home-badge" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="#7A0A14" d="M6 20c0-5 8-7 26-5 18-2 26 0 26 5 0 15-9 26-18 24-4-1-6-6-8-6s-4 5-8 6C15 46 6 35 6 20z"/><ellipse cx="21" cy="26" rx="7" ry="4" fill="#F2C14E" transform="rotate(14 21 26)"/><ellipse cx="43" cy="26" rx="7" ry="4" fill="#F2C14E" transform="rotate(-14 43 26)"/></svg></span>
+      <div class="card-fan" aria-hidden="true"><span class="rcard-back"><span class="rcard-back-mark">${ui('brand')}</span></span></div>
       <h1 class="wordmark">Mafia<br>Night</h1>
-      <p class="lede">Secret roles for Mafia and Werewolf, dealt to phones. The app runs the night for you.</p>
+      <p class="lede">Secret roles for Mafia and Werewolf, dealt to everyone’s phone. You get the script for the night.</p>
     </div>
     <div class="home-paths">
       <section class="path path-host"><h2 class="path-title">Be the storyteller</h2>
-        <p class="muted">You run the night. Players join on their phones with a 6‑letter code.</p>
+        <p class="muted">You read the night aloud. Everyone else joins on their phone with a 6‑letter code.</p>
         <button type="button" class="btn big" data-a="hostLive">Host a game</button>
         ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
-      <section class="path path-join"><h2 class="path-title">Join a game</h2>
-        <div class="join-row"><label class="field"><span>Room code</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="ABCDEF" value="${esc(S.ui.draft.joinCode || '')}"></label>
+      <section class="path path-join"><h2 class="path-title">Join with a code</h2>
+        <div class="join-row"><label class="field"><span>Code from the storyteller</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
         <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
         ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>

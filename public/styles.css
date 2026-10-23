@@ -1292,7 +1292,7 @@ html[data-fx="off"] .fx-scene{display:none}
   --room:#0B0B0D;--room-night:#07070A;--panel:#1A1A20;--panel-2:#26262E;--rule:#3A3A46;--rule-strong:#8A8A9A;--faint:#A9A9B8;
   --smoke:#C9C9D6;--candle:#FFF4E6;--brass:#F2C14E;--brass-hi:#FFD36B;--brass-lo:#B58A22;--on-brass:#2A0508;--ease-pop:cubic-bezier(.34,1.56,.64,1)}
 html{background:var(--room)}
-body{background:radial-gradient(120% 60% at 50% -10%,#1d1d24 0,var(--room) 70%) no-repeat,var(--room);font-weight:500}
+body{background:var(--room);font-weight:500}
 h1,h2,.block-title,.phase-title,.wordmark,.path-title,.sheet-title,.balance-title,.guide-title,.table-phase,.room-code{font-family:var(--font-display);font-weight:900;letter-spacing:-.025em}
 .block-title,.path-title{font-size:clamp(1.6rem,7vw,2.1rem);line-height:1.05}
 .phase-title{letter-spacing:-.03em}
@@ -1322,9 +1322,6 @@ html[data-phase="night"] .pane-game .phase-head{background:#17317E}
 .faq-q{border-color:var(--rule)}
 .wrap.faq > .field{margin-bottom:14px}
 
-/* the badge on home */
-.home-badge{width:84px;height:84px;display:grid;place-items:center;border-radius:26px;background:#F2C14E;box-shadow:0 7px 0 #B58A22,0 14px 18px rgba(0,0,0,.35)}
-.home-badge svg{width:66px;height:66px}
 
 /* lift on press: one transform */
 .block,.whisper,.guide,.path,.wrap.faq > .faq-group{transform:perspective(900px) translateY(var(--lift,0px)) rotateX(var(--rx,calc(var(--ogy,0) * -4deg))) rotateY(var(--ry,calc(var(--ogx,0) * 5deg)));
@@ -1349,3 +1346,94 @@ html[data-lite="1"] .block::before,html[data-lite="1"] .whisper::before,html[dat
   .block,.whisper,.guide,.path,.wrap.faq > .faq-group{transform:none!important;transition:none}
   .action-dock .btn.big:active{transform:none}
 }
+
+/* ======================================================================================
+   Polish pass. One primary action per screen carries the brand yellow; colour blocks are kept for
+   the card that matters, everything else is a flat dark panel. Stripes and shadows only where they
+   carry meaning.
+   ====================================================================================== */
+
+/* buttons: the lip shadow belongs to the main action only; others are quiet fills or outlines */
+.btn,.btn.danger{box-shadow:none}
+.btn.big,.modal-foot .btn:not(.ghost){box-shadow:0 4px 0 var(--brass-lo)}
+.action-dock .btn.big{box-shadow:0 8px 0 var(--brass-lo),0 18px 24px -10px rgba(0,0,0,.7)}
+.btn.big.danger{box-shadow:0 4px 0 var(--card-red)}
+.block .btn:not(.ghost):not(.big):not(.danger),.whisper .btn:not(.ghost):not(.big),.guide .btn:not(.ghost):not(.big),.cue-body .btn:not(.ghost):not(.danger){
+  background:var(--panel-2);border-color:transparent;color:var(--candle)}
+.block .btn.ghost,.whisper .btn.ghost,.guide .btn.ghost,.cue-body .btn.ghost{border-color:var(--rule-strong);color:var(--candle)}
+@media (hover:hover){
+  .block .btn:not(.ghost):not(.big):not(.danger):hover,.whisper .btn:not(.ghost):not(.big):hover,.guide .btn:not(.ghost):not(.big):hover,.cue-body .btn:not(.ghost):not(.danger):hover{background:var(--panel);border-color:var(--candle)}
+}
+
+/* cards by role: stripes go (flat Transit colour), colour blocks only for the focal card */
+.block::before,.whisper::before,.guide::before,.path::before,.wrap.faq > .faq-group::before{display:none}
+.block:not(.join-code),.wrap.faq > .faq-group{--cb:#1A1A20;--candle:#FFF4E6;--smoke:#C9C9D6;--faint:#A9A9B8;--brass:#F2C14E;--brass-hi:#FFD36B;--brass-lo:#B58A22;--on-brass:#2A0508;
+  --panel:#26262E;--panel-2:#31313B;--rule:#3A3A46;--rule-strong:#8A8A9A;--focus:#F7D58A;
+  --town:#8DB6E8;--mafia:#F26B66;--third:#B996F0;--team:#C9C9D6;
+  padding:var(--s5) var(--s4);border-radius:18px;box-shadow:none;transform:none}
+.block:not(.join-code) .block-title{font-size:var(--fs-lg);font-weight:800;letter-spacing:-.015em}
+.block:not(.join-code) .block-head{margin-bottom:var(--s4)}
+.whisper,.guide{box-shadow:none}
+.join-code{border-radius:28px}
+
+/* lobby: the room code is the focal point and has to fit at 390px */
+.room-code{font-size:clamp(2.5rem,14vw,7.5rem);letter-spacing:.05em;white-space:nowrap;max-width:100%;margin-block:var(--s2) var(--s3)}
+.join-code .muted{font-weight:700}
+
+/* home: left-aligned masthead, one card back, one primary card */
+.wrap.home{gap:var(--s6)}
+.home-hero{grid-template-columns:minmax(0,1fr) auto;justify-items:start;align-items:end;text-align:left;gap:var(--s4) var(--s3)}
+.home-hero .wordmark{grid-column:1;grid-row:1}
+.home-hero .card-fan{grid-column:2;grid-row:1;height:auto;margin:0 var(--s2) var(--s2) 0;order:0;justify-content:flex-end}
+.card-fan .rcard-back{width:clamp(72px,20vw,112px);transform:rotate(7deg)}
+.home-hero .lede{grid-column:1/-1;max-width:28ch;font-size:var(--fs-md);font-weight:500}
+.home-paths{margin-inline:0;max-width:none;gap:var(--s3)}
+.home-paths .path{margin:0}
+.path-host{padding:var(--s6) var(--s5) var(--s5)}
+.path-host .path-title{font-size:clamp(2rem,9.5vw,2.75rem);line-height:1;margin-bottom:var(--s3)}
+.path-host > .muted{margin-bottom:var(--s5);max-width:30ch}
+.path-host .btn.big{margin-top:0}
+.home-paths .path-join{--cb:#1A1A20;--candle:#FFF4E6;--smoke:#C9C9D6;--faint:#A9A9B8;--brass:#F2C14E;--brass-hi:#FFD36B;--brass-lo:#B58A22;--on-brass:#2A0508;
+  --panel:#26262E;--panel-2:#31313B;--rule:#3A3A46;--rule-strong:#8A8A9A;--focus:#F7D58A;--town:#8DB6E8;--mafia:#F26B66;--third:#B996F0;
+  padding:var(--s5) var(--s4);border-radius:18px;box-shadow:none;transform:none}
+.path-join .path-title{font-size:var(--fs-lg);font-weight:800;letter-spacing:-.015em;margin-bottom:var(--s2)}
+.home-paths .path-local{--cb:transparent;--candle:#FFF4E6;--smoke:#C9C9D6;--faint:#A9A9B8;
+  background:none;box-shadow:none;transform:none;padding:var(--s4) var(--s1) 0;border-radius:0}
+.path-local .muted{max-width:34ch}
+.home-faq{margin-top:0}
+.home-faq a{padding-inline:var(--s1)}
+.credits{text-align:left;justify-self:start}
+@media (min-width:768px){
+  .home-hero .card-fan{margin:0}
+  .home-hero .wordmark{font-size:clamp(4.5rem,9vw,7.5rem)}
+}
+
+/* night: Say / Gesture are typographic tags, not icons; only the dock button is yellow */
+.tell-say{display:block}
+.tell-tag{margin-right:var(--s1);font-weight:900;font-size:var(--fs-sm);color:var(--brass)}
+.tell-say.is-gesture .tell-tag{color:var(--smoke)}
+.tell-say.is-gesture b{font-family:var(--font-ui);font-style:normal;font-weight:700;color:var(--candle)}
+.cue.is-current .cue-body{border-radius:20px}
+
+/* follow-up: flat pills (no bottom lip anywhere; pressed state is transform only) */
+.btn,.btn.big,.btn.danger,.btn.big.danger,.modal-foot .btn:not(.ghost),.action-dock .btn.big,.fx-victory .btn.big{box-shadow:none}
+.action-dock .btn.big:active,.btn.big:active{box-shadow:none}
+.action-dock .btn.big:active{transform:scale(.97)}
+
+/* join row: input and button share one height and one pill language */
+.join-row{align-items:flex-end}
+.join-row .code-input{min-height:52px;height:52px;border-radius:var(--r-pill)}
+.join-row .btn{min-height:52px;height:52px;padding:0 var(--s5);background:var(--candle);border-color:var(--candle);color:#1A1A20}
+@media (hover:hover){.join-row .btn:hover{background:var(--smoke);border-color:var(--smoke)}}
+
+/* home link: bold with a drawn arrow instead of an underline */
+.path-link{text-decoration:none;font-weight:800;gap:var(--s2)}
+.path-link::after{content:"";flex:none;width:.5em;height:.5em;border:solid currentColor;border-width:2.5px 2.5px 0 0;transform:rotate(45deg) translate(-1px,1px);transition:transform 200ms var(--ease-out)}
+@media (hover:hover){.path-link:hover::after{transform:rotate(45deg) translate(1px,-1px)}}
+
+/* hero card back: flat graphic block */
+.card-fan .rcard-back{box-shadow:inset 0 0 0 6px var(--lacquer),inset 0 0 0 7px rgba(224,174,82,.6)}
+
+/* lead block rounder than the supporting panel */
+.path-host{border-radius:36px}
+.home-paths .path-join{border-radius:14px}
