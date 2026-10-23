@@ -340,8 +340,8 @@ function night(v) {
 }
 
 // A line the host reads aloud, in the same ear-icon style as the live answers.
-function sayLine(text) { return `<div class="tell-now"><p class="tell-say">${ui('ear')} Say: <b>${esc(text)}</b></p></div>`; }
-function gestureLine(text) { return `<div class="tell-now"><p class="tell-say">${ui('ear')} Gesture: <b>${esc(text)}</b></p></div>`; }
+function sayLine(text) { return `<div class="tell-now"><p class="tell-say"><span class="tell-tag">Say:</span> <b>${esc(text)}</b></p></div>`; }
+function gestureLine(text) { return `<div class="tell-now"><p class="tell-say is-gesture"><span class="tell-tag">Gesture:</span> <b>${esc(text)}</b></p></div>`; }
 const doneLines = (v, s, set) => doneStepLines(s, liveResult(v, s, set))
   .map((l) => (l.type === 'gesture' ? gestureLine(l.text) : sayLine(l.text))).join('');
 
