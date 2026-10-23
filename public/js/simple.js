@@ -30,8 +30,8 @@ export function countsOf(roleIds) {
   return c;
 }
 
-// Playing-card key, same idea as Black Aces: black Aces (and the black King) are Mafia,
-// red King is the Doctor, red Queen is the Cop, number cards are Villagers.
+// Playing-card key, same idea as Black Aces: black Aces, then black Kings, then black Jacks are Mafia,
+// red Kings are the Doctor, red Queens the Cop, number cards are Villagers.
 // Each list is in the order cards are used; extra copies of a role spill into the next card.
 export const SIMPLE_CARDS = {
   mafia: ['AS', 'AC', 'KS', 'KC', 'JS', 'JC'],
@@ -42,9 +42,9 @@ export const SIMPLE_CARDS = {
 
 // What a role stands for, in words, for the host.
 export const SIMPLE_CARD_TEXT = {
-  mafia: 'Black Aces (Black King if there are 3)',
-  doctor: 'Red King',
-  cop: 'Red Queen',
+  mafia: 'Black Aces, then black Kings, then black Jacks',
+  doctor: 'Red Kings (K♥ first)',
+  cop: 'Red Queens (Q♥ first)',
   villager: 'Number cards, 2–10',
 };
 
