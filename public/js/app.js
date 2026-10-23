@@ -14,6 +14,7 @@ import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
 import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn } from './fx.js';
 import { gameOverEvent } from './room.js';
+import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -28,12 +29,29 @@ function focusSelector(el) {
   return parts.length ? parts.join('') : null;
 }
 
+// Simple or Complex setup: the URL (?mode=simple | cards) wins, then the last choice, then Simple.
+const initial = setupModeFrom(location.search, store.get(SIMPLE_KEY));
+S.ui.setupMode = initial.mode;
+let simpleSync = initial.mode === 'simple'; // push Simple's config (city theme, card key) once the room is in setup
+let simpleCards = initial.cards;
+function syncSimple() {
+  const v = S.view;
+  if (!simpleSync || !v || v.kind === 'player' || v.phase !== 'lobby') return;
+  simpleSync = false;
+  const patch = { theme: 'city' };
+  if (simpleCards || v.config.mode === 'cards') { if (S.mode !== 'local') patch.mode = 'cards'; patch.deckStyle = 'simple'; }
+  if (!isSimpleSet(v.config.roles) || (!v.config.roles.length && v.players.length)) patch.roles = simpleRoleIds(simpleCounts(Math.max(v.players.length, v.limits.min)));
+  simpleCards = false;
+  S.send({ type: 'setConfig', ...patch });
+}
+
 let pendingRender = false;
 S.render = function render() {
   if (drag) { pendingRender = true; return; } // a seat is being dragged: the drop renders
   const a = document.activeElement;
   if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; return; }
   pendingRender = false;
+  syncSimple();
   const sel = a && a !== document.body && $app.contains(a) ? focusSelector(a) : null;
   const y = window.scrollY;
   const { phase, shell } = shellAttrs();
@@ -352,6 +370,22 @@ const A = {
   declare() { const s = prompt('Who wins? Type town, mafia, or a player’s name.'); if (s) send({ type: 'declareWinner', side: s.toLowerCase(), reason: 'Declared by the Storyteller.' }); },
   playAgain() { closeVictory(); S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'playAgain' }); },
   closeVictory() { closeVictory(); S.ui.anim = 'roles'; S.render(); },
+  setupMode(el) {
+    const m = el.dataset.v; if (S.ui.setupMode === m) return;
+    S.ui.setupMode = m; store.set(SIMPLE_KEY, m);
+    const c = S.view.config;
+    if (m === 'simple') { simpleSync = true; simpleCards = false; S.render(); return; }
+    send({ type: 'setConfig', deckStyle: 'random' }); // Complex has its own card key choice
+  },
+  simpleSuggest() { send({ type: 'setConfig', roles: simpleRoleIds(simpleCounts(Math.max(S.view.players.length, S.view.limits.min))) }); },
+  simpleStep(el) {
+    const counts = countsOf(S.view.config.roles); const id = el.dataset.id;
+    counts[id] = Math.max(0, counts[id] + Number(el.dataset.v));
+    send({ type: 'setConfig', roles: simpleRoleIds(counts) });
+  },
+  simpleCards() { const on = S.view.config.mode !== 'cards'; send({ type: 'setConfig', mode: on ? 'cards' : 'app', deckStyle: on ? 'simple' : 'random' }); },
+  openSettings() { S.ui.settings = true; S.ui.anim = 'modal'; S.render(); },
+  closeSettings() { S.ui.settings = false; S.render(); },
   toggleAnim() { setAnim(!animOn()); S.render(); },
   newGame() { if (S.view.phase === 'over' || confirm('Abandon this game and go back to setup?')) { S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'newGame' }); } },
   // board

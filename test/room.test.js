@@ -262,6 +262,7 @@ describe('phase machine', () => {
   test('revive, kill, tags, notes, legend validation', () => {
     const room = dealt(['mafia', 'doctor', 'cop', 'villager', 'villager']);
     const p = room.players[0];
+    room.phase = 'day';
     H(room, { type: 'kill', playerId: p.id, cause: 'host' });
     assert.equal(p.alive, false);
     H(room, { type: 'revive', playerId: p.id });
@@ -390,6 +391,7 @@ describe('full game smoke', () => {
 
   test('declareWinner ends the game manually', () => {
     const room = dealt(['mafia', 'villager', 'villager', 'villager', 'villager']);
+    room.phase = 'day';
     H(room, { type: 'declareWinner', side: 'town', reason: 'because' });
     assert.equal(room.phase, 'over');
     assert.equal(viewForPlayer(room, room.players[0].id).winner.side, 'town');

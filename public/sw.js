@@ -42,6 +42,7 @@ const PRECACHE = [
   '/js/roles_extra.js',
   '/js/roles_extra2.js',
   '/js/room.js',
+  '/js/simple.js',
   '/js/state.js',
   '/js/theme.js',
   '/js/tools.js',
