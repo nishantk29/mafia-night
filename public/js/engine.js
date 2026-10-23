@@ -210,6 +210,33 @@ export function stepCues(step) {
   return { open, close: /close your eyes/i.test(said) ? null : `${name}, close your eyes.` };
 }
 
+// The silent gesture the storyteller gives after a role's private choice is recorded: { kind, text }, or null.
+// `result` is the previewNight answer for investigators (null while a coin flip is pending). Yes/no results
+// (Mafia / not Mafia) get a nod or shake; every other private choice gets an acknowledging nod.
+export function stepGesture(step, result) {
+  if (!stepCues(step) || step.kind !== 'action') return null;
+  if (['investigate', 'track', 'watch', 'autopsy'].includes(step.type)) {
+    if (!result || result.blocked) return null;
+    const m = /^(.+) is (MAFIA|NOT Mafia)\.$/.exec(result.text || '');
+    if (step.type === 'investigate' && m) {
+      return m[2] === 'MAFIA'
+        ? { kind: 'yesno', text: `Nod your head / Thumbs up — ${m[1]} is Mafia` }
+        : { kind: 'yesno', text: `Shake your head / Thumbs down — ${m[1]} is not Mafia` };
+    }
+  }
+  return { kind: 'ack', text: 'Give them a nod: choice recorded' };
+}
+
+// Lines read or shown after a done step's result, in order: the gesture, then the close-eyes cue.
+export function doneStepLines(step, result) {
+  const out = [];
+  const g = stepGesture(step, result);
+  if (g) out.push({ type: 'gesture', ...g });
+  const close = stepCues(step)?.close;
+  if (close) out.push({ type: 'say', text: close });
+  return out;
+}
+
 // What the storyteller should tell an investigator right now, given only the choices made by roles that woke
 // earlier tonight (steps before it in the script; at the same wake order, the ones listed first).
 // Runs the night on a copy of the room, so nothing changes.

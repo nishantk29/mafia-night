@@ -6,7 +6,7 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { previewNight, stepCues, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES } from './engine.js';
+import { previewNight, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { toolsButton, toolsPanel } from './tools.js';
@@ -342,7 +342,16 @@ function night(v) {
 
 // A line the host reads aloud, in the same ear-icon style as the live answers.
 function sayLine(text) { return `<div class="tell-now"><p class="tell-say">${ui('ear')} Say: <b>${esc(text)}</b></p></div>`; }
-const closeCue = (s) => { const c = stepCues(s)?.close; return c ? sayLine(c) : ''; };
+function gestureLine(text) { return `<div class="tell-now"><p class="tell-say">${ui('ear')} Gesture: <b>${esc(text)}</b></p></div>`; }
+const doneLines = (v, s, set) => doneStepLines(s, liveResult(v, s, set))
+  .map((l) => (l.type === 'gesture' ? gestureLine(l.text) : sayLine(l.text))).join('');
+
+// Live result for an investigator; null when there is none yet (not live, no target, or a coin flip pending).
+function liveResult(v, s, set) {
+  if (s.kind !== 'action' || !LIVE.includes(s.type) || !set?.targets?.length) return null;
+  if (COIN.includes(s.check) && !set.coin) return null;
+  try { return previewNight(roomFromView(v), S.ui.night.actions, s.key); } catch { return null; }
+}
 
 // Live answer for an investigator, worked out from the choices of everyone who woke earlier tonight.
 function tellNow(v, s, set) {
@@ -351,8 +360,7 @@ function tellNow(v, s, set) {
     return `<div class="tell-now"><p class="note is-private">${ui('ear')} This result is a coin flip. Flip it now and say the answer as if it were true.</p>
       <button type="button" class="btn" data-a="coin" data-key="${s.key}">${ui('coin')} Flip a coin</button></div>`;
   }
-  let res;
-  try { res = previewNight(roomFromView(v), S.ui.night.actions, s.key); } catch { return ''; }
+  const res = liveResult(v, s, set);
   if (!res) return '';
   if (res.blocked) return `<div class="tell-now"><p class="note is-private">${ui('ear')} ${esc(res.note)} Tell them nothing happened.</p></div>`;
   return `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p>${res.note ? `<p class="note is-private">${esc(res.note)}</p>` : ''}</div>`;
@@ -372,7 +380,7 @@ function cue(v, s, num, current, alive) {
         : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
     }
     return `<li class="cue is-done"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
-      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div>${tellNow(v, s, set)}${closeCue(s)}</li>`;
+      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div>${tellNow(v, s, set)}${doneLines(v, s, set)}</li>`;
   }
   if (!current) {
     const what = s.kind === 'identify' ? 'Find who it is' : s.kind === 'info' ? 'Wake them up' : 'Record their choice';
