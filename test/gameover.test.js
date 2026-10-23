@@ -9,6 +9,7 @@ function game(n = 6) {
   for (let i = 0; i < n; i++) ids.push(reduce(room, { anon: true }, { type: 'join', name: `P${i + 1}` }).data.playerId);
   reduce(room, HOST, { type: 'setConfig', roles: ['mafia', 'mafia', 'villager', 'villager', 'villager', 'villager'].slice(0, n) });
   assert.ok(reduce(room, HOST, { type: 'deal' }).ok);
+  room.phase = 'day'; // in play: declareWinner / kill are rejected before the game starts
   return { room, ids };
 }
 // What the Durable Object does: one attachment per open socket (host, TV/table screen = a second host socket, every phone).
@@ -59,7 +60,8 @@ describe('game-over event', () => {
     reduce(room, HOST, { type: 'startNight' }); reduce(room, HOST, { type: 'submitNight', actions: {} });
     assert.equal(room.phase, 'day');
     const before = room.phase;
-    for (const p of room.players.filter((q) => q.roleId === 'mafia')) reduce(room, HOST, { type: 'condemn', playerId: p.id });
+    room.condemnedDay = null; // one condemn per day: pretend the second falls on the next day
+    for (const p of room.players.filter((q) => q.roleId === 'mafia')) { room.condemnedDay = null; reduce(room, HOST, { type: 'condemn', playerId: p.id }); }
     assert.ok(justEnded(before, room));
     const ev = messagesFor(room, { who: 'host' }, new Set(), true).find((m) => m.type === 'gameOver');
     assert.equal(ev.theme, 'town');

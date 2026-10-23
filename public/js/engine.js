@@ -373,7 +373,7 @@ export function resolveNight(room, actions) {
 
   // usage
   room.usage ||= {};
-  for (const a of acts) if (Number.isFinite(a.s.uses)) for (const id of a.s.actors) room.usage[id] = usedCount(room, id) + 1;
+  for (const a of acts) if (Number.isFinite(a.s.uses) && a.s.type !== 'clean') for (const id of a.s.actors) room.usage[id] = usedCount(room, id) + 1;
 
   // 1) jail / block / door-guards (iterate: a blocker can itself be blocked)
   const jailed = new Set(acts.filter((a) => a.s.type === 'jail').map((a) => a.targets[0]));
@@ -514,7 +514,10 @@ export function resolveNight(room, actions) {
 
   // 8) apply deaths
   const hide = !!clean && cleaned.size > 0;
-  if (hide) { rep.notes.push(`Janitor cleaned the victim: do not reveal their role.`); }
+  if (hide) {
+    rep.notes.push(`Janitor cleaned the victim: do not reveal their role.`);
+    if (Number.isFinite(clean.s.uses)) for (const id of clean.s.actors) room.usage[id] = usedCount(room, id) + 1; // single use is only spent on a real clean
+  }
   for (const [id, cause] of dying) {
     const hideRole = hide && cleaned.has(id);
     if (killPlayer(room, id, cause, { hideRole })) rep.deaths.push({ id, cause, hidden: hideRole });
@@ -545,7 +548,7 @@ export function condemn(room, id) {
   room.sideWins ||= [];
   if (r.sideWin === 'condemned') room.sideWins.push({ id: p.id, reason: `${p.name} (Jester) got condemned.` });
   for (const q of room.players) {
-    if (ROLE_BY_ID[q.roleId]?.sideWin === 'target' && q.target === id) {
+    if (q.alive && ROLE_BY_ID[q.roleId]?.sideWin === 'target' && q.target === id) {
       room.sideWins.push({ id: q.id, reason: `${q.name} (Executioner): target ${p.name} was condemned.` });
     }
   }
@@ -570,6 +573,7 @@ export function resolvePending(room, pendingId, targetId) {
 
 // ---------- win conditions ----------
 export function checkWin(room) {
+  if (room.players.some((p) => !p.roleId)) return null; // roles not all known yet (lobby / blind night 1)
   const alive = room.players.filter((p) => p.alive && p.roleId);
   if (!alive.length) return { side: 'none', reason: 'Everyone is dead.' };
   const mafia = alive.filter((p) => factionOf(p.roleId) === 'mafia');
