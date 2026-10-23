@@ -1005,9 +1005,6 @@ html.is-seat-dragging,html.is-seat-dragging *{cursor:grabbing!important}
 @media (prefers-reduced-motion:reduce){.seat.is-dragging .seat-card{transform:none}}
 
 /* ---------- FAQ ---------- */
-.home-faq{margin-top:var(--s5)}
-.home-faq a{display:inline-flex;align-items:center;min-height:44px;color:var(--smoke);font-size:var(--fs-sm)}
-@media (hover:hover){.home-faq a:hover{color:var(--candle)}}
 .wrap.faq > .lede{margin-top:var(--s3);max-width:none}
 .faq-group{margin-top:var(--s7)}
 .faq-group > .block-title{margin-bottom:var(--s2)}
@@ -1414,13 +1411,27 @@ html[data-lite="1"] .block::before,html[data-lite="1"] .whisper::before,html[dat
 .home-paths .path-local{--cb:transparent;--candle:#FFF4E6;--smoke:#C9C9D6;--faint:#A9A9B8;
   background:none;box-shadow:none;transform:none;padding:var(--s4) var(--s1) 0;border-radius:0}
 .path-local .muted{max-width:34ch}
-.home-faq{margin-top:0}
-.home-faq a{padding-inline:var(--s1)}
 .credits{text-align:left;justify-self:start}
 @media (min-width:768px){
   .home-hero .card-fan{margin:0}
   .home-hero .wordmark{font-size:clamp(4.5rem,9vw,7.5rem)}
 }
+
+/* home: Rules & FAQ link card, then the How to Play card (Mafia palette: dark link, red steps) */
+.home-rules{display:flex;align-items:center;gap:var(--s4);width:100%;min-height:72px;padding:var(--s3) var(--s4);border-radius:18px;background:#1A1A20;color:var(--candle);text-align:left;text-decoration:none;transition:transform .3s var(--ease-pop)}
+.home-rules:active{transform:scale(.98)}
+.home-rules>span{flex:1;min-width:0}
+.home-rules b{display:block;font-family:var(--font-display);font-size:var(--fs-lg);font-weight:800;letter-spacing:-.015em}
+.home-rules small{display:block;margin-top:2px;font-size:var(--fs-sm);font-weight:500;color:var(--smoke);line-height:1.35}
+.home-rules .ui-ico{flex:none;width:20px;height:20px;color:var(--brass);transform:rotate(-90deg)}
+.home-how{display:grid;gap:var(--s3)}
+.home-how-title{font-family:var(--font-display);font-weight:900;font-size:clamp(1.6rem,7vw,2.1rem);line-height:1.05;letter-spacing:-.025em}
+.how{list-style:none;display:grid;padding:var(--s2) 20px;border-radius:24px;background:#A3101D;color:#FFF4E6;counter-reset:s;overflow-wrap:anywhere}
+.how li{display:grid;grid-template-columns:32px minmax(0,1fr);column-gap:var(--s3);align-items:baseline;padding:var(--s3) 0}
+.how li+li{border-top:1px solid rgba(255,255,255,.3)}
+.how li::before{counter-increment:s;content:counter(s);grid-row:1;font-family:var(--font-display);font-size:28px;font-weight:900;line-height:1;color:#FFD36B;font-variant-numeric:tabular-nums}
+.how h3{grid-column:2;font-family:var(--font-display);font-size:var(--fs-lg);font-weight:800;letter-spacing:-.015em;line-height:1.2}
+.how p{grid-column:2;margin-top:var(--s1);font-size:var(--fs-sm);line-height:1.45;color:#F6D9CF}
 
 /* night: Say / Gesture are typographic tags, not icons; only the dock button is yellow */
 .tell-say{display:block}
