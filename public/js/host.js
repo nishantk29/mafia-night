@@ -1,4 +1,4 @@
-// Storyteller (host) screens.
+// Host screens.
 // Layout (DESIGN.md 6.2): app bar, then a console with the game pane and a side (table, who is who, log).
 // Phones show one pane at a time via the tab bar; tablets show game + side switch; wide screens show everything.
 import { S, esc, initial, loadLibrary } from './state.js';
@@ -135,7 +135,7 @@ function lobby(v, local) {
   const entry = (e) => {
     if (e.role) return tile(e.role);
     const total = e.variants.reduce((n, v) => n + (counts[v.id] || 0), 0);
-    return `<details class="role-group ${total ? 'is-picked' : ''}" data-group="${e.group.id}" ${total ? 'open' : ''}>
+    return `<details class="role-group ${total ? 'is-picked' : ''}" data-group="${e.group.id}" data-rv="rg-${e.group.id}" ${total ? 'open' : ''}>
       <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="muted">${e.variants.length} variants</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
       <div class="role-variants">${e.variants.map((v) => tile(v, true)).join('')}</div></details>`;
   };
@@ -354,7 +354,7 @@ function dealt(v, local) {
 }
 
 // big = the key shown to the whole table: disguised roles appear as what they think they are.
-// The storyteller's own key shows the truth, with what the player believes.
+// The Host's own key shows the truth, with what the player believes.
 function keyTable(v, big = false) {
   const shown = (m) => (big && ROLE_BY_ID[ROLE_BY_ID[m.roleId].seesAs]) || ROLE_BY_ID[m.roleId];
   const rows = [...v.deck.map].sort((a, b) => shown(a).alignment.localeCompare(shown(b).alignment) || shown(a).id.localeCompare(shown(b).id) || a.card.localeCompare(b.card));
@@ -610,12 +610,12 @@ function logPane(v) {
   const lines = [...v.log].reverse().map((l) => {
     const icon = l.phase === 'night' ? ui('moon') : l.phase === 'day' ? ui('sun') : ui('cards');
     const num = l.phase === 'night' ? l.night : l.phase === 'day' ? l.day : '';
-    return `<li class="logl">${icon}<span class="meta">${num || ''}</span> <span class="logl-text">${esc(l.text.replace(/ \(host\)\./, ' by the storyteller.'))}</span></li>`;
+    return `<li class="logl">${icon}<span class="meta">${num || ''}</span> <span class="logl-text">${esc(l.text.replace(/ \(host\)\./, ' by the Host.'))}</span></li>`;
   }).join('');
   return `<h2 class="block-title">Log</h2>
     ${lines ? `<ol class="log">${lines}</ol>` : empty('log', 'The log fills up once night 1 starts.')}
     ${v.sideWins.length ? `<section class="block"><h2 class="block-title">Side wins</h2>${v.sideWins.map((s) => `<p class="note">${ui('trophy')} ${esc(s.reason)}</p>`).join('')}</section>` : ''}
-    ${v.phase !== 'lobby' && v.phase !== 'over' ? `<section class="block tools"><h2 class="block-title">Storyteller tools</h2>
+    ${v.phase !== 'lobby' && v.phase !== 'over' ? `<section class="block tools"><h2 class="block-title">Host tools</h2>
       <div class="btn-row"><button type="button" class="btn ghost" data-a="declare">${ui('crown')} Declare a winner</button><button type="button" class="btn ghost danger" data-a="newGame">Abandon game</button></div></section>` : ''}`;
 }
 

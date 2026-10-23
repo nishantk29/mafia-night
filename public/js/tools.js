@@ -1,5 +1,5 @@
 // Table tools: talk timer, turn timer, vote counter, random player, coin and dice. They live on this device only
-// (nothing is sent to the room), so the storyteller can use them mid-game without changing the game.
+// (nothing is sent to the room), so the Host can use them mid-game without changing the game.
 import { S, esc, buzz } from './state.js';
 import { ui } from './ui_icons.js';
 

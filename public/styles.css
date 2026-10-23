@@ -1047,7 +1047,7 @@ html.is-seat-dragging,html.is-seat-dragging *{cursor:grabbing!important}
 .balance .btn{margin-top:var(--s3)}
 @media (prefers-reduced-motion:reduce){.balance-dot{transition:none}}
 
-/* ---------- storyteller-only lines and live results (night) ---------- */
+/* ---------- Host-only lines and live results (night) ---------- */
 .note.is-private{font-size:var(--fs-sm);color:var(--smoke);padding-left:var(--s3);border-left:2px dashed var(--rule-strong)}
 .note.is-private > .ui-ico{color:var(--brass)}
 .tell-now{margin-top:var(--s2);display:grid;gap:var(--s2);justify-items:start}
@@ -1506,10 +1506,11 @@ html[data-fx="off"] .coin-after.is-waiting,html[data-fx="off"] .coin-label.is-wa
 /* step transitions: View Transitions where available, the same slide in plain CSS elsewhere */
 html[data-vt] .pane-game,html[data-vt] #app > main.wrap{view-transition-name:step}
 html[data-vt] .rcard,html[data-vt] .waiting .rcard-back{view-transition-name:role-card}
+html[data-vt] .home-rules,html[data-vt] .wrap.faq > .phase-title{view-transition-name:rules-card}
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
 ::view-transition-old(step){animation:vt-out 160ms ease-in both}
 ::view-transition-new(step){animation:vt-in 460ms var(--ease-pop) both}
-::view-transition-group(role-card){animation-duration:520ms;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+::view-transition-group(role-card),::view-transition-group(rules-card){animation-duration:520ms;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
 @keyframes vt-out{to{opacity:0;transform:translateX(-26px)}}
 @keyframes vt-in{from{opacity:0;transform:translateX(40px)}}
 .step-in{animation:step-in 440ms var(--ease-pop) both}
@@ -1524,7 +1525,7 @@ html[data-vt] .rcard,html[data-vt] .waiting .rcard-back{view-transition-name:rol
 /* FAQ: groups reveal as they scroll in. Scroll-driven where supported, else IntersectionObserver adds .rv-in. Fully visible without either. */
 @media (prefers-reduced-motion:no-preference){
   @supports (animation-timeline:view()){
-    html[data-fx="on"] .wrap.faq .faq-group{animation:rv-in linear both;animation-timeline:view();animation-range:entry 0% entry 40%}
+    html[data-fx="on"] [data-rv]{animation:rv-in linear both;animation-timeline:view();animation-range:entry 0% entry 40%}
   }
 }
 @keyframes rv-in{from{opacity:0;translate:0 34px}}
@@ -1588,3 +1589,17 @@ html[data-fx="off"] .step-in,html[data-fx="off"] .cue.is-fill::before,html[data-
 /* the role tip as a popover: reset the UA popover box so the existing fixed positioning still applies */
 #tip[popover]{inset:auto;margin:0;overflow:visible;color:var(--candle);display:block;max-width:320px}
 #tip[popover]:not(:popover-open){display:none}
+
+/* How to Play: on narrow screens the four steps are swipeable cards that snap, with the next one peeking and dots below */
+.how-dots{display:none}
+@media (max-width:600px){
+  .how{display:flex;gap:12px;padding:0 0 var(--s2);background:none;border-radius:0;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;margin-inline:calc(var(--s4) * -1);padding-inline:var(--s4);scroll-padding-inline:var(--s4)}
+  .how::-webkit-scrollbar{display:none}
+  .how li{flex:none;width:78%;align-content:start;scroll-snap-align:start;padding:var(--s4) 20px;border-radius:24px;background:#A3101D}
+  .how li+li{border-top:0}
+  .how-dots{display:flex;justify-content:center;gap:var(--s2);padding-block:var(--s1)}
+  .how-dots i{width:8px;height:8px;border-radius:50%;background:var(--faint);opacity:.5;transition:opacity 200ms,transform 200ms}
+  .how-dots i.on{opacity:1;transform:scale(1.3);background:#FFD36B}
+}
+@media (prefers-reduced-motion:reduce){.how-dots i{transition:none}}
+html[data-fx="off"] .how-dots i{transition:none}

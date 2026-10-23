@@ -32,7 +32,7 @@ export function playerScreen(v) {
   if (v.phase === 'over') hand = over(v);
   else if (v.phase === 'lobby') {
     hand = `<div class="waiting">${back()}<h2 class="phase-title">You’re in, ${esc(me.name)}</h2>
-      <p class="muted">Waiting for the storyteller to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
+      <p class="muted">Waiting for the Host to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
   } else hand = playing(v);
   return `${appbar(esc(me.name), `<span class="phase-badge">${ui(picon)} ${plabel}</span>${toolsButton()}`)}
   <main class="wrap seat-view">
@@ -49,9 +49,9 @@ function playing(v) {
   if (needsCard) return cardPicker(me);
   if (v.deckKey) {
     return `<section class="block find-card"><h2 class="block-title">Find your card</h2>
-      <p class="muted">Find your card in this key. The storyteller will call your role on night 1.</p>${key(v)}</section>`;
+      <p class="muted">Find your card in this key. The Host will call your role on night 1.</p>${key(v)}</section>`;
   }
-  return `<div class="waiting">${back()}<h2 class="phase-title">Waiting for the storyteller to deal.</h2></div>`;
+  return `<div class="waiting">${back()}<h2 class="phase-title">Waiting for the Host to deal.</h2></div>`;
 }
 
 // The deluxe black playing card, face up but blurred under a veil. It is readable only while the card is held
@@ -85,7 +85,7 @@ function roleCard(v) {
     ${me.alive ? '' : `<p class="note is-out">${ui('skull')} You’re out of the game. Stay quiet and enjoy the show.</p>`}`;
 }
 
-// What the storyteller told this player at night, newest first. Only readable while the card is held.
+// What the Host told this player at night, newest first. Only readable while the card is held.
 function results(list) {
   if (!list?.length) return '';
   return `<section class="block my-results" aria-label="Your night results"><h3 class="block-title">${ui('ear')} What you learned</h3>

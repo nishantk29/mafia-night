@@ -2,10 +2,10 @@
 // Fields:
 //   alignment  town | mafia | third
 //   meeting    team that wakes together at night (mafia | mason | cult)
-//   action     { type, order, prompt, targets (0-2), uses }  night action; the storyteller console drives off this
+//   action     { type, order, prompt, targets (0-2), uses }  night action; the Host console drives off this
 //   appearsAs  'mafia' | 'innocent'  what a Cop-style check shows
 //   seesAs     role the player is told they are (they actually act as the real role)
-//   onDeath / onCondemn  trigger the storyteller must resolve
+//   onDeath / onCondemn  trigger the Host must resolve
 //   day        reminder shown in the day panel (optional uses)
 //   winsWith   'mafia' | 'survivor' | 'town-loss'   third-party win conditions
 //   weight     how much this player counts toward the mafia majority
@@ -35,7 +35,7 @@ export const ROLES = [
     { action: A('watch', 64, 'Lookout, wake up. Who do you watch?') }),
   R('coroner', 'Coroner', '⚰️', 'town', 'Each night, examine a dead player and learn their true role.',
     { action: A('autopsy', 58, 'Coroner, wake up. Which dead player do you examine?', { dead: true }) }),
-  R('medium', 'Medium', '🔮', 'town', 'You can speak with the dead. The Storyteller relays your questions.',
+  R('medium', 'Medium', '🔮', 'town', 'You can speak with the dead. The Host relays your questions.',
     { day: 'Medium may ask the dead a yes/no question.' }),
   R('doctor', 'Doctor', '🩺', 'town', 'Each night, protect one player from a night kill.',
     { action: A('protect', 20, 'Doctor, wake up. Who do you protect?') }),

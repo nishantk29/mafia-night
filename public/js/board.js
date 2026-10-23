@@ -1,4 +1,4 @@
-// Seating board: everyone around a felt table, with colored markers the storyteller can use to track who is who.
+// Seating board: everyone around a felt table, with colored markers the Host can use to track who is who.
 // Also the seat sheet (host only) and small shared bits: role chips and playing-card indices.
 import { S, esc, initial } from './state.js';
 import { ROLE_BY_ID } from './roles.js';
@@ -38,7 +38,7 @@ export function cardName(id) {
 const density = (n) => (n > 28 ? 'xs' : n > 18 ? 'sm' : n > 12 ? 'md' : 'lg');
 const phaseLabel = (v) => ({ lobby: 'Setting up', dealt: 'Roles dealt', night: `Night ${v.night}`, day: `Day ${v.day}`, over: 'Game over' }[v.phase] || '');
 
-// host=true: storyteller view (roles, team edges, markers, tappable seats).
+// host=true: Host view (roles, team edges, markers, tappable seats).
 // host=false: player view. Neutral seats with initials only; never a role or team colour.
 export function board(view, host) {
   const ps = view.players;

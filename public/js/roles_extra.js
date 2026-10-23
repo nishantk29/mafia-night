@@ -1,13 +1,13 @@
 // Extra roles. `R` and `A` are the helpers from roles.js (R(id,name,emoji,alignment,blurb,opts), A(type,order,prompt,extra)).
 // Only engine-supported fields are used. Informational triggers (onDeath/onCondemn) say "dismiss" when the
-// storyteller should NOT pick a target, because resolving a pending prompt with a target kills that player.
+// Host should NOT pick a target, because resolving a pending prompt with a target kills that player.
 export function buildExtra(R, A) {
   return [
     // =====================================================================
     // TOWN
     // =====================================================================
 
-    // --- day abilities (storyteller adjudicates) ---
+    // --- day abilities (Host adjudicates) ---
     R('mayor', 'Mayor', '🏙️', 'town', 'Once per game you may unmask yourself. From then on your vote counts triple.',
       { day: 'Mayor may reveal now: their vote counts 3 for the rest of the game (once).', dayUses: 1 }),
     R('judge', 'Judge', '🔨', 'town', 'Once per game, throw out today\'s vote entirely. Nobody is condemned that day.',
@@ -21,9 +21,9 @@ export function buildExtra(R, A) {
     R('scholar', 'Scholar', '🎓', 'town', 'Twice per game, ask whether a specific role is in play at all.',
       { day: 'Scholar may ask if a named role is in this game (twice).', dayUses: 2 }),
     R('inquisitor', 'Inquisitor', '🔍', 'town', 'Twice per game, put one yes-or-no question to a player. They must answer truthfully.',
-      { day: 'Inquisitor asks one player a yes/no question; the Storyteller enforces a true answer (twice).', dayUses: 2 }),
-    R('town_crier', 'Town Crier', '📣', 'town', 'Once per game, send an anonymous message to the whole table through the Storyteller.',
-      { day: 'Town Crier gives the Storyteller one anonymous message to read aloud (once).', dayUses: 1 }),
+      { day: 'Inquisitor asks one player a yes/no question; the Host enforces a true answer (twice).', dayUses: 2 }),
+    R('town_crier', 'Town Crier', '📣', 'town', 'Once per game, send an anonymous message to the whole table through the Host.',
+      { day: 'Town Crier gives the Host one anonymous message to read aloud (once).', dayUses: 1 }),
     R('chairperson', 'Chairperson', '🪑', 'town', 'Whenever the vote ends in a tie, you decide who is condemned.',
       { day: 'If the vote is tied, the Chairperson breaks the tie.' }),
     R('scribe', 'Scribe', '✍️', 'town', 'Write a sealed note during the game. If you die, it is read to everyone.',
@@ -63,7 +63,7 @@ export function buildExtra(R, A) {
     // --- triggers ---
     R('saint', 'Saint', '😇', 'town', 'If the town condemns you, the last player to vote against you is struck down.',
       { onCondemn: 'The Saint was condemned. Who cast the last vote against them? That player is struck down.' }),
-    R('witness', 'Witness', '👀', 'town', 'Before dying, you whisper one name to the Storyteller. They announce if that player looks Mafia.',
+    R('witness', 'Witness', '👀', 'town', 'Before dying, you whisper one name to the Host. They announce if that player looks Mafia.',
       { onDeath: 'The Witness has died. Announce whether the player they named looks Mafia, then dismiss (pick nobody).' }),
     R('lover', 'Lover', '💘', 'town', 'You have a secret partner. If one of you dies, the other dies of heartbreak.',
       { night1: 'Lovers, open your eyes and find each other. If one dies, the other follows.',
