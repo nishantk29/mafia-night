@@ -63,7 +63,7 @@ function play(plan, seed, rules = {}) {
 
 describe('simulator helpers', () => {
   test('the catalogue has every built-in role', () => {
-    assert.equal(CATALOGUE.length, 185);
+    assert.equal(CATALOGUE.length, 184);
     assert.equal(new Set(CATALOGUE).size, CATALOGUE.length);
   });
 

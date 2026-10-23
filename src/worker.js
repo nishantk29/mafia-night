@@ -1,6 +1,6 @@
 // Cloudflare Worker: serves the API + WebSocket entry points. Static files come from Workers Static Assets.
 import { DurableObject } from 'cloudflare:workers';
-import { newRoom, reduce, messagesFor, justEnded } from '../public/js/room.js';
+import { newRoom, reduce, migrateRoleIds, messagesFor, justEnded } from '../public/js/room.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O look-alikes
 const ROOM_TTL_MS = 12 * 60 * 60 * 1000;
@@ -49,7 +49,7 @@ export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.room = null;
-    this.ready = ctx.blockConcurrencyWhile(async () => { this.room = (await ctx.storage.get('room')) || null; });
+    this.ready = ctx.blockConcurrencyWhile(async () => { this.room = migrateRoleIds((await ctx.storage.get('room')) || null); });
   }
 
   // A failed write must never swallow a move: retry once, and if storage is still unhappy keep going with the

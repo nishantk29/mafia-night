@@ -427,6 +427,20 @@ html[data-shell="host"] .console{padding-bottom:calc(var(--tabbar-h) + var(--doc
 .role-info{align-self:center}
 @media (hover:hover){.role-tile:hover{background:var(--panel-2)}}
 .role-tile[hidden]{display:none}
+.role-group{min-width:0;border-radius:var(--r-tag);background:var(--panel);border-left:3px solid var(--rule-strong)}
+.role-group[hidden]{display:none}
+.role-group[open]{grid-column:1/-1}
+.role-group.is-picked{outline:1px solid var(--brass);outline-offset:-1px}
+.role-group > summary{display:flex;align-items:center;gap:var(--s2);min-height:52px;padding:var(--s2) var(--s3);cursor:pointer;list-style:none;
+  color:var(--candle);font-weight:500;font-size:var(--fs-sm)}
+.role-group > summary::-webkit-details-marker{display:none}
+.role-group > summary .role-name{flex:1;display:flex;flex-direction:column}
+.role-group > summary::after{content:"+";color:var(--smoke);font-weight:700;margin-left:var(--s1)}
+.role-group[open] > summary::after{content:"\2212"}
+.role-variants{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,12.5rem),1fr));gap:var(--s2);padding:0 var(--s2) var(--s2)}
+.role-variants .role-tile{background:var(--panel-2)}
+.variant-team{display:block;font-weight:500;color:var(--smoke);font-size:var(--fs-xs)}
+.role-minus{align-self:center}
 .group-title{font-family:var(--font-ui);font-weight:700;font-size:var(--fs-md);color:var(--team,var(--smoke));margin:var(--s5) 0 var(--s2)}
 
 /* =================================================================== dealt */

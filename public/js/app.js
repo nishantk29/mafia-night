@@ -1,6 +1,6 @@
 // App shell: routing, transports (live WebSocket / local), event handling.
 import { S, esc, store, loadLibrary, saveLibrary } from './state.js';
-import { newRoom, reduce, viewForHost } from './room.js';
+import { newRoom, reduce, viewForHost, migrateRoleIds } from './room.js';
 import { registerRoles, ROLE_BY_ID } from './roles.js';
 import { rebalance, DEFAULT_RULES, flipCoin } from './engine.js';
 import { themeOf, themeText, themeDom } from './theme.js';
@@ -119,6 +119,9 @@ function applyRoleSearch() {
   const tiles = document.querySelectorAll('.role-tile');
   let shown = 0;
   tiles.forEach((t) => { const on = !q || t.dataset.name.includes(q); t.hidden = !on; if (on) shown++; });
+  document.querySelectorAll('.role-group').forEach((g) => { // a group shows while any of its variants match, and opens to show them
+    const any = !!g.querySelector('.role-tile:not([hidden])'); g.hidden = !any; if (q && any) g.open = true;
+  });
   const none = document.querySelector('.search-empty');
   if (none) none.hidden = !(tiles.length && !shown);
 }
@@ -159,7 +162,7 @@ function wsTransport(code, helloFn) {
 function localTransport() {
   const KEY = 'mafia.local';
   let room;
-  try { room = JSON.parse(store.get(KEY) || 'null'); } catch { room = null; }
+  try { room = migrateRoleIds(JSON.parse(store.get(KEY) || 'null')); } catch { room = null; }
   if (!room) { room = newRoom('LOCAL', 'local'); room.config.mode = 'cards'; }
   const emit = () => {
     store.set(KEY, JSON.stringify(room)); registerRoles(room.config.customRoles);

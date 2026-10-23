@@ -12,7 +12,7 @@
 // If a fetch fails (offline, site changed), the script says so and carries on with whatever else it has.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { ROLES } from '../public/js/roles.js';
+import { ROLES, ROLE_ALIASES } from '../public/js/roles.js';
 
 // Names that mean one of our roles under another name. Add pairs here once a human has checked them.
 export const ALIASES = { mafioso: 'mafia', townie: 'villager' };
@@ -25,6 +25,7 @@ export function knownKeys(roles = ROLES) {
   for (const r of roles) { keys.add(norm(r.name)); keys.add(norm(r.id)); }
   const ids = new Set(roles.map((r) => r.id));
   for (const [alias, id] of Object.entries(ALIASES)) if (ids.has(id)) keys.add(alias);
+  for (const old of Object.keys(ROLE_ALIASES)) keys.add(norm(old)); // retired twin ids
   return keys;
 }
 
