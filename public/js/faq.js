@@ -57,7 +57,7 @@ const GROUPS = [
       </ul>
       <p>You can switch between phones and a card key in the lobby before you deal.</p>`],
     ['Why are some roles grouped together in the role list?', `
-      <p>Roles that play almost the same are one entry in the list, for example Bodyguard with Muscle and Mercenary, or Jester with Patsy, Poltergeist and Zealot. Tap the entry to open it. Each variant is its own role with its own team label, night action and info button, and you can add several variants of one group at once, each with its own count. Searching for the group name finds every variant.</p>
+      <p>Roles that play almost the same are one entry in the list, for example Bodyguard with Muscle and Mercenary, or Jester with Patsy, Poltergeist and Zealot. The entry shows the other names it holds, for example “Also: Muscle, Mercenary”. Tap it to open it. Each one is its own role with its own team label, night action and info button, and you can add several roles from one group at once, each with its own count. Searching for the group name finds every role in it.</p>
       <p>Grandma and Granny are one entry: Granny is the Grandma who also shoots anyone who visits her. Villager and the old Civilian are now one role, and older setups and saved rooms that used Civilian still load as Villager. Traitor and Fifth Columnist, and Telepath and Whisperer, are grouped but stay separate because their team or what the player is told differs.</p>`],
     ['Can I add my own roles?', `
       <p>Yes. Tap New role in the lobby. Give it a name, a team and, if it acts at night, one of the night actions the app understands. It is saved on your device and sent to the room with the game.</p>`],

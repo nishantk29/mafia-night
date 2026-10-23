@@ -2,7 +2,7 @@
 // Layout (DESIGN.md 6.2): app bar, then a console with the game pane and a side (table, who is who, log).
 // Phones show one pane at a time via the tab bar; tablets show game + side switch; wide screens show everything.
 import { S, esc, initial, loadLibrary } from './state.js';
-import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY_ID } from './roles.js';
+import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY_ID, groupAlsoText } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
@@ -145,12 +145,14 @@ function lobby(v, local) {
       ${counts[r.id] ? `<span class="role-count" aria-hidden="true">${counts[r.id]}</span>` : ''}
       <button type="button" class="icon-btn role-info rc-i" data-a="info" data-id="${r.id}" aria-label="About ${esc(vname(r))}">${ui('info')}</button>
     </div>`;
-  // A group is one picker entry; any number of its variants can be added, each counted on its own.
+  // A group is one picker entry; any number of its roles can be added, each counted on its own.
   const entry = (e) => {
     if (e.role) return tile(e.role);
+    if (e.variants.length === 1) return tile(e.variants[0]); // a team filter can leave one role of a group: show it plainly
     const total = e.variants.reduce((n, v) => n + (counts[v.id] || 0), 0);
+    const alts = groupAlsoText(e);
     return `<details class="role-group ${total ? 'is-picked' : ''}" data-group="${e.group.id}" data-rv="rg-${e.group.id}" ${total ? 'open' : ''}>
-      <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="muted">${e.variants.length} variants</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
+      <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="muted role-also">${esc(alts)}</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
       <div class="role-variants">${e.variants.map((v) => tile(v, true)).join('')}</div></details>`;
   };
   const roles = `<section class="block roles">

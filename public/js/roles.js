@@ -183,6 +183,14 @@ export function pickerEntries(list = ROLES) {
   return out;
 }
 
+// "Also: Hooker, Collaborator": the other roles inside a group entry, by name (no "variant" counts).
+// Only the roles the current filter shows, so the line always matches what opens.
+export function groupAlsoText(e) {
+  const head = e.variants.find((v) => (v.variant || v.name) === e.group.name);
+  const others = e.variants.filter((v) => v !== head).map((v) => v.name);
+  return head ? `Also: ${others.join(', ')}` : others.join(', ');
+}
+
 // ---------- custom roles (created in the host UI, stored with the room) ----------
 export const ACTION_TYPES = ['kill', 'protect', 'guard', 'alert', 'jail', 'block', 'blockVisitors', 'frame', 'clean',
   'convert', 'copyRole', 'investigate', 'track', 'watch', 'autopsy'];
