@@ -740,7 +740,6 @@ section.cue::before{display:none}
   animation:rc-glint 250ms ease-out calc(var(--t-reveal) - 250ms) both}
 @keyframes rc-flip{0%{transform:rotateY(180deg) scale(.94)}55%{transform:rotateY(-10deg) translateZ(50px) scale(1.06)}80%{transform:rotateY(3deg) translateZ(20px) scale(1.02)}100%{transform:rotateY(0deg) scale(1)}}
 @keyframes rc-pop{0%{transform:rotateY(180deg) translateY(30px) scale(.7);opacity:0}60%{transform:rotateY(180deg) translateY(-6px) scale(1.07);opacity:1}100%{transform:rotateY(180deg) scale(1);opacity:1}}
-@keyframes rc-pop-flat{0%{transform:scale(.88)}60%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes rc-unflip{from{transform:rotateY(0deg)}to{transform:rotateY(180deg)}}
 @keyframes rc-glint{from{transform:translateX(-110%)}to{transform:translateX(110%)}}
 @keyframes rc-fade{from{opacity:0}to{opacity:1}}
@@ -1192,9 +1191,9 @@ html[data-phase="night"] .pane-game .phase-head{background:var(--town)}
   .glass,.sheet,.overlay-in.tools{background:rgba(37,28,22,.96)}
   .fx-victory .btn.big{background:var(--brass)}
 }
-html[data-lite="1"] .glass,html[data-lite="1"] .sheet,html[data-lite="1"] .overlay-in.tools{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(37,28,22,.96)}
-html[data-lite="1"] .fx-victory .btn.big{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--brass)}
-html[data-lite="1"] .glass::after{display:none}
+html[data-noblur="1"] .glass,html[data-noblur="1"] .sheet,html[data-noblur="1"] .overlay-in.tools{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(37,28,22,.96)}
+html[data-noblur="1"] .fx-victory .btn.big{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--brass)}
+html[data-noblur="1"] .glass::after{display:none}
 
 /* ---------------------------------------------------------------- effects layer (fx.js) */
 #fx{position:fixed;inset:0;z-index:70;pointer-events:none;overflow:hidden}
@@ -1267,14 +1266,6 @@ html[data-lite="1"] .glass::after{display:none}
 .fx-v-reason{color:var(--candle);font-size:var(--fs-md);max-width:30ch}
 .fx-v-actions{display:grid;gap:var(--s2);width:100%;margin-top:var(--s3)}
 
-/* low-end: flat 2D pops, no 3D, no rays */
-html[data-lite="1"] .fx-card,html[data-lite="1"] .fx-v-card,html[data-lite="1"] .rcard[data-tilt]{transform:none;transition:none}
-html[data-lite="1"] .fx-rays,html[data-lite="1"] .fx-v-sun{display:none}
-html[data-lite="1"] .fx-out .fx-in,html[data-lite="1"] .fx-victory .fx-in{animation-name:fx-pop-flat}
-html[data-lite="1"] .rcard.is-flipping .rcard-inner{animation:rc-pop-flat 300ms var(--ease-out) both}
-@keyframes fx-pop-flat{0%{transform:scale(.6);opacity:0}45%{transform:scale(1.08);opacity:1}70%{transform:scale(1)}100%{transform:scale(1);opacity:1}}
-html[data-lite="1"] .fx-out .fx-in{animation-name:fx-pop-flat-out}
-@keyframes fx-pop-flat-out{0%{transform:scale(.6);opacity:0}25%{transform:scale(1.08);opacity:1}40%{transform:scale(1)}80%{transform:scale(1);opacity:1}100%{transform:scale(.96);opacity:0}}
 
 /* pointer / device tilt on the role card (set by fx.js, no idle loop) */
 .rcard[data-tilt]{transform:perspective(1400px) rotateX(calc(var(--ty,0) * -5deg)) rotateY(calc(var(--tx,0) * 7deg));transition:transform 160ms ease-out}
@@ -1296,7 +1287,7 @@ html[data-fx="off"] .fx-scene{display:none}
 /* ======================================================================================
    Transit v2: matches the Game Night home page. Dark base, bold full-colour cards stacked like a route list,
    Rubik titles, big numbers, one full-width pill at the bottom. Tilt/lift is transform only (fx.js, rAF).
-   Glass stays on sheets, pop-outs and overlays. Flat fallbacks: html[data-fx="off"], html[data-lite="1"].
+   Glass stays on sheets, pop-outs and overlays. Flat fallbacks: html[data-fx="off"], html[data-noblur="1"].
    ====================================================================================== */
 @font-face{font-family:"Rubik";src:url("/fonts/rubik-var.woff2") format("woff2");font-weight:500 900;font-style:normal;font-display:swap}
 :root{--font-display:"Rubik",system-ui,sans-serif;--font-ui:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -1349,10 +1340,8 @@ html[data-phase="night"] .pane-game .phase-head{background:#17317E}
 .wrap.join .btn.big,.card-picker .btn.big{position:sticky;bottom:max(14px,env(safe-area-inset-bottom));z-index:5;min-height:72px;font-weight:900;font-size:clamp(1.4rem,6vw,1.85rem)}
 .tabbar{background:var(--room);border-top:1px solid var(--rule)}
 
-/* flat fallbacks: animations off, reduced motion, low-end */
-html[data-fx="off"] .block,html[data-fx="off"] .whisper,html[data-fx="off"] .guide,html[data-fx="off"] .path,html[data-fx="off"] .wrap.faq > .faq-group,
-html[data-lite="1"] .block,html[data-lite="1"] .whisper,html[data-lite="1"] .guide,html[data-lite="1"] .path,html[data-lite="1"] .wrap.faq > .faq-group{transform:none;transition:none;box-shadow:none}
-html[data-lite="1"] .block::before,html[data-lite="1"] .whisper::before,html[data-lite="1"] .guide::before,html[data-lite="1"] .path::before{display:none}
+/* flat fallbacks: animations off, reduced motion */
+html[data-fx="off"] .block,html[data-fx="off"] .whisper,html[data-fx="off"] .guide,html[data-fx="off"] .path,html[data-fx="off"] .wrap.faq > .faq-group{transform:none;transition:none;box-shadow:none}
 @media (prefers-reduced-motion:reduce){
   .block,.whisper,.guide,.path,.wrap.faq > .faq-group{transform:none!important;transition:none}
   .action-dock .btn.big:active{transform:none}
@@ -1570,10 +1559,10 @@ html[data-fx="off"] .rv{transition:none}
 .secret-veil small{font-size:var(--fs-sm);color:var(--smoke)}
 .secret.is-open .secret-veil{opacity:0}
 @media (min-width:1024px){.secret-card{width:min(100%,420px)}}
-/* low-end phones: no filter; an opaque veil and a hidden dossier instead */
-html[data-lite="1"] .secret .rcard,html[data-lite="1"] .secret-rest{filter:none;transition:none}
-html[data-lite="1"] .secret:not(.is-open) .secret-rest{opacity:0}
-html[data-lite="1"] .secret-veil{background:#0B0B0D}
+/* low-memory phones (data-noblur): no filter; an opaque veil and a hidden dossier instead */
+html[data-noblur="1"] .secret .rcard,html[data-noblur="1"] .secret-rest{filter:none;transition:none}
+html[data-noblur="1"] .secret:not(.is-open) .secret-rest{opacity:0}
+html[data-noblur="1"] .secret-veil{background:#0B0B0D}
 @media (prefers-reduced-motion:reduce){
   .secret .rcard,.secret-rest{transition:none}
   .secret-veil{transition:opacity 120ms linear!important}

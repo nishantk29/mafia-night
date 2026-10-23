@@ -1,0 +1,7 @@
+# HTML and the service worker are always revalidated, so a phone never keeps an old copy of the app.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
