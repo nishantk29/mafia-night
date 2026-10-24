@@ -1554,3 +1554,6 @@ html[data-fx="off"] .step-in,html[data-fx="off"] .cue.is-fill::before,html[data-
 #tip[popover]{inset:auto;margin:0;overflow:visible;color:var(--candle);display:block;max-width:320px}
 #tip[popover]:not(:popover-open){display:none}
 
+
+/* belt-and-braces: nothing may ever pan the page sideways on iOS (pinch-zoom stays allowed) */
+html,body{overflow-x:clip}
