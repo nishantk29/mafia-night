@@ -55,24 +55,3 @@ export function gameAwake(on) {
 }
 // The browser drops the lock when the page is hidden: take it again on return.
 document.addEventListener('visibilitychange', acquire);
-
-// ---------------------------------------------------------------- scroll reveal fallback (CSS scroll-driven animation is used where supported)
-const seen = new Set(); let io = null;
-export function revealOnScroll() {
-  if (!animOn() || !('IntersectionObserver' in window) || (window.CSS && CSS.supports?.('animation-timeline: view()'))) return;
-  io?.disconnect();
-  io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('rv-in'); seen.add(e.target.dataset.rv); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
-  document.querySelectorAll('[data-rv]').forEach((el) => { if (seen.has(el.dataset.rv)) return; el.classList.add('rv'); io.observe(el); });
-}
-
-// ---------------------------------------------------------------- carousel dots (How to Play on narrow screens)
-let dotRaf = 0;
-document.addEventListener('scroll', (e) => {
-  const ol = e.target; if (!ol.classList?.contains('how')) return;
-  cancelAnimationFrame(dotRaf);
-  dotRaf = requestAnimationFrame(() => {
-    const first = ol.firstElementChild; if (!first) return;
-    const i = Math.round(ol.scrollLeft / (first.offsetWidth + 12));
-    ol.parentElement.querySelectorAll('.how-dots i').forEach((d, k) => d.classList.toggle('on', k === i));
-  });
-}, true);

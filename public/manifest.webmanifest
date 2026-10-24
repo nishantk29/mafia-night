@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Mafia Night",
   "short_name": "Mafia Night",
-  "description": "Deal secret roles for Mafia and Werewolf to phones or a deck of playing cards, and run the night as storyteller.",
+  "description": "Deal secret roles for Mafia and Werewolf to phones or a deck of playing cards, and run the night as the Host.",
   "lang": "en",
   "start_url": "/",
   "scope": "/",

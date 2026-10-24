@@ -104,12 +104,12 @@ const GROUPS = [
       <p>It opens full screen like any other app and keeps itself up to date.</p>`],
     ['Who made the icons and fonts?', `
       <p>Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT).</p>
-      <p>Fonts: Big Shoulders Display, Alegreya Sans, Alegreya and Limelight, all under the SIL Open Font License.</p>`],
+      <p>Fonts: Rubik, Alegreya and Limelight, all under the SIL Open Font License.</p>`],
   ]],
 ];
 
 export function faqScreen() {
-  const groups = GROUPS.map(([title, qs], i) => `<section class="faq-group" data-rv="g${i}"><h2 class="block-title">${title}</h2>
+  const groups = GROUPS.map(([title, qs], i) => `<section class="faq-group"><h2 class="block-title">${title}</h2>
     ${qs.map(([q, a]) => `<details class="faq-q"><summary>${q}${ui('caret-down')}</summary><div class="faq-a">${a}</div></details>`).join('')}</section>`).join('');
   return `<header class="appbar">
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
@@ -121,7 +121,7 @@ export function faqScreen() {
     <label class="field"><span>Search</span><input type="search" data-faq="search" placeholder="Try “tie”, “night”, “timer”" autocomplete="off"></label>
     <p class="muted" data-faq="none" hidden>Nothing matches. Try a different word.</p>
     ${groups}
-    <p class="faq-back"><a class="link" href="#/">Back to the home page</a></p>
+    <p class="faq-back"><a class="link" href="#/">Back to the home page</a> · <a class="link" href="https://gamenight.hatethespurs.com/">All Games</a></p>
   </main>`;
 }
 
