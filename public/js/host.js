@@ -151,7 +151,7 @@ function lobby(v, local) {
     if (e.variants.length === 1) return tile(e.variants[0]); // a team filter can leave one role of a group: show it plainly
     const total = e.variants.reduce((n, v) => n + (counts[v.id] || 0), 0);
     const alts = groupAlsoText(e);
-    return `<details class="role-group ${total ? 'is-picked' : ''}" data-group="${e.group.id}" data-rv="rg-${e.group.id}" ${total ? 'open' : ''}>
+    return `<details class="role-group ${total ? 'is-picked' : ''}" data-group="${e.group.id}" ${total ? 'open' : ''}>
       <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="muted role-also">${esc(alts)}</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
       <div class="role-variants">${e.variants.map((v) => tile(v, true)).join('')}</div></details>`;
   };
@@ -320,7 +320,7 @@ function advice(roleIds, n) {
   const meter = `<div class="balance" data-strength="${b.strength}" data-verdict="${b.verdict}">
     <div class="balance-head"><span class="balance-title">Balance</span><span class="balance-text">${esc(b.text)}</span></div>
     <div class="balance-bar" role="meter" aria-valuemin="-15" aria-valuemax="15" aria-valuenow="${b.score}" aria-label="Balance: ${esc(b.text)}">
-      <span class="balance-end">Mafia</span><span class="balance-track"><i class="balance-mid"></i><i class="balance-dot" style="left:${pos.toFixed(1)}%"></i></span><span class="balance-end">Town</span></div>
+      <span class="balance-end">Mafia</span><span class="balance-track"><i class="balance-mid"></i><i class="balance-dot" style="--p:${pos.toFixed(1)}"></i></span><span class="balance-end">Town</span></div>
     ${b.strength === 'even' ? '' : `<button type="button" class="btn ghost" data-a="rebalance">${ui('shuffle')} Balance it for me</button>`}
   </div>`;
   const icon = { error: 'warning', warn: 'warning', tip: 'info' };
@@ -455,11 +455,11 @@ function liveResult(v, s, set) {
 // Live answer for an investigator, worked out from the choices of everyone who woke earlier tonight.
 // Confused Cop: a 3D coin flip lands on the stored coin (set.flip), then the result, gesture and close-eyes cue fade in.
 // set.flipAt is when the target was entered; a re-render mid-flip joins the animation where it is instead of restarting it.
-const FLIP_MS = 1200;
+const FLIP_MS = 400;
 const coinAge = (set) => (animOn() && set.flipAt ? Date.now() - set.flipAt : Infinity);
 function coinEl(set) {
   const heads = set.flip === 'heads'; const age = coinAge(set); const live = age < FLIP_MS;
-  return `<div class="coin-stage"><div class="coin3d${live ? ' is-flipping' : ''}" data-face="${heads ? 'heads' : 'tails'}" style="--coin-end:${heads ? 1080 : 1260}deg;${live ? `animation-delay:-${Math.round(age)}ms` : ''}" aria-hidden="true">
+  return `<div class="coin-stage"><div class="coin3d${live ? ' is-flipping' : ''}" data-face="${heads ? 'heads' : 'tails'}" style="--coin-end:${heads ? 360 : 540}deg;${live ? `animation-delay:-${Math.round(age)}ms` : ''}" aria-hidden="true">
     <span class="coin-face coin-heads">H</span><span class="coin-face coin-tails">T</span></div>
     <p class="coin-label${live ? ' is-waiting' : ''}"${live ? ` style="animation-delay:${FLIP_MS - Math.round(age)}ms"` : ''} role="status">${heads ? 'Heads: TRUE answer' : 'Tails: FLIPPED answer'}</p></div>`;
 }

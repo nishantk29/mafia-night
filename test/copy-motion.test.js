@@ -16,8 +16,9 @@ test('service worker precaches every public js file and the display font', () =>
   assert.ok(sw.includes("'/fonts/limelight-400.woff2'"));
 });
 
-test('scroll reveals are gated on support and motion preferences', () => {
+test('no scroll-driven or scroll-snap effects', () => {
   const css = readFileSync(new URL('styles.css', pub), 'utf8');
-  assert.match(css, /@media \(prefers-reduced-motion:no-preference\)\{\s*@supports \(animation-timeline:view\(\)\)\{\s*html\[data-fx="on"\] \[data-rv\]/);
-  assert.match(css, /scroll-snap-type:x mandatory;overscroll-behavior-x:contain/);
+  assert.ok(!/animation-timeline/.test(css));
+  assert.ok(!/scroll-snap-type:y/.test(css));
+  assert.ok(!/backdrop-filter:[^;]*\}?/.test(css.replace(/\.glass\{[^}]*\}/g, '').replace(/html\[data-noblur="1"\][^{]*\{[^}]*\}/g, '')));
 });

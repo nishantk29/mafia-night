@@ -64,12 +64,12 @@ const MOON = '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="#F1E6D2" d
 export function night() {
   if (!animOn()) return;
   const stars = Array.from({ length: Math.min(12, maxParticles()) }, (_, i) =>
-    `<i class="fx-star" style="left:${rand(4, 96).toFixed(0)}%;top:${rand(4, 62).toFixed(0)}%;--s:${rand(.5, 1.2).toFixed(2)};--d:${(i * 45) % 400}ms"></i>`).join('');
-  add(`<div class="fx-scene fx-night" aria-hidden="true"><span class="fx-moon">${MOON}</span>${stars}</div>`, 1150);
+    `<i class="fx-star" style="left:${rand(4, 96).toFixed(0)}%;top:${rand(4, 62).toFixed(0)}%;--s:${rand(.5, 1.2).toFixed(2)};--d:${(i * 20) % 240}ms"></i>`).join('');
+  add(`<div class="fx-scene fx-night" aria-hidden="true"><span class="fx-moon">${MOON}</span>${stars}</div>`, 620);
 }
 export function day() {
   if (!animOn()) return;
-  add('<div class="fx-scene fx-day" aria-hidden="true"><span class="fx-rays"></span><span class="fx-sun"></span></div>', 1150);
+  add('<div class="fx-scene fx-day" aria-hidden="true"><span class="fx-rays"></span><span class="fx-sun"></span></div>', 620);
 }
 
 // ---------------------------------------------------------------- pop-out reveal (voted out or killed)
@@ -85,7 +85,7 @@ export function popOut(items) {
       <span class="fx-pop-ico">${ui('skull')}</span>
       <h2 class="fx-pop-name">${names}</h2>
       <p class="fx-pop-why">${vote ? 'was voted out' : 'did not survive the night'}</p>${role}
-    </div></div></div>`, 1200);
+    </div></div></div>`, 620);
   if (!node) return;
   if (full()) shake();
   if (full()) burst(node.querySelector('.fx-in'), vote ? 'ink' : 'mafia', 10, 'sparks');
@@ -121,7 +121,7 @@ export function showVictory(ev) {
     </div></div>`;
   host.append(el); victoryEl = el;
   if (ev.won !== false) buzz([40, 50, 90]);
-  if (animOn()) { const b = burst(el.querySelector('.fx-in'), ev.theme, 26, ev.theme === 'mafia' ? 'sparks' : 'confetti'); drop(b, 1300); }
+  if (animOn()) { const b = burst(el.querySelector('.fx-in'), ev.theme, 26, ev.theme === 'mafia' ? 'sparks' : 'confetti'); drop(b, 700); }
   el.querySelector('[data-a="playAgain"]').focus({ preventScroll: true });
 }
 export function closeVictory() { victoryEl?.remove(); victoryEl = null; }
@@ -133,7 +133,7 @@ export function observe(prev, next) {
   if (next.phase === 'lobby' || prev.phase === 'lobby') { if (prev.phase === 'over' && next.phase === 'lobby') closeVictory(); return; }
   let delay = 0;
   if (next.phase === 'night' && prev.phase !== 'night') { night(); }
-  else if (next.phase === 'day' && prev.phase !== 'day') { day(); delay = 650; }
+  else if (next.phase === 'day' && prev.phase !== 'day') { day(); delay = 600; }
   if (next.phase === 'over') return; // the victory card takes the stage
   const was = new Map((prev.players || []).map((p) => [p.id, p]));
   const out = [];
@@ -206,10 +206,9 @@ function tilt(x, y) {
   tx = Math.max(-1, Math.min(1, x)); ty = Math.max(-1, Math.min(1, y));
   if (!raf) raf = requestAnimationFrame(flush);
 }
-addEventListener('pointermove', (e) => tilt((e.clientX / innerWidth - .5) * 2, (e.clientY / innerHeight - .5) * 2), { passive: true });
-addEventListener('deviceorientation', (e) => { if (e.gamma != null) tilt(e.gamma / 30, ((e.beta || 45) - 45) / 30); }, { passive: true });
+addEventListener('pointermove', (e) => e.pointerType !== 'touch' && tilt((e.clientX / innerWidth - .5) * 2, (e.clientY / innerHeight - .5) * 2), { passive: true });
 
-// ---------------------------------------------------------------- card tilt and lift (pointer on hover devices, device tilt elsewhere)
+// ---------------------------------------------------------------- card tilt and lift (hover pointers only)
 // Sets --rx/--ry on the card under the pointer; rAF-throttled, no idle loop. The seating board is never tilted: seats are dragged by coordinates.
 const CARDS = '.block,.whisper,.guide,.path,.faq-group';
 const cardOK = (el) => el && !el.querySelector('.board');
@@ -229,12 +228,3 @@ addEventListener('pointermove', (e) => {
   if (!craf) craf = requestAnimationFrame(cardFlush);
 }, { passive: true });
 document.addEventListener('pointerleave', () => { cardReset(cardEl); cardEl = null; }, { passive: true });
-// device tilt: one pair of variables on the root, nudging every card slightly (skipped when animations are off)
-let oraf = 0; let og = 0; let ob = 0;
-addEventListener('deviceorientation', (e) => {
-  if (!full() || e.gamma == null) return;
-  const g = Math.max(-1, Math.min(1, e.gamma / 35)); const b = Math.max(-1, Math.min(1, ((e.beta || 45) - 45) / 35));
-  if (Math.abs(g - og) < .03 && Math.abs(b - ob) < .03) return;
-  og = g; ob = b;
-  if (!oraf) oraf = requestAnimationFrame(() => { oraf = 0; $html.style.setProperty('--ogx', og.toFixed(2)); $html.style.setProperty('--ogy', ob.toFixed(2)); });
-}, { passive: true });

@@ -1,14 +1,14 @@
 # Mafia Night
 
-Secret roles for Mafia / Werewolf, dealt to phones, with a storyteller console that runs the night.
+Secret roles for Mafia / Werewolf, dealt to phones, with a Host console that runs the night.
 
-Live: https://mafia-app.hatethespurs.workers.dev
+Live: https://mafia.hatethespurs.com
 
 ## Three ways to play
 | Mode | How it works |
 |---|---|
 | **App deals to phones** | Host makes a room (6-letter code). Players join on their phones, no login. Each phone shows one secret role. |
-| **Physical deck, "I'll learn who's who tonight"** | The app maps each role to a playing card (classic key or shuffled) and shows the key to the table. The storyteller deals face down without looking. On night 1, as each role is called, the storyteller taps who raised a hand; the app builds the cast as it goes. |
+| **Physical deck, "I'll learn who's who tonight"** | The app maps each role to a playing card (classic key or shuffled) and shows the key to the table. The Host deals face down without looking. On night 1, as each role is called, the Host taps who raised a hand; the app builds the cast as it goes. |
 | **Physical deck, players look up on phones** | Same card key, but secret: each player enters their card on their phone and sees only their own role. |
 
 "Run on this device" does the whole thing without a server: the game is stored only in that browser (`localStorage`) and nothing is sent anywhere. Once the site has been opened, the installed app also works offline.
@@ -24,14 +24,14 @@ Night script ordered by role, auto-resolution of kills, protects, guards, jails,
 ## Roles are data, and growable
 - 185 built-in roles: `public/js/roles.js` (core), `roles_extra.js` and `roles_extra2.js` (inspired by the wider Mafia / EpicMafia family, written in our own words). Add one with `R(...)` / `A(...)`, give it an icon in `role_icons.js`, run `npm run assets`; it shows up everywhere.
 - **In-app role editor** ("＋ New role" in the lobby): name, emoji, team, a night action from the engine's supported types, uses, day reminder, condemn trigger, immunity, "looks like Mafia". Saved to the host's browser library and sent with the room (validated by `sanitizeRole`).
-- Engine night actions: kill, protect, guard, alert, jail, block, blockVisitors, frame, clean, convert, copyRole, investigate (alignment/role/inverted/parity/fake), track, watch, autopsy. Anything else is a day reminder or a trigger the storyteller adjudicates.
+- Engine night actions: kill, protect, guard, alert, jail, block, blockVisitors, frame, clean, convert, copyRole, investigate (alignment/role/inverted/parity/fake), track, watch, autopsy. Anything else is a day reminder or a trigger the Host adjudicates.
 
 ## Artwork
 - **Icons:** every role maps to a game-icons.net glyph (`public/js/role_icons.js`, generated into `icon_data.js` by `npm run assets`). Credit is shown on the home screen (CC BY 3.0: Lorc, Delapouite and contributors).
 - **Procedural card art:** each role card is built in code: a team-tinted backdrop with a per-role pattern (sunburst / rings / art-deco fans), a vignette and the role's icon. The card flips once when revealed.
 - **Interface icons:** Phosphor (MIT), generated into `public/js/ui_icons.js` by `npm run icons:ui`.
 - **Painted portraits (optional):** `npm run art:brief` writes `art-source/BRIEF.md` (31 ChatGPT/Gemini prompts, 6 roles per image, most-used roles first). Save each image as `art-source/sheets/sheet-NN.png`, run `npm run art:slice -- art-source/sheets/sheet-NN.png`, then deploy. Portraits in `public/art/<roleId>.webp` replace the procedural art automatically.
-- **Fonts:** Big Shoulders Display (headlines), Alegreya Sans (interface) and Alegreya italic (lines the storyteller reads aloud), self-hosted in `public/fonts`, copied from `@fontsource` by `npm run assets`.
+- **Fonts:** Rubik (interface and headlines), Limelight (titles) and Alegreya italic (lines the Host reads aloud), self-hosted in `public/fonts`, copied from `@fontsource` by `npm run assets`.
 - **Look and layout:** "the card room after midnight" (walnut and brass, green felt only on the table). The full spec is in `DESIGN.md`. Phones get one pane and a tab bar, tablets and laptops two columns, and wide screens three.
 
 ## Layout
@@ -75,4 +75,4 @@ Cloudflare token, account ID and R2 keys, and the Spaceship API key and secret, 
 - **Deploy without typing a password:** any agent whose 1Password service-account token is set (`OP_SERVICE_ACCOUNT_TOKEN`, which can read the Dev-Services vault) can deploy:
   `export CLOUDFLARE_API_TOKEN=$(op item get "Cloudflare API token and R2" --vault Dev-Services --fields credential --reveal) CLOUDFLARE_ACCOUNT_ID=$(op item get "Cloudflare API token and R2" --vault Dev-Services --fields "Account ID") && npm run deploy`
   On the Mac the desktop app also works, but it can ask for approval; the service-account token never does.
-- Win rules: mafia (weighted) >= everyone else with no killer/cult; killer wins on parity when no mafia/cult; cult wins when all alive are cult. If Mafia and Killer both remain, no auto-win: the storyteller can declare a winner.
+- Win rules: mafia (weighted) >= everyone else with no killer/cult; killer wins on parity when no mafia/cult; cult wins when all alive are cult. If Mafia and Killer both remain, no auto-win: the Host can declare a winner.
