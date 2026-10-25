@@ -1,5 +1,6 @@
 // Cloudflare Worker: serves the API + WebSocket entry points. Static files come from Workers Static Assets.
 import { DurableObject } from 'cloudflare:workers';
+import { errorResponse } from './error-page.js';
 import { newRoom, reduce, migrateRoleIds, messagesFor, justEnded } from '../public/js/room.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O look-alikes
@@ -13,8 +14,18 @@ const randCode = () => {
 const randKey = () => [...crypto.getRandomValues(new Uint8Array(16))].map((x) => x.toString(16).padStart(2, '0')).join('');
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
+const wantsHtml = (request) => (request.headers.get('accept') || '').includes('text/html');
+
 export default {
   async fetch(request, env) {
+    try { return await route(request, env); } catch (e) {
+      console.error('fetch failed:', e);
+      return new URL(request.url).pathname.startsWith('/api/') && !wantsHtml(request) ? json({ error: 'Something went wrong. Try again.' }, 500) : errorResponse(500);
+    }
+  },
+};
+
+async function route(request, env) {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/create' && request.method === 'POST') {
@@ -36,14 +47,15 @@ export default {
 
     const ws = url.pathname.match(/^\/ws\/([A-Za-z]{6})$/);
     if (ws) {
-      if (request.headers.get('Upgrade') !== 'websocket') return new Response('Expected websocket', { status: 426 });
+      if (request.headers.get('Upgrade') !== 'websocket') return errorResponse(426);
       const stub = env.ROOM.get(env.ROOM.idFromName(ws[1].toUpperCase()));
       return stub.fetch(request);
     }
 
-    return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not found', { status: 404 });
-  },
-};
+    if (url.pathname.startsWith('/api/')) return wantsHtml(request) ? errorResponse(404) : json({ error: 'Not found' }, 404);
+    const res = env.ASSETS ? await env.ASSETS.fetch(request) : null;
+    return res && res.status !== 404 ? res : errorResponse(404);
+}
 
 export class Room extends DurableObject {
   constructor(ctx, env) {
