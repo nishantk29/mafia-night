@@ -31,7 +31,7 @@ Night script ordered by role, auto-resolution of kills, protects, guards, jails,
 - **Procedural card art:** each role card is built in code: a team-tinted backdrop with a per-role pattern (sunburst / rings / art-deco fans), a vignette and the role's icon. The card flips once when revealed.
 - **Interface icons:** Phosphor (MIT), generated into `public/js/ui_icons.js` by `npm run icons:ui`.
 - **Painted portraits (optional):** `npm run art:brief` writes `art-source/BRIEF.md` (31 ChatGPT/Gemini prompts, 6 roles per image, most-used roles first). Save each image as `art-source/sheets/sheet-NN.png`, run `npm run art:slice -- art-source/sheets/sheet-NN.png`, then deploy. Portraits in `public/art/<roleId>.webp` replace the procedural art automatically.
-- **Fonts:** Rubik (interface and headlines), Limelight (titles) and Alegreya italic (lines the Host reads aloud), self-hosted in `public/fonts`, copied from `@fontsource` by `npm run assets`.
+- **Fonts:** Limelight (display: wordmark, titles, role names, results) and Rubik (everything else), self-hosted in `public/fonts`, copied from `@fontsource` by `npm run assets`.
 - **Look and layout:** "the card room after midnight" (walnut and brass, green felt only on the table). The full spec is in `DESIGN.md`. Phones get one pane and a tab bar, tablets and laptops two columns, and wide screens three.
 
 ## Layout
