@@ -26,3 +26,16 @@ test('"What happened" log spans the card and never hyphenates', () => {
   assert.match(rule('.logl-text'), /hyphens:none/);
   assert.match(rule('.logl-text'), /flex:1 1 0/);
 });
+
+test('icon-less player log items use the full-width .logl.plain layout, not the 2rem icon grid', () => {
+  const js = readFileSync(new URL('../public/js/player.js', import.meta.url), 'utf8');
+  const items = js.match(/<li class="logl[^"]*">/g) || [];
+  assert.ok(items.length >= 2);
+  for (const li of items) assert.match(li, /logl plain/);
+  const rcss = readFileSync(new URL('../public/redesign.css', import.meta.url), 'utf8');
+  const m = rcss.match(/\.logl\.plain\{([^}]*)\}/);
+  assert.ok(m);
+  assert.match(m[1], /display:flex/);
+  assert.doesNotMatch(m[1], /2rem/);
+  assert.match(rcss, /\.logl\.plain > \.logl-text\{[^}]*flex:1 1 12rem/);
+});

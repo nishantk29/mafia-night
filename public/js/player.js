@@ -91,7 +91,7 @@ function roleCard(v) {
 function results(list) {
   if (!list?.length) return '';
   return `<section class="block my-results" aria-label="Your night results"><h3 class="block-title">${ui('ear')} What you learned</h3>
-    <ol class="log">${[...list].reverse().map((r) => `<li class="logl"><span class="logl-when">Night ${r.night}</span> <span class="logl-text">${esc(r.text)}</span></li>`).join('')}</ol></section>`;
+    <ol class="log">${[...list].reverse().map((r) => `<li class="logl plain"><span class="logl-when">Night ${r.night}</span> <span class="logl-text">${esc(r.text)}</span></li>`).join('')}</ol></section>`;
 }
 
 // Private notes, kept only on this phone.
@@ -124,7 +124,7 @@ function tableSide(v) {
     : `<section class="block"><header class="block-head"><h2 class="block-title">Players</h2><span class="tally" data-tick="players">${v.players.length}</span></header>
       <ul class="people">${v.players.map((p) => `<li class="person ${p.alive ? '' : 'is-dead'}"><span class="person-name">${esc(p.name)}</span>${p.alive ? '' : `<span class="person-status" aria-label="out of the game">${ui('skull')}</span>`}</li>`).join('')}</ul></section>`;
   const log = v.publicLog.length
-    ? `<ol class="log">${[...v.publicLog].reverse().map((l) => `<li class="logl"><span class="logl-text">${esc(l.text)}</span></li>`).join('')}</ol>`
+    ? `<ol class="log">${[...v.publicLog].reverse().map((l) => `<li class="logl plain"><span class="logl-text">${esc(l.text)}</span></li>`).join('')}</ol>`
     : '<p class="muted">Nothing yet. Deaths and votes show up here.</p>';
   return `${people}${v.phase === 'lobby' ? '' : notes(v)}<section class="block"><h2 class="block-title">What happened</h2>${log}</section>`;
 }
