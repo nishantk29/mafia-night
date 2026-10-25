@@ -35,6 +35,9 @@ export function nextSpeaker(players, id) {
 const speakerOf = (v) => v.players.find((p) => p.id === S.ui.turn?.pid && p.alive) || nextSpeaker(v.players, null);
 
 // The appbar button. While a timer runs it shows the time left, so it can be watched with the panel shut.
+// Phase pill for the appbar: icon plus round number only; the word lives in the aria-label.
+export const phaseBadge = (icon, label, n) => `<span class="phase-badge" role="img" aria-label="${label}">${ui(icon)}${n === '' ? '' : `<b>${n}</b>`}</span>`;
+
 export function toolsButton() {
   const main = timerRunning();
   const run = main || turnRunning();
