@@ -8,6 +8,9 @@ import { ROLE_BY_ID } from './roles.js';
 import { bloodSplat } from './flair.js';
 
 const $html = document.documentElement;
+// Animation length scale (--dur-scale in styles.css), read once; every JS wait or delay tied to a CSS animation goes through dur().
+const SCALE = (typeof getComputedStyle === 'function' && parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dur-scale'))) || 1;
+export const dur = (ms) => Math.round(ms * SCALE);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const KEY = 'mafia.anim';
 
@@ -26,7 +29,7 @@ const full = () => $html.dataset.fx === 'on';
 const maxParticles = () => 26;
 const rand = (a, b) => a + Math.random() * (b - a);
 const layer = () => document.getElementById('fx');
-const drop = (el, ms) => setTimeout(() => el.remove(), ms);
+const drop = (el, ms) => setTimeout(() => el.remove(), dur(ms));
 
 function add(html, ms) {
   const host = layer(); if (!host) return null;
@@ -53,7 +56,7 @@ function burst(parent, theme, n = 18, mode = 'confetti') {
   for (let i = 0; i < count; i++) {
     const p = document.createElement('i'); p.className = 'fx-p';
     const a = rand(0, Math.PI * 2); const d = rand(90, 190);
-    p.style.cssText = `--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d - 40).toFixed(0)}px;--r:${rand(-360, 360).toFixed(0)}deg;--c:${colors[i % colors.length]};--d:${(i * 8) % 120}ms`;
+    p.style.cssText = `--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d - 40).toFixed(0)}px;--r:${rand(-360, 360).toFixed(0)}deg;--c:${colors[i % colors.length]};--d:${dur((i * 8) % 120)}ms`;
     box.append(p);
   }
   parent.append(box);
@@ -65,7 +68,7 @@ const MOON = '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="#F1E6D2" d
 export function night() {
   if (!animOn()) return;
   const stars = Array.from({ length: Math.min(12, maxParticles()) }, (_, i) =>
-    `<i class="fx-star" style="left:${rand(4, 96).toFixed(0)}%;top:${rand(4, 62).toFixed(0)}%;--s:${rand(.5, 1.2).toFixed(2)};--d:${(i * 20) % 240}ms"></i>`).join('');
+    `<i class="fx-star" style="left:${rand(4, 96).toFixed(0)}%;top:${rand(4, 62).toFixed(0)}%;--s:${rand(.5, 1.2).toFixed(2)};--d:${dur((i * 20) % 240)}ms"></i>`).join('');
   add(`<div class="fx-scene fx-night" aria-hidden="true"><span class="fx-moon">${MOON}</span>${stars}</div>`, 620);
 }
 export function day() {
@@ -134,7 +137,7 @@ export function observe(prev, next) {
   if (next.phase === 'lobby' || prev.phase === 'lobby') { if (prev.phase === 'over' && next.phase === 'lobby') closeVictory(); return; }
   let delay = 0;
   if (next.phase === 'night' && prev.phase !== 'night') { night(); }
-  else if (next.phase === 'day' && prev.phase !== 'day') { day(); delay = 600; }
+  else if (next.phase === 'day' && prev.phase !== 'day') { day(); delay = dur(600); }
   if (next.phase === 'over') return; // the victory card takes the stage
   const was = new Map((prev.players || []).map((p) => [p.id, p]));
   const out = [];
@@ -157,10 +160,10 @@ let railNight = null; let railDone = new Set(); let railSeen = false;
 function rollUp(el, from, to) {
   const a = /\d+/.exec(from); const b = /\d+/.exec(to);
   if (!a || !b || a[0] === b[0]) return;
-  const x = +a[0]; const y = +b[0]; const t0 = performance.now(); const dur = 450;
+  const x = +a[0]; const y = +b[0]; const t0 = performance.now(); const len = dur(450);
   const frame = (t) => {
     if (!el.isConnected) return;
-    const p = Math.min(1, (t - t0) / dur); const n = Math.round(x + (y - x) * (1 - (1 - p) ** 3));
+    const p = Math.min(1, (t - t0) / len); const n = Math.round(x + (y - x) * (1 - (1 - p) ** 3));
     el.textContent = to.replace(/\d+/, n);
     if (p < 1) requestAnimationFrame(frame);
   };

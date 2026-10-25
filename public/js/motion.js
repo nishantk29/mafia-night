@@ -1,7 +1,8 @@
 // Step transitions, the game wake lock and scroll reveals. Everything is feature-detected and skipped when
 // animations are off (prefers-reduced-motion or the in-app toggle, both folded into animOn()).
 import { S } from './state.js';
-import { animOn } from './fx.js';
+import { animOn, dur } from './fx.js';
+export { dur };
 
 const $html = document.documentElement;
 const hasVT = () => typeof document.startViewTransition === 'function';
