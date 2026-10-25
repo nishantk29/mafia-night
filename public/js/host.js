@@ -1,6 +1,7 @@
 // Host screens.
 // Layout (DESIGN.md 6.2): app bar, then a console with the game pane and a side (table, who is who, log).
 // Phones show one pane at a time via the tab bar; tablets show game + side switch; wide screens show everything.
+import { castList } from './world.js';
 import { S, esc, initial, loadLibrary } from './state.js';
 import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY_ID, groupAlsoText } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
@@ -681,15 +682,11 @@ function over(v) {
   const winners = new Set(v.winners.map((x) => x.id));
   const side = { town: 'Town wins', mafia: 'Mafia wins', killer: 'Serial Killer wins', cult: 'Cult wins', none: 'Nobody wins', draw: 'It’s a draw' }[w?.side] || `${esc(w?.side || 'Nobody')} wins`;
   const ink = { town: 'a-town', mafia: 'a-mafia', none: '', draw: '' }[w?.side] ?? 'a-third';
-  const rows = v.players.map((p) => { const r = ROLE_BY_ID[p.roleId]; const why = v.winners.find((x) => x.id === p.id);
-    return `<div class="arow ${winners.has(p.id) ? 'is-winner' : ''}"><span class="arow-glyph ${r ? `a-${r.alignment}` : ''}">${r ? ico(r) : initial(p.name)}</span>
-      <span class="arow-name"><b>${esc(p.name)}</b> <span class="muted">${esc(r?.name || 'Role unknown')}</span></span>
-      ${p.alive ? '' : `<span class="arow-mark" aria-label="dead">${ui('skull')}</span>`}
-      ${why ? `<span class="meta">${ui('trophy')} ${/ team wins$/.test(why.reason) ? 'Won' : esc(why.reason)}</span>` : ''}</div>`; }).join('');
+  const players = v.players.map((p) => ({ ...p, win: winners.has(p.id) }));
   return {
     body: `<section class="win ${ink}"><span class="win-mark">${ui('crown')}</span><h2 class="phase-title">${side}</h2><p class="muted">${esc(w?.reason || '')}</p></section>
-      <section class="block${S.ui.anim === 'roles' ? ' reveal-rows' : ''}"><h2 class="block-title">Final roles</h2>${rows}</section>`,
-    dock: `<button type="button" class="btn big" data-a="restart">Restart</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button>`,
+      <div class="cast-wrap${S.ui.anim === 'roles' ? ' reveal-rows' : ''}">${castList(players, (p) => ROLE_BY_ID[p.roleId])}</div>`,
+    dock: `<div class="end-actions"><button type="button" class="btn big" data-a="restart">Restart</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button></div>`,
   };
 }
 

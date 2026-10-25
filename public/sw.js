@@ -37,6 +37,7 @@ const PRECACHE = [
   '/js/footer.js',
   '/js/fx.js',
   '/js/graveyard.js',
+  '/js/world.js',
   '/js/hold.js',
   '/js/host.js',
   '/js/icon_data.js',
