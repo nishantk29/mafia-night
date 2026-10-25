@@ -19,7 +19,7 @@ const ASSETS = { async fetch(req) {
   const url = new URL(req.url);
   let p = url.pathname === '/' ? '/index.html' : url.pathname;
   const f = FILES[p];
-  if (!f) return new Response('Not found', { status: 404 });
+  if (!f) return new Response(bytes(FILES['/404.html'].b), { status: 404, headers: { 'content-type': FILES['/404.html'].t, 'cache-control': 'no-store' } });
   const cache = p === '/index.html' || p === '/sw.js' ? 'no-cache' : 'public, max-age=3600';
   return new Response(bytes(f.b), { headers: { 'content-type': f.t, 'cache-control': cache } });
 } };

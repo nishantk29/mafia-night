@@ -145,7 +145,13 @@ export const hasNightOnlyChecks = (room) => nightVersion(room) >= 5;
 export const hasGodfatherDisguise = (room) => nightVersion(room) >= 6;
 // 7: Tracker, Lookout and Coroner results (track/watch/autopsy) are night-only too, through the check card, like the Cop.
 export const hasNightOnlyInfo = (room) => nightVersion(room) >= 7;
-export const LATEST_NIGHT_VERSION = 7;
+// 8: (1) a Doctor and a Bodyguard on the same target: nobody dies, the save looks like any Doctor save. (2) Used-up limited-use roles
+// (Vigilante, Veteran, Janitor...) are still called every night; the call is inert. (3) unchanged: a blocked or jailed limited-use role
+// still loses the use. (4) The Coroner learns "cleaned, role unknown" for a Janitor-cleaned body. (5) The Psychic gets no vision when
+// anybody visited them. (6) An Executioner whose target dies any way but a day vote becomes a Jester; every Executioner is called every
+// night and told privately through the check card.
+export const hasV8Rules = (room) => nightVersion(room) >= 8;
+export const LATEST_NIGHT_VERSION = 8;
 // 7: every look-alike call family is numbered 1..N (Cop 1, Cop 2...), the player's phone shows their number, and the Confused Cop is a disguised Cop
 export const hasNumberedCalls = (room) => nightVersion(room) >= 7;
 
@@ -255,9 +261,14 @@ function scriptSteps(room) {
     }
     if (r.action && !r.action.group) {
       if (firstNight && !rules.firstNightKill && r.action.type === 'kill') continue;
-      const used = usedCount(room, p.id);
-      if (used >= r.action.uses) continue;
-      steps.push({ key: `act:${p.id}`, kind: 'action', roleId: r.id, actors: [p.id], ...r.action });
+      const spent = usedCount(room, p.id) >= r.action.uses;
+      if (spent && !hasV8Rules(room)) continue;
+      steps.push({ key: `act:${p.id}`, kind: 'action', roleId: r.id, actors: [p.id], ...r.action, ...(spent ? { spent: true } : {}) });
+    }
+    // v8: every Executioner is called every night (living or dead), so nobody can tell who was turned into a Jester.
+    if (hasV8Rules(room) && p.roleId === 'executioner') {
+      steps.push({ key: `act:${p.id}`, kind: 'action', type: 'execCheck', roleId: 'executioner', actors: [p.id], targets: 0, uses: Infinity, order: 65,
+        prompt: 'Executioner, open your eyes.' });
     }
   }
   if (hasNumberedCalls(room)) {
@@ -339,7 +350,9 @@ export function stepScript(step, room) {
   }
   if (step.hint) notes.push(step.hint);
   else if (step.kind === 'action' && step.actors.length === 1 && !step.key.startsWith('meeting:')) notes.push(`Tap ${nameOf(room, step.actors[0])} on the shoulder so only they wake.`);
-  if (step.kind === 'action') {
+  if (step.spent) notes.push('Used up: tap Skip.');
+  if (step.type === 'execCheck') notes.push('Tap Show card in the app, then show them the card.');
+  else if (step.kind === 'action' && !step.spent) {
     notes.push(step.targets === 0 ? 'Tap their yes / no answer in the app.' : `Tap the ${step.targets > 1 ? `${step.targets} players` : 'player'} they point to.`);
     if (step.type === 'investigate') notes.push('Then show them the result card.');
   }
@@ -377,7 +390,7 @@ export function stepGesture(step, result) {
   if (!stepCues(step) || step.kind !== 'action') return null;
   if (['investigate', 'track', 'watch', 'autopsy'].includes(step.type)) {
     if (!result || result.blocked) return null;
-    if (result.neutral && step.type === 'investigate') return { kind: 'yesno', text: 'Give no sign: keep your hand flat and still' };
+    if ((result.neutral || result.novision) && step.type === 'investigate') return { kind: 'yesno', text: 'Give no sign: keep your hand flat and still' };
     const m = /^(.+) is (MAFIA|NOT Mafia)\.$/.exec(result.text || '');
     if (step.type === 'investigate' && m) {
       return m[2] === 'MAFIA'
@@ -406,7 +419,7 @@ export function previewNight(room, actions, stepKey) {
   const me = steps.find((st) => st.key === stepKey);
   if (!me) return null;
   // v3: a dead investigator's screen has the same shape as a real result, but says the same neutral thing for any target.
-  if (hasGraveyard(room) && ['investigate', 'track', 'watch', 'autopsy'].includes(me.type) && !me.actors.some((id) => playerById(room, id)?.alive)) {
+  if (hasGraveyard(room) && ['investigate', 'track', 'watch', 'autopsy', 'execCheck'].includes(me.type) && !me.actors.some((id) => playerById(room, id)?.alive)) {
     return { text: NEUTRAL_ANSWER, note: '', neutral: true };
   }
   const sofar = {};
@@ -480,6 +493,8 @@ export function killPlayer(room, id, cause, opts = {}) {
   p.deathDay = room.day;
   p.deathNight = room.night;
   if (opts.hideRole) p.roleHidden = true;
+  // v8: an Executioner whose target dies any way but a day vote is a Jester from now on (they are told at their next night call).
+  if (cause !== 'condemned' && hasV8Rules(room)) for (const q of room.players) if (q.roleId === 'executioner' && q.target === id) q.becameJester = true;
   const r = ROLE_BY_ID[p.roleId];
   if (r?.onDeath) addPending(room, p, r.onDeath);
   if (cause === 'condemned' && r?.onCondemn) addPending(room, p, r.onCondemn);
@@ -498,7 +513,9 @@ export function log(room, text, opts = {}) {
 // ---------- night resolution ----------
 // actions: { [stepKey]: { targets: [playerId...], on?: boolean } }
 export function resolveNight(room, actions, opts = {}) {
-  const steps = nightScript(room).filter((s) => s.kind === 'action');
+  const allSteps = nightScript(room).filter((s) => s.kind === 'action');
+  const execSteps = allSteps.filter((s) => s.type === 'execCheck'); // v8: told privately, never part of the night's actions
+  const steps = allSteps.filter((s) => s.type !== 'execCheck');
   const rep = { night: room.night, deaths: [], saves: [], info: [], conversions: [], notes: [] };
   const alivePlayer = (id) => playerById(room, id);
   const selfProtect = rulesOf(room).selfProtect;
@@ -514,7 +531,9 @@ export function resolveNight(room, actions, opts = {}) {
     return { s, idx, targets, on, coin: raw.coin === 'mafia' || raw.coin === 'innocent' ? raw.coin : null, flip: raw.flip === 'heads' || raw.flip === 'tails' ? raw.flip : null };
   }).filter((a) => a.on)
     // v2: a dead role is still called, but what the Host records for it does nothing. (`ghost` is previewNight only.)
-    .filter((a) => nightVersion(room) < 2 || a.s.key === opts.ghost || a.s.actors.some((id) => playerById(room, id)?.alive));
+    .filter((a) => nightVersion(room) < 2 || a.s.key === opts.ghost || a.s.actors.some((id) => playerById(room, id)?.alive))
+    // v8: a used-up role is still called, but what the Host records for it does nothing and spends nothing.
+    .filter((a) => !a.s.spent);
 
   // usage
   room.usage ||= {};
@@ -583,6 +602,8 @@ export function resolveNight(room, actions, opts = {}) {
     if (jailed.has(t) || alertSet.has(t)) { rep.saves.push({ target: t, text: `${tp.name} survived the attack.` }); continue; }
     if (guardMap[t]?.length) { // each bodyguard absorbs one hit; a second attacker gets through
       const bg = guardMap[t].shift();
+      // v8: a Doctor on the same target heals the Bodyguard, so nobody dies and the save reads like any Doctor save.
+      if (hasV8Rules(room) && protectedSet.has(t)) { rep.saves.push({ target: t, text: `${tp.name} was attacked but saved.` }); continue; }
       markDeath(bg, `took the hit for ${tp.name}`);
       rep.saves.push({ target: t, text: `${nameOf(room, bg)} (${ROLE_BY_ID[playerById(room, bg)?.roleId]?.name || 'Bodyguard'}) died protecting ${tp.name}.` });
       continue;
@@ -622,10 +643,13 @@ export function resolveNight(room, actions, opts = {}) {
   for (const a of active.filter((x) => ['investigate', 'track', 'watch', 'autopsy'].includes(x.s.type))) {
     const actorIds = a.s.actors;
     const t = alivePlayer(a.targets[0]);
-    let text; let note = ''; let coinInfo = null; let card = null;
+    let text; let note = ''; let coinInfo = null; let card = null; let novision = false;
     if (a.s.type === 'investigate') {
       const chk = a.s.check;
-      if (chk === 'alignment') text = `${t.name} is ${sideName(a.s.roleId === 'psychic' && hasNumberedCalls(room) ? (factionOf(t.roleId) === 'mafia' ? 'mafia' : 'innocent') : appearsAs(room, t))}.`; // v7: the Psychic reads the TRUE side, past frames and disguises
+      const psychic = a.s.roleId === 'psychic' && hasNumberedCalls(room);
+      const visited = psychic && hasV8Rules(room) && wokeBy(a).some((x) => x.targets.some((id) => actorIds.includes(id)) && x.visitors.some((id) => !actorIds.includes(id)));
+      if (visited) { text = 'No vision tonight.'; novision = true; } // v8: anybody who visited the Psychic before their call clouds the vision
+      else if (chk === 'alignment') text = `${t.name} is ${sideName(a.s.roleId === 'psychic' && hasNumberedCalls(room) ? (factionOf(t.roleId) === 'mafia' ? 'mafia' : 'innocent') : appearsAs(room, t))}.`; // v7: the Psychic reads the TRUE side, past frames and disguises
       else if (chk === 'inverted') { text = `${t.name} is ${sideName(appearsAs(room, t) === 'mafia' ? 'innocent' : 'mafia')}.`; note = 'Insane Cop: this is the flipped result. Say it as if it were true.'; }
       else if (chk === 'random') {
         // Open role: heads = the true Cop result, tails = the opposite. The flip is decided when the target is entered.
@@ -657,12 +681,25 @@ export function resolveNight(room, actions, opts = {}) {
       text = who.length ? `${[...new Set(who)].join(', ')} visited ${t.name}.` : `Nobody visited ${t.name}.`;
       card = { kind: 'watch', text: who.length ? [...new Set(who)].map((n) => n.toUpperCase()).join(' & ') : 'NOBODY' };
     } else if (a.s.type === 'autopsy') {
-      text = `${t.name} was the ${ROLE_BY_ID[t.roleId].name}.`;
-      card = { kind: 'role', text: ROLE_BY_ID[t.roleId].name.toUpperCase() };
+      if (hasV8Rules(room) && a.s.roleId === 'coroner' && t.roleHidden) { // v8: the Janitor's work hides the role from the Coroner too (the Vulture still learns it)
+        text = `${t.name}: cleaned, role unknown.`;
+        card = { kind: 'role', text: 'CLEANED, ROLE UNKNOWN' };
+      } else {
+        text = `${t.name} was the ${ROLE_BY_ID[t.roleId].name}.`;
+        card = { kind: 'role', text: ROLE_BY_ID[t.roleId].name.toUpperCase() };
+      }
     }
     const nightOnly = a.s.type === 'investigate' ? hasNightOnlyChecks(room) : hasNightOnlyInfo(room);
-    if (!(nightOnly && !opts.preview)) rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(card ? { card } : {}), ...(coinInfo ? { flip: coinInfo.flip } : {}) });
+    if (!(nightOnly && !opts.preview)) rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(card ? { card } : {}), ...(novision ? { novision } : {}), ...(coinInfo ? { flip: coinInfo.flip } : {}) });
     if (coinInfo) { (rep.coins ||= []).push({ key: a.s.key, flip: coinInfo.flip, text: coinInfo.text }); log(room, `Night ${room.night}: ${coinInfo.text}`, { private: true }); }
+  }
+
+  // v8: each Executioner's private card. The change is told the first night after it happened, never the night it happened.
+  for (const s of execSteps) {
+    const p = alivePlayer(s.actors[0]);
+    const now = !!p?.becameJester && !p.jesterSeen;
+    if (opts.preview) rep.info.push({ actorIds: s.actors, roleId: 'executioner', key: s.key, text: now ? 'You are now the Jester.' : 'No change.', note: '', card: now ? { kind: 'role', text: 'YOU ARE NOW THE JESTER' } : { kind: 'none', text: 'NO CHANGE' } });
+    else if (now && p.alive) p.jesterSeen = true;
   }
 
   // 8) apply deaths
@@ -719,7 +756,9 @@ export function morningAnnouncement(room, report) {
 export function checkCard(room, step, result) {
   if (!hasStoryScript(room) || !step || step.kind !== 'action' || !result) return null;
   const isInfo = ['track', 'watch', 'autopsy'].includes(step.type);
+  if (step.type === 'execCheck') return result.neutral ? { kind: 'none', text: 'NO ANSWER' } : result.card || null;
   if (step.type !== 'investigate' && !(isInfo && hasNightOnlyInfo(room))) return null;
+  if (result.novision) return { kind: 'none', text: 'NO VISION TONIGHT' };
   if (result.neutral) return { kind: 'none', text: 'NO ANSWER' };
   if (result.blocked) return null;
   if (isInfo) return result.card || null;
@@ -743,7 +782,7 @@ export function condemn(room, id) {
   if (r.shield) room.shield = true;
   // side wins
   room.sideWins ||= [];
-  if (r.sideWin === 'condemned') room.sideWins.push({ id: p.id, by: p.id, reason: `${p.name} (Jester) got condemned.` });
+  if (r.sideWin === 'condemned' || (p.becameJester && r.id === 'executioner')) room.sideWins.push({ id: p.id, by: p.id, reason: `${p.name} (Jester) got condemned.` });
   for (const q of room.players) {
     if (q.alive && ROLE_BY_ID[q.roleId]?.sideWin === 'target' && q.target === id) {
       room.sideWins.push({ id: q.id, by: p.id, reason: `${q.name} (Executioner): target ${p.name} was condemned.` });

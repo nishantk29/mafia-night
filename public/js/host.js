@@ -368,7 +368,7 @@ function advice(roleIds, n) {
 }
 
 // Steps that get a live result, and checks that are a coin flip by design.
-const LIVE = ['investigate', 'track', 'watch', 'autopsy'];
+const LIVE = ['investigate', 'track', 'watch', 'autopsy', 'execCheck'];
 const COIN = ['fake'];
 
 // ---------------- dealt ----------------
@@ -522,7 +522,7 @@ const doneLines = (v, s, set) => doneStepLines(s, liveResult(v, s, set))
 
 // Live result for an investigator; null when there is none yet (not live, no target, or a coin flip pending).
 function liveResult(v, s, set) {
-  if (s.kind !== 'action' || !LIVE.includes(s.type) || !set?.targets?.length) return null;
+  if (s.kind !== 'action' || !LIVE.includes(s.type) || !(set?.targets?.length || (s.type === 'execCheck' && set?.on))) return null;
   if (COIN.includes(s.check) && !set.coin) return null;
   try { return previewNight(roomFromView(v), S.ui.night.actions, s.key); } catch { return null; }
 }
@@ -569,7 +569,7 @@ function cue(v, s, num, current, alive) {
     const set = n.actions[s.key];
     let result = 'Done';
     if (s.kind === 'action') {
-      result = s.targets === 0
+      result = s.type === 'execCheck' ? 'Done' : s.targets === 0
         ? (set.on ? (s.type === 'alert' ? 'On alert' : 'Yes') : (s.type === 'alert' ? 'Staying in' : 'No'))
         : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
     }
@@ -604,7 +604,9 @@ function cue(v, s, num, current, alive) {
     const who = s.actors.map((id) => esc(pname(v, id))).join(', ');
     const usesLeft = Number.isFinite(s.uses) ? s.uses - (v.usage[s.actors[0]] || 0) : null;
     const head = `${roleEl}<span class="meta">${who}</span>${usesLeft != null ? `<span class="meta">${plural(usesLeft, 'use')} left</span>` : ''}${say}`;
-    if (s.targets === 0) {
+    if (s.type === 'execCheck') {
+      inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">Show card</button></div>`;
+    } else if (s.targets === 0) {
       const [yes, no] = s.type === 'alert' ? ['Go on alert', 'Not tonight'] : ['Yes', 'No'];
       inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">${yes}</button><button type="button" class="btn ghost" data-a="alert" data-key="${s.key}" data-v="0">${no}</button></div>`;
     } else {
@@ -626,7 +628,7 @@ function upgradeCard(v) {
   if (v.nightVersion >= LATEST_NIGHT_VERSION || v.phase === 'lobby') return '';
   const queued = !!v.upgradeNext;
   return `<section class="block upgrade-night"><h2 class="block-title">Use the new night script from next night</h2>
-    <p class="note">Dead roles are still called at night, so nobody can tell who died. Takes effect when the next night starts; nothing changes mid-step.</p>
+    <p class="note">${v.nightVersion >= 2 ? 'Adds the v8 rules: a Doctor and Bodyguard on one target save both, used-up roles are still called, the Coroner and Psychic get less certain, and an Executioner whose target dies becomes a Jester.' : 'Dead roles are still called at night, so nobody can tell who died.'} Takes effect when the next night starts; nothing changes mid-step.</p>
     ${queued ? `<p class="note is-private">Switches on at the start of night ${v.night + 1}.</p><button type="button" class="btn ghost" data-a="upgradeNight" data-off="1">Undo</button>`
       : `<button type="button" class="btn" data-a="upgradeNight">Use the new night script</button>`}</section>`;
 }

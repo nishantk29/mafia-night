@@ -19,7 +19,7 @@ const keys = (room) => nightScript(room).map((s) => s.key);
 
 describe('legacy rooms (no nightVersion)', () => {
   test('newRoom sets version 4; a missing field reads as version 1 and is not backfilled', () => {
-    assert.equal(newRoom('A', 'k').nightVersion, 7);
+    assert.equal(newRoom('A', 'k').nightVersion, 8);
     const room = legacy(newRoom('A', 'k'));
     assert.equal(nightVersion(room), 1);
     assert.equal('nightVersion' in room, false);

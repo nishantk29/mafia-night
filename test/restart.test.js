@@ -13,7 +13,7 @@ function mk({ version = 7, mode = 'app', roles = ROLES, phase = 'night' } = {}) 
   roles.forEach((_, i) => assert.ok(reduce(room, ANON, { type: 'join', name: `P${i}` }).ok));
   assert.ok(reduce(room, HOST, { type: 'deal' }).ok);
   if (version === 1) delete room.nightVersion; else room.nightVersion = version;
-  if (version < 7) room.upgradeNext = 7;
+  if (version < 8) room.upgradeNext = 8;
   room.phase = phase; room.night = 2; room.day = 1;
   room.graveyard = [{ id: 1, text: 'boo' }]; room.results = [{ night: 1, ids: ['x'], text: 'old' }]; room.lastReport = { info: [] };
   room.log.push({ text: 'old line' }); room.usage = { a: 1 }; room.winner = { side: 'town', reason: 'x' };
@@ -44,7 +44,7 @@ describe('restart', () => {
     for (const v of [1, 5, 6]) {
       const room = mk({ version: v });
       reduce(room, HOST, { type: 'restart' });
-      assert.equal(nightVersion(room), LATEST_NIGHT_VERSION); assert.equal(room.nightVersion, 7);
+      assert.equal(nightVersion(room), LATEST_NIGHT_VERSION); assert.equal(room.nightVersion, 8);
       assert.equal(room.upgradeNext, undefined);
     }
   });
@@ -69,7 +69,7 @@ describe('restart', () => {
   test('setup:true stays in the lobby on v7', () => {
     const room = mk({ version: 5 });
     assert.deepEqual(reduce(room, HOST, { type: 'restart', setup: true }), { ok: true, data: { dealt: false } });
-    assert.equal(room.phase, 'lobby'); assert.equal(room.nightVersion, 7);
+    assert.equal(room.phase, 'lobby'); assert.equal(room.nightVersion, 8);
     assert.ok(room.players.every((p) => !p.roleId));
     assert.ok(reduce(room, HOST, { type: 'deal' }).ok);
   });
@@ -77,7 +77,7 @@ describe('restart', () => {
     for (const t of ['newGame', 'playAgain']) {
       const room = mk({ version: 5, phase: 'over' });
       assert.ok(reduce(room, HOST, { type: t }).ok);
-      assert.equal(room.phase, 'lobby'); assert.equal(room.nightVersion, 7); assert.equal(room.gameNo, 2);
+      assert.equal(room.phase, 'lobby'); assert.equal(room.nightVersion, 8); assert.equal(room.gameNo, 2);
     }
   });
   test('playAgain is for seated players at game over only', () => {
@@ -99,7 +99,7 @@ describe('restart', () => {
     const room = mk({ version: 5 }); room.config.roles = ['mafia', 'doctor'];
     const r = reduce(room, HOST, { type: 'restart' });
     assert.equal(r.ok, true); assert.equal(r.data.dealt, false); assert.ok(r.data.error);
-    assert.equal(room.phase, 'lobby'); assert.equal(room.nightVersion, 7);
+    assert.equal(room.phase, 'lobby'); assert.equal(room.nightVersion, 8);
   });
   test('a reconnecting player sees the reveal step with their new role', () => {
     const room = mk(); const me = room.players[3];
