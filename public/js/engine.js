@@ -5,6 +5,10 @@ import { simpleDeckMap } from './simple.js';
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 50;
 
+// Most copies of one role the host can put in the deck: Lovers come in pairs, anything else up to the table size.
+export const roleMax = (roleId, playerCount = MAX_PLAYERS) =>
+  roleId === 'lover' ? 2 : Math.min(MAX_PLAYERS, Math.max(1, playerCount | 0));
+
 // ---------- randomness ----------
 export function randInt(n) {
   const a = new Uint32Array(1);
@@ -447,7 +451,7 @@ export function setupWarnings(roleIds, playerCount) {
   const savers = count((r) => ['protect', 'guard', 'jail'].includes(r.action?.type));
   if (savers > killers + 1) out.push({ level: 'warn', text: `${savers} protectors against ${killers} killer${killers === 1 ? '' : 's'}: nights may often end with nobody dead.` });
   const uniques = ['godfather', 'doctor', 'cop', 'jailer', 'mayor', 'president', 'janitor'];
-  for (const id of uniques) if (count((r) => r.id === id) > 1) out.push({ level: 'tip', text: `More than one ${ROLE_BY_ID[id].name}. That works, but it's unusual.` });
+  for (const id of uniques) if (count((r) => r.id === id) > 1) out.push({ level: 'tip', text: `More than one ${ROLE_BY_ID[id].name}. Fine for a big table, but each extra one changes the balance.` });
   return out;
 }
 

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { newRoom, reduce, viewForPlayer, viewForHost, roleCard } from '../public/js/room.js';
 import { nightScript, suggestRoles, MIN_PLAYERS, MAX_PLAYERS, FULL_DECK, playerById } from '../public/js/engine.js';
 import { ROLE_BY_ID, sanitizeRole, registerRoles, factionOf } from '../public/js/roles.js';
+// The setup list (setupRoles) is public to the table on purpose; secrecy checks look at everything else.
+const J = (v) => JSON.stringify(v, (k, x) => (k === 'setupRoles' || k === 'setupUnreliable' ? undefined : x));
 
 // ---------- helpers ----------
 const HOST = { host: true };
@@ -427,7 +429,7 @@ describe('full game smoke', () => {
         }
         // views must be buildable for everyone at every stage
         viewForHost(room);
-        for (const p of room.players) JSON.stringify(viewForPlayer(room, p.id));
+        for (const p of room.players) J(viewForPlayer(room, p.id));
         if (room.phase === 'day') {
           const livePlayers = room.players.filter((p) => p.alive);
           if (livePlayers.length && Math.random() < 0.8) H(room, { type: 'condemn', playerId: pick(livePlayers).id });
@@ -467,7 +469,7 @@ describe('secrecy: viewForPlayer', () => {
   test('no view ever contains hostKey, tokens, or deck.map', () => {
     const { room } = game9();
     for (const p of room.players) {
-      const s = JSON.stringify(viewForPlayer(room, p.id, new Set(room.players.map((q) => q.id))));
+      const s = J(viewForPlayer(room, p.id, new Set(room.players.map((q) => q.id))));
       assert.ok(!s.includes(room.hostKey), 'hostKey leaked');
       assert.ok(!/hostKey/i.test(s));
       for (const t of allTokens(room)) assert.ok(!s.includes(t), 'token leaked');
@@ -482,7 +484,7 @@ describe('secrecy: viewForPlayer', () => {
     reduce(room, { playerId: room.players[0].id }, { type: 'claimCard', card: mine.card });
     for (const p of room.players) {
       const v = viewForPlayer(room, p.id);
-      const s = JSON.stringify(v);
+      const s = J(v);
       assert.ok(!/"deck"|"map"|"claimed"/.test(s));
       assert.equal(v.deckCards, 5);
       if (p.id !== room.players[0].id) {
@@ -509,7 +511,7 @@ describe('secrecy: viewForPlayer', () => {
     const { room } = game9();
     const v = viewForPlayer(room, pid(room, 'Cara'));
     assert.deepEqual(v.me.guide, roleGuide('villager')); // her own guide; it names the Mafia as the enemy
-    const s = JSON.stringify({ ...v, me: { ...v.me, guide: null } });
+    const s = J({ ...v, me: { ...v.me, guide: null } });
     for (const [n, r] of ROLES9) {
       if (n === 'Cara') continue;
       for (const sec of secretsOf(r)) assert.ok(!s.includes(sec), `${r} secret ${sec} leaked to Cara`);
@@ -521,7 +523,7 @@ describe('secrecy: viewForPlayer', () => {
     const { room } = game9();
     const v = viewForPlayer(room, pid(room, 'Ivy'));
     assert.equal(v.me.role.id, 'cop');
-    const s = JSON.stringify(v);
+    const s = J(v);
     for (const sec of secretsOf('insane_cop')) assert.ok(!s.includes(sec), `insane_cop secret ${sec}`);
     assert.ok(!/Insane/i.test(s));
   });
@@ -533,7 +535,7 @@ describe('secrecy: viewForPlayer', () => {
       assert.equal(v.me.role.id, 'villager');
       // The guide is the plain villager guide (which names the Mafia as the enemy); everything else stays silent.
       assert.deepEqual(v.me.guide, roleGuide('villager'));
-      const s = JSON.stringify({ ...v, me: { ...v.me, guide: null } });
+      const s = J({ ...v, me: { ...v.me, guide: null } });
       for (const sec of secretsOf(real)) assert.ok(!s.includes(sec), `${real} secret ${sec}`);
       assert.ok(!/Mafia/.test(s.replace(/"alignment":"[a-z]+"/g, '')), 'mafia mentioned in traitor/miller view');
     }
@@ -542,7 +544,7 @@ describe('secrecy: viewForPlayer', () => {
   test('other players never learn a seesAs role holder\'s real role, even via the players list', () => {
     const { room } = game9();
     for (const [viewer] of ROLES9) {
-      const s = JSON.stringify(viewForPlayer(room, pid(room, viewer)));
+      const s = J(viewForPlayer(room, pid(room, viewer)));
       if (viewer !== 'Ivy') assert.ok(!s.includes('insane_cop'));
       if (viewer !== 'Mill') assert.ok(!s.includes('"miller"'));
       if (viewer !== 'Trey') assert.ok(!s.includes('"traitor"'));
@@ -555,7 +557,7 @@ describe('secrecy: viewForPlayer', () => {
     const team = v.me.team.map((t) => t.name).sort();
     assert.deepEqual(team, ['Fath', 'Jan']);
     assert.equal(v.me.team.find((t) => t.name === 'Fath').role.id, 'godfather');
-    const s = JSON.stringify(v);
+    const s = J(v);
     for (const r of ['insane_cop', 'miller', 'traitor', 'veteran', 'executioner']) assert.ok(!s.includes(`"${r}"`), r);
     // town does not see mafia
     const c = viewForPlayer(room, pid(room, 'Cara'));
@@ -573,7 +575,7 @@ describe('secrecy: viewForPlayer', () => {
     assert.equal(m.me.team[0].role, null);
     const mer = viewForPlayer(room, pid(room, 'Player4'));
     assert.deepEqual(mer.me.knows.map((k) => k.name), ['Player1']);
-    assert.ok(!JSON.stringify(mer).includes('"mafia"'), 'merlin learns names, not role cards');
+    assert.ok(!J(mer).includes('"mafia"'), 'merlin learns names, not role cards');
   });
 
   test('dead non-hidden players\' roles are visible (real role, even for seesAs roles)', () => {
@@ -592,7 +594,7 @@ describe('secrecy: viewForPlayer', () => {
     t.alive = false; t.deathCause = 'killed by the Mafia'; t.roleHidden = true;
     const v = viewForPlayer(room, pid(room, 'Cara'));
     assert.equal(v.players.find((q) => q.name === 'Trey').role, null);
-    const s = JSON.stringify(v);
+    const s = J(v);
     for (const sec of secretsOf('traitor')) assert.ok(!s.includes(sec));
     // the dead player still knows their own role
     assert.equal(viewForPlayer(room, t.id).me.role.id, 'villager');
@@ -624,7 +626,7 @@ describe('secrecy: viewForPlayer', () => {
     const ex = P(room, 'Exe'); ex.target = pid(room, 'Cara');
     assert.equal(viewForPlayer(room, ex.id).me.target, 'Cara');
     assert.equal(viewForPlayer(room, pid(room, 'Cara')).me.target, null);
-    assert.ok(!JSON.stringify(viewForPlayer(room, pid(room, 'Mob'))).includes('executioner'));
+    assert.ok(!J(viewForPlayer(room, pid(room, 'Mob'))).includes('executioner'));
   });
 
   test('public log and death causes never reveal living players\' roles', () => {
@@ -640,7 +642,7 @@ describe('secrecy: viewForPlayer', () => {
     assert.equal(P(room2, 'Cop').alive, false);
     for (const p of room2.players) {
       const v = viewForPlayer(room2, p.id);
-      const s = JSON.stringify(v);
+      const s = J(v);
       // The public cause must stay neutral. (The Veteran's own role blurb legitimately says "go on alert".)
       if (p.name !== 'Vet') assert.ok(!/on alert/i.test(s), `view of ${p.name} leaks the veteran: ${s.match(/shot by[^"]*/)?.[0]}`);
       assert.ok(!s.includes('shot by Vet'));
@@ -684,7 +686,7 @@ describe('secrecy: viewForPlayer', () => {
             if (q.role) assert.ok(!real.alive ? !real.roleHidden : false, `${viewer.name} sees living/hidden ${real.name}`);
             void teamIds;
           }
-          const s = JSON.stringify(v);
+          const s = J(v);
           assert.ok(!s.includes(room.hostKey));
           for (const p of room.players) assert.ok(!s.includes(p.token));
         }
@@ -775,7 +777,7 @@ describe('blind card flow', () => {
     H(room, { type: 'startNight' });
     for (const p of room.players) {
       const v = viewForPlayer(room, p.id);
-      const s = JSON.stringify(v);
+      const s = J(v);
       assert.equal(v.me.role, null);
       assert.ok(v.players.every((q) => q.role === null));
       assert.ok(!s.includes(room.hostKey));
@@ -804,9 +806,9 @@ describe('blind card flow', () => {
     H(room, { type: 'startNight' });
     H(room, { type: 'identifyRole', roleId: 'mafia', playerIds: [pid(room, 'Player1')] });
     const v = viewForPlayer(room, pid(room, 'Player2'));
-    const s = JSON.stringify(v.deckKey);
+    const s = J(v.deckKey);
     for (const q of room.players) assert.ok(!s.includes(q.id) && !s.includes(q.name));
-    assert.ok(!/"deck"/.test(JSON.stringify(v)));
+    assert.ok(!/"deck"/.test(J(v)));
   });
 
   test('blind game plays to the end', () => {
@@ -832,7 +834,7 @@ describe('custom roles', () => {
     for (const me of twins) {
       const v = viewForPlayer(room, me.id);
       assert.equal(v.me.role.id, 'villager');
-      const dump = JSON.stringify(v);
+      const dump = J(v);
       assert.ok(!dump.includes('Deep Sleeper') && !dump.includes('c_sleep1'), dump);
       const twin = v.me.team.find((t) => twins.some((p) => p.id === t.id));
       assert.equal(twin.role.id, 'villager');
@@ -851,7 +853,7 @@ describe('custom roles', () => {
     for (const bad of [null, undefined, 5, 'x', {}, { id: 'c_ab', name: 'x' }, { id: 'C_abcd', name: 'x' }, { id: 'c_abcd' },
       { id: 'c_abcd', name: '   ' }, { id: 'c_abcd', name: '<>' }, { id: 'c_abcdefghijklm', name: 'x' }, { id: 'cop', name: 'Fake Cop' },
       { id: 'c_ab-cd', name: 'x' }]) {
-      assert.equal(sanitizeRole(bad), null, JSON.stringify(bad));
+      assert.equal(sanitizeRole(bad), null, J(bad));
     }
     assert.ok(sanitizeRole({ id: 'c_abcd', name: 'Okay' }));
   });
@@ -878,7 +880,7 @@ describe('custom roles', () => {
       id: 'c_xss01', name: '<img src=x onerror=1>Bob', blurb: '<script>alert(1)</script>', emoji: '<b>', day: '<i>d</i>',
       onDeath: '>>x<<', onCondemn: '<c>', night1: '<n>', action: { type: 'protect', prompt: '<p>go</p>' },
     });
-    const dump = JSON.stringify(r);
+    const dump = J(r);
     assert.ok(!/[<>]/.test(dump), dump);
     assert.ok(!/[\u0000-\u001f]/.test(sanitizeRole({ id: 'c_ctl01', name: 'a\u0000b\nc' }).name));
   });
@@ -963,7 +965,7 @@ describe('custom roles', () => {
     const holder = room.players.find((p) => p.roleId === 'c_view1');
     assert.equal(viewForPlayer(room, holder.id).me.role.name, 'Viewer');
     const other = room.players.find((p) => p.roleId === 'cop');
-    assert.ok(!JSON.stringify(viewForPlayer(room, other.id)).includes('c_view1'));
+    assert.ok(!J(viewForPlayer(room, other.id)).includes('c_view1'));
   });
 
   test('custom role in a mafia meeting joins meeting:mafia', () => {
