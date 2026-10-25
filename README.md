@@ -76,3 +76,12 @@ Cloudflare token, account ID and R2 keys, and the Spaceship API key and secret, 
   `export CLOUDFLARE_API_TOKEN=$(op item get "Cloudflare API token and R2" --vault Dev-Services --fields credential --reveal) CLOUDFLARE_ACCOUNT_ID=$(op item get "Cloudflare API token and R2" --vault Dev-Services --fields "Account ID") && npm run deploy`
   On the Mac the desktop app also works, but it can ask for approval; the service-account token never does.
 - Win rules: mafia (weighted) >= everyone else with no killer/cult; killer wins on parity when no mafia/cult; cult wins when all alive are cult. If Mafia and Killer both remain, no auto-win: the Host can declare a winner.
+
+## Deploy file
+
+For deploying through the Cloudflare API without wrangler (worker name, Room binding and compat date are read from `wrangler.jsonc`; no migrations are sent, so never pass a name by hand):
+
+```
+node scripts/build-embedded.mjs          # needs esbuild: `npm i`, or `npx esbuild`'s copy from wrangler
+node scripts/build-deploy.mjs <outFile>  # writes the deploy function file; no secrets embedded
+```

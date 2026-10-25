@@ -10,3 +10,4 @@ art-source/sheets/
 
 # OS noise
 .DS_Store
+dist-embedded/

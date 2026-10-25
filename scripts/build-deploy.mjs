@@ -1,0 +1,19 @@
+// usage: node scripts/build-deploy.mjs <outFile>   (run `node scripts/build-embedded.mjs` first)
+// Writes a Cloudflare-API deploy function file. Worker name, DO bindings and compatibility_date come from wrangler.jsonc only.
+import fs from 'node:fs';
+import { deployConfig } from './deploy-config.mjs';
+
+const out = process.argv[2];
+if (!out) { console.error('usage: node scripts/build-deploy.mjs <outFile>'); process.exit(1); }
+const { name, metadata } = deployConfig(fs.readFileSync('wrangler.jsonc', 'utf8'));
+const W = fs.readFileSync('dist-embedded/worker.js', 'utf8');
+const fn = `async () => { const ACC="a3303cef4b0984b2859ef104bd74df1e"; const NAME=${JSON.stringify(name)}; const WORKER=${JSON.stringify(W)};
+ const metadata = ${JSON.stringify(metadata)};
+ const B = '----cn' + Date.now();
+ const body = ['--' + B, 'Content-Disposition: form-data; name="metadata"', 'Content-Type: application/json', '', JSON.stringify(metadata),
+   '--' + B, 'Content-Disposition: form-data; name="worker.js"; filename="worker.js"', 'Content-Type: application/javascript+module', '', WORKER, '--' + B + '--', ''].join('\\r\\n');
+ const put = await cloudflare.request({ method: 'PUT', path: '/accounts/' + ACC + '/workers/scripts/' + NAME, body, contentType: 'multipart/form-data; boundary=' + B, rawBody: true });
+ const sub = await cloudflare.request({ method: 'POST', path: '/accounts/' + ACC + '/workers/scripts/' + NAME + '/subdomain', body: { enabled: true, previews_enabled: false } });
+ return { script: put.success, errors: put.errors, etag: put.result && put.result.etag, subdomain: sub.success };
+}`;
+fs.writeFileSync(out, fn); console.log(out, fn.length, 'worker=' + name);
