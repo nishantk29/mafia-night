@@ -7,7 +7,7 @@ import { newRoom, reduce, viewForPlayer } from '../public/js/room.js';
 import { themeText } from '../public/js/theme.js';
 
 function mk(spec, { night = 1, phase = 'night' } = {}) {
-  const room = newRoom('TEST', 'hostkey-secret');
+  const room = newRoom('TEST', 'hostkey-secret'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
   for (const [name, roleId] of spec) {
     const r = reduce(room, { anon: true }, { type: 'join', name });
     assert.ok(r.ok, r.error);

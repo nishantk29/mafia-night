@@ -3,7 +3,7 @@ import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
   setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
-  hasStoryScript, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
+  hasStoryScript, hasNightOnlyChecks, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
@@ -22,7 +22,7 @@ const rid = (n = 6) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) =>
 export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
-    nightVersion: 4, // dead roles are still called at night (2), the Host's steps look the same alive or dead (3), the Host script (4); rooms stored without this field are version 1 (see engine nightVersion)
+    nightVersion: 5, // investigator results only at night (5), dead roles are still called at night (2), the Host's steps look the same alive or dead (3), the Host script (4); rooms stored without this field are version 1 (see engine nightVersion)
     config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
     players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
@@ -224,11 +224,19 @@ export function reduce(room, actor, a) {
       if (!p || !ROLE_BY_ID[resolveRoleId(a.roleId)]) return err('Bad role.');
       p.roleId = resolveRoleId(a.roleId); return { ok: true };
     }
+    case 'upgradeNight': { // host opt-in for legacy rooms; always applied when the next night starts, never mid-step
+      if (nightVersion(room) >= 5) return err('Already using the new night script.');
+      if (a.off) delete room.upgradeNext;
+      else if (room.phase === 'lobby') room.nightVersion = 5;
+      else room.upgradeNext = 5;
+      return { ok: true };
+    }
     case 'startNight': {
       if (!['dealt', 'day'].includes(room.phase)) return err('Cannot start a night now.');
       if (room.pending.length) return err('Resolve the pending prompts first.');
       const blindFirst = isBlind(room) && room.night === 0;
       if (!blindFirst && room.players.some((p) => !p.roleId)) return err('Every player needs a role first.');
+      if (room.upgradeNext) { room.nightVersion = Math.max(nightVersion(room), room.upgradeNext); delete room.upgradeNext; }
       room.night += 1; room.phase = 'night'; room.condemnedDay = null;
       if (room.night === 1) {
         finalizeBlind(room);
@@ -389,7 +397,7 @@ export function viewForHost(room, connected = new Set()) {
   const over = room.phase === 'over';
   return {
     story: storyOf(room),
-    kind: 'host', code: room.code, nightVersion: room.nightVersion || 1, phase: room.phase, day: room.day, night: room.night, config: room.config,
+    kind: 'host', code: room.code, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: room.config,
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
@@ -449,7 +457,7 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
     me: {
       id: me.id, name: me.name, alive: me.alive, card: me.card,
       role: shownId ? roleCard(shownId) : null, guide: shownId ? roleGuide(shownId, rulesOf(room)) : null,
-      results: (room.results || []).filter((r) => r.ids.includes(me.id)).map((r) => ({ night: r.night, text: r.text })), team, knows,
+      results: hasNightOnlyChecks(room) ? [] : (room.results || []).filter((r) => r.ids.includes(me.id)).map((r) => ({ night: r.night, text: r.text })), team, knows,
       target: real?.needsTarget && me.target ? playerById(room, me.target)?.name : null,
       claimsLeft: Math.max(0, MAX_WRONG_CLAIMS - me.wrongClaims),
       won: over ? finalWinners(room).some((w) => w.id === me.id) : null,

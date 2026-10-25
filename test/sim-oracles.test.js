@@ -30,7 +30,7 @@ function plansFor(R, games) {
 // Plays one game in-process and returns every problem the oracles found, plus the roles it dealt.
 function play(plan, seed, rules = {}) {
   const R = rng(seed);
-  const room = newRoom('SIMT', 'k');
+  const room = newRoom('SIMT', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
   ok(room, { type: 'addPlayers', names: Array.from({ length: plan.n }, (_, i) => `P${i}`) });
   ok(room, { type: 'setCustomRoles', roles: CUSTOMS });
   ok(room, { type: 'setConfig', roles: plan.roles, rules });
@@ -72,7 +72,7 @@ describe('simulator helpers', () => {
     for (let i = 0; i < 200; i++) {
       const n = R.pick([5, 6, 8, 10]);
       const roles = Array.from({ length: n }, () => R.pick(CATALOGUE));
-      const room = newRoom('X', 'k');
+      const room = newRoom('X', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
       ok(room, { type: 'addPlayers', names: Array.from({ length: n }, (_, j) => `P${j}`) });
       ok(room, { type: 'setConfig', roles });
       assert.equal(!!reduce(room, host, { type: 'deal' }).error, !!dealRefusal(roles, n), roles.join(','));
@@ -98,7 +98,7 @@ describe('simulator helpers', () => {
   });
 
   test('nobody picks themselves except protectors, and only when the house rule allows it', () => {
-    const room = newRoom('X', 'k');
+    const room = newRoom('X', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
     ok(room, { type: 'addPlayers', names: ['Doc', 'Cop', 'Mo', 'Ma', 'V1', 'V2'] });
     ok(room, { type: 'setConfig', roles: ['doctor', 'cop', 'mafia', 'mafia', 'villager', 'villager'] });
     ok(room, { type: 'deal' });
@@ -116,7 +116,7 @@ describe('simulator helpers', () => {
   });
 
   test('coin-flip checks always get a coin', () => {
-    const room = newRoom('X', 'k');
+    const room = newRoom('X', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
     ok(room, { type: 'addPlayers', names: ['A', 'B', 'C', 'D', 'E', 'F'] });
     ok(room, { type: 'setConfig', roles: ['confused_cop', 'cop', 'wannabe', 'mafia', 'villager', 'villager'] });
     ok(room, { type: 'deal' }); ok(room, { type: 'startNight' });
@@ -129,7 +129,7 @@ describe('simulator helpers', () => {
   });
 
   test('a disguised role\'s real name is caught if it reaches the phone', () => {
-    const room = newRoom('X', 'k');
+    const room = newRoom('X', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
     ok(room, { type: 'addPlayers', names: ['A', 'B', 'C', 'D', 'E'] });
     ok(room, { type: 'setConfig', roles: ['insane_cop', 'mafia', 'villager', 'villager', 'villager'] });
     ok(room, { type: 'deal' });

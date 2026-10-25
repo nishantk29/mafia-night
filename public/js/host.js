@@ -458,6 +458,7 @@ function night(v) {
   const body = `<header class="phase-head"><h2 class="phase-title">Night ${v.night}</h2>
       <p class="muted">${blind1 ? 'Read each line aloud. When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
       ${v.shield ? `<p class="note is-warn">${ui('shield')} Virgin shield: nobody can be killed tonight.</p>` : ''}</header>
+    ${upgradeCard(v)}
     ${v.story?.prep?.length ? `<section class="story-prep"><h3 class="story-just">${ui('ear')} Before night ${v.night}: just for you</h3><ul>${v.story.prep.map((p) => `<li>${esc(p.text)}</li>`).join('')}</ul></section>` : ''}
     ${steps.length ? `${v.story ? storySay(v.story.open) : sayLine(START_CUE)}<ol class="cues" data-night="${v.night}" style="--steps:${steps.length}">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
       : empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.')}`;
@@ -528,16 +529,17 @@ function afterCoin(s, set, html) {
 }
 function tellNow(v, s, set) {
   if (s.kind !== 'action' || !LIVE.includes(s.type) || !set?.targets?.length) return '';
+  const nightOnly = v.nightVersion >= 5 && s.type === 'investigate'; // the check card is the only place the answer appears
   if (s.check === 'random' && set.flip) {
     const res = liveResult(v, s, set);
-    return coinEl(set) + (res ? afterCoin(s, set, `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p></div>`) : '');
+    return coinEl(set) + (res && !nightOnly ? afterCoin(s, set, `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p></div>`) : '');
   }
   if (COIN.includes(s.check) && !set.coin) {
     return `<div class="tell-now"><p class="note is-private">${ui('ear')} This result is a coin flip. Flip it now and say the answer as if it were true.</p>
       <button type="button" class="btn" data-a="coin" data-key="${s.key}">${ui('coin')} Flip a coin</button></div>`;
   }
   const res = liveResult(v, s, set);
-  if (!res) return '';
+  if (!res || nightOnly) return '';
   if (res.blocked) return `<div class="tell-now"><p class="note is-private">${ui('ear')} ${esc(res.note)} Tell them nothing happened.</p></div>`;
   return `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p>${res.note ? `<p class="note is-private">${esc(res.note)}</p>` : ''}</div>`;
 }
@@ -603,6 +605,16 @@ function cue(v, s, num, current, alive) {
   return `<li class="cue is-current" data-ck="${s.key}" aria-current="step"><span class="cue-n">${num}</span><div class="cue-body">${inner}</div></li>`;
 }
 
+// Legacy rooms (night script < 5): host-only opt-in, applied when the next night starts, never mid-step.
+function upgradeCard(v) {
+  if (v.nightVersion >= 5 || v.phase === 'lobby') return '';
+  const queued = !!v.upgradeNext;
+  return `<section class="block upgrade-night"><h2 class="block-title">Use the new night script from next night</h2>
+    <p class="note">Dead roles are still called at night, so nobody can tell who died. Takes effect when the next night starts; nothing changes mid-step.</p>
+    ${queued ? `<p class="note is-private">Switches on at the start of night ${v.night + 1}.</p><button type="button" class="btn ghost" data-a="upgradeNight" data-off="1">Undo</button>`
+      : `<button type="button" class="btn" data-a="upgradeNight">Use the new night script</button>`}</section>`;
+}
+
 // ---------------- day ----------------
 function day(v) {
   const rep = v.report && v.report.night === v.night ? v.report : null;
@@ -640,7 +652,7 @@ function day(v) {
       <div class="btn-row">${btn('danger', 'condemn', sel ? `${ui('gavel')} Condemn ${esc(pname(v, sel))}` : `${ui('gavel')} Choose who to condemn`, { on: !!sel, why: 'Choose who to condemn' })}
         <button type="button" class="btn ghost" data-a="noCondemn">Nobody today</button></div></section>`;
   return {
-    body: `${report}${pend}${vote}${abilities ? `<section class="block abilities"><h2 class="block-title">Day abilities</h2>${abilities}</section>` : ''}`,
+    body: `${report}${upgradeCard(v)}${pend}${vote}${abilities ? `<section class="block abilities"><h2 class="block-title">Day abilities</h2>${abilities}</section>` : ''}`,
     dock: btn('big', 'startNight', v.pending.length ? 'Answer the questions above first' : `Start night ${v.night + 1}`, { on: !v.pending.length, why: 'Answer the questions above first' }),
   };
 }

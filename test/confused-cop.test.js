@@ -8,7 +8,7 @@ import { newRoom, reduce, viewForPlayer, viewForHost } from '../public/js/room.j
 
 const host = { host: true };
 function mk(spec) {
-  const room = newRoom('TEST', 'hostkey-secret');
+  const room = newRoom('TEST', 'hostkey-secret'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
   for (const [name, roleId] of spec) {
     assert.ok(reduce(room, { anon: true }, { type: 'join', name }).ok);
     room.players.find((p) => p.name === name).roleId = roleId;
@@ -84,7 +84,7 @@ describe('pairing rule (requiresPartner)', () => {
   });
   test('the server refuses to deal without a Cop and accepts with one', () => {
     const run = (roles) => {
-      const room = newRoom('X', 'k');
+      const room = newRoom('X', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
       reduce(room, host, { type: 'addPlayers', names: ['A', 'B', 'C', 'D', 'E', 'F'] });
       reduce(room, host, { type: 'setConfig', roles });
       return reduce(room, host, { type: 'deal' });
