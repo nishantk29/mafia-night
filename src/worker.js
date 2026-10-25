@@ -159,6 +159,7 @@ export class Room extends DurableObject {
     if (res.error) { this.send(ws, { type: 'error', error: res.error }); return; }
     await this.save();
     this.broadcast(justEnded(before, this.room));
+    if (res.data?.error) this.send(ws, { type: 'error', error: res.data.error }); // a restart that could not deal: the Host lands on setup with the reason
   }
 
   async webSocketClose(ws) { try { ws.close(); } catch { /* already closed */ } await this.ready; this.broadcast(); }

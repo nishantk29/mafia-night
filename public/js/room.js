@@ -49,6 +49,19 @@ function resetDeal(room) {
   delete room.graveyard;
 }
 
+// Restart: a fresh game for the same room. Keeps code, hostKey, players and config; moves the room to the latest night version.
+export function restartGame(room) {
+  resetDeal(room);
+  room.nightVersion = LATEST_NIGHT_VERSION;
+  delete room.upgradeNext;
+  room.results = []; room.lastReport = null; room.log = []; room.framed = []; room.pending = [];
+  room.gameNo = (room.gameNo || 1) + 1;
+  log(room, `Game ${room.gameNo} started.`);
+}
+
+// A restart keeps the code and players but bumps gameNo; the client then drops its per-game UI state.
+export const isNewGame = (prev, next) => !!prev && !!next && !!prev.code && prev.code === next.code && (prev.gameNo || 1) !== (next.gameNo || 1);
+
 // ---------- Graveyard chat (v3 rooms) ----------
 // Only the dead and the Host may post, and only the dead and the Host are ever sent it (see messagesFor).
 // Any other channel is rejected, so a future living chat inherits "the dead can't speak to the living".
@@ -113,7 +126,7 @@ export function reduce(room, actor, a) {
   if (t === 'playAgain') {
     if (!host && !(actor.playerId && playerById(room, actor.playerId))) return err('Not in this room.');
     if (room.phase !== 'over') return err('The game is not over.');
-    resetDeal(room); return { ok: true };
+    restartGame(room); return { ok: true };
   }
 
   if (!host) return err('Host only.');
@@ -181,22 +194,14 @@ export function reduce(room, actor, a) {
     }
     case 'deal': {
       if (room.phase !== 'lobby') return err('Already dealt.');
-      const n = room.players.length;
-      if (n < MIN_PLAYERS) return err(`Need at least ${MIN_PLAYERS} players (you have ${n}).`);
-      if (room.config.roles.length !== n) return err(`Pick exactly ${n} roles (you picked ${room.config.roles.length}).`);
-      const needsMafia = room.config.roles.some((r) => factionOf(r) === 'mafia');
-      if (!needsMafia) return err('Add at least one Mafia-aligned role.');
-      const fatal = setupWarnings(room.config.roles, n).find((w) => w.level === 'error');
-      if (fatal) return err(fatal.text);
-      if (room.config.mode === 'app') {
-        const map = dealRoles(room.config.roles, room.players.map((p) => p.id));
-        for (const p of room.players) p.roleId = map[p.id];
-      } else {
-        room.deck = { map: buildDeckMap(room.config.roles, room.config.deckStyle), claimed: {} };
-      }
-      room.phase = 'dealt';
-      log(room, room.config.mode === 'app' ? 'Roles dealt to phones.' : 'Card deck built. Deal the cards.');
-      return { ok: true };
+      return dealNow(room);
+    }
+    case 'restart': {
+      if (room.phase === 'lobby') return err('Nothing to restart yet.');
+      restartGame(room);
+      if (a.setup) return { ok: true, data: { dealt: false } };
+      const r = dealNow(room);
+      return r.error ? { ok: true, data: { dealt: false, error: r.error } } : { ok: true, data: { dealt: true } };
     }
     case 'undeal': {
       if (room.phase !== 'dealt') return err('Nothing to undo.');
@@ -337,9 +342,30 @@ export function reduce(room, actor, a) {
       room.winner = { side: String(a.side || 'manual').slice(0, 20), reason: String(a.reason || 'Declared by the Host.').slice(0, 120) };
       room.phase = 'over'; log(room, `Game over: ${room.winner.side} wins.`); return { ok: true };
     }
-    case 'newGame': { resetDeal(room); return { ok: true }; }
+    case 'newGame': { restartGame(room); return { ok: true }; }
     default: return err('Unknown action.');
   }
+}
+
+// Validates the setup and deals (app mode: roles to phones; cards mode: builds the deck).
+function dealNow(room) {
+  const err = (e) => ({ error: e });
+  const n = room.players.length;
+  if (n < MIN_PLAYERS) return err(`Need at least ${MIN_PLAYERS} players (you have ${n}).`);
+  if (room.config.roles.length !== n) return err(`Pick exactly ${n} roles (you picked ${room.config.roles.length}).`);
+  const needsMafia = room.config.roles.some((r) => factionOf(r) === 'mafia');
+  if (!needsMafia) return err('Add at least one Mafia-aligned role.');
+  const fatal = setupWarnings(room.config.roles, n).find((w) => w.level === 'error');
+  if (fatal) return err(fatal.text);
+  if (room.config.mode === 'app') {
+    const map = dealRoles(room.config.roles, room.players.map((p) => p.id));
+    for (const p of room.players) p.roleId = map[p.id];
+  } else {
+    room.deck = { map: buildDeckMap(room.config.roles, room.config.deckStyle), claimed: {} };
+  }
+  room.phase = 'dealt';
+  log(room, room.config.mode === 'app' ? 'Roles dealt to phones.' : 'Card deck built. Deal the cards.');
+  return { ok: true };
 }
 
 // ---------- projections (what each viewer is allowed to see) ----------
@@ -397,7 +423,7 @@ export function viewForHost(room, connected = new Set()) {
   const over = room.phase === 'over';
   return {
     story: storyOf(room),
-    kind: 'host', code: room.code, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: room.config,
+    kind: 'host', code: room.code, gameNo: room.gameNo || 1, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: room.config,
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
@@ -425,7 +451,7 @@ export function migrateRoleIds(room) {
 export function roomFromView(v) {
   migrateRoleIds(v);
   return {
-    code: v.code, nightVersion: v.nightVersion, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, winner: null,
+    code: v.code, gameNo: v.gameNo, nightVersion: v.nightVersion, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, winner: null,
     players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },
     shield: v.shield, dayUsed: { ...(v.dayUsed || {}) }, sideWins: [...(v.sideWins || [])], pending: [], log: [], framed: [],
   };
@@ -453,7 +479,7 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
   }
   const visible = (q) => over || (rulesOf(room).revealOnDeath && !q.alive && !q.roleHidden);
   return {
-    kind: 'player', code: room.code, phase: room.phase, day: room.day, night: room.night, mode: room.config.mode, theme: room.config.theme || 'city',
+    kind: 'player', code: room.code, gameNo: room.gameNo || 1, phase: room.phase, day: room.day, night: room.night, mode: room.config.mode, theme: room.config.theme || 'city',
     me: {
       id: me.id, name: me.name, alive: me.alive, card: me.card,
       role: shownId ? roleCard(shownId) : null, guide: shownId ? roleGuide(shownId, rulesOf(room)) : null,

@@ -13,8 +13,8 @@ import { hostScreen, checkCardFor } from './host.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
-import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn } from './fx.js';
-import { gameOverEvent } from './room.js';
+import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn, restartIn } from './fx.js';
+import { gameOverEvent, isNewGame } from './room.js';
 import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
@@ -83,6 +83,7 @@ function paint() {
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
   applyRoleSearch();
   afterRender();
+  if (opened === 'restart') restartIn();
   gameAwake((S.mode === 'host' || S.mode === 'local') && ['dealt', 'night', 'day'].includes(S.view?.phase));
   if (opened === 'deal') buzz(18);
   window.scrollTo(0, y);
@@ -205,7 +206,7 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
+        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
       else if (m.type === 'graveyard') { S.graveyard = m.entries; S.render(); }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
@@ -223,6 +224,14 @@ function wsTransport(code, helloFn) {
   };
 }
 
+// A restarted game (same code, new gameNo): forget everything tied to the old game; the stored player token still works.
+function newGameUi(next) {
+  closeVictory();
+  Object.assign(S.ui, { night: { n: 0, actions: {}, picks: {} }, checkCard: null, checkSeen: {}, reveal: false, endConfirm: false, restartConfirm: false, condemn: null, declare: false, gy: false, tab: 'game', sheet: null, settings: false, anim: 'restart' });
+  S.graveyard = null; S.gyShown = 0;
+  if (next?.kind === 'player') S.toast('New game started');
+}
+
 // Cult + Serial Killer stalemate: open the Host's Declare a winner sheet once, the moment it starts.
 function autoDeclare(prev, view) {
   if (view?.kind === 'host' && view.stalemate && !prev?.stalemate) { S.ui.declare = true; S.ui.anim = 'modal'; }
@@ -236,7 +245,7 @@ function localTransport() {
   if (!room) { room = newRoom('LOCAL', 'local'); room.config.mode = 'cards'; }
   const emit = () => {
     store.set(KEY, JSON.stringify(room)); registerRoles(room.config.customRoles);
-    const prev = S.view; S.view = viewForHost(room, new Set()); autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
+    const prev = S.view; const next = viewForHost(room, new Set()); if (isNewGame(prev, next)) newGameUi(next); S.view = next; autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
     if (prev && prev.phase !== 'over' && room.phase === 'over') showVictory(gameOverEvent(room)); // single device: no server to announce it
   };
   setTimeout(emit, 0);
@@ -246,6 +255,7 @@ function localTransport() {
       const r = reduce(room, { host: true }, a);
       if (r.error) S.toast(r.error);
       else if (r.data?.skipped?.length) S.toast(`Skipped: ${r.data.skipped.join(', ')}`);
+      if (r.data?.error) S.toast(r.data.error);
       emit();
     },
     close() {},
@@ -461,6 +471,10 @@ const A = {
     send({ type: 'declareWinner', side, reason });
   },
   playAgain() { closeVictory(); S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'playAgain' }); },
+  restart() { S.ui.restartConfirm = false; S.ui.settings = false; send({ type: 'restart' }); },
+  restartSetup() { S.ui.restartConfirm = false; S.ui.settings = false; send({ type: 'restart', setup: true }); },
+  restartAsk() { S.ui.settings = false; S.ui.restartConfirm = true; S.ui.anim = 'modal'; S.render(); },
+  restartNo() { S.ui.restartConfirm = false; S.render(); },
   closeVictory() { closeVictory(); S.ui.anim = 'roles'; S.render(); },
   setupMode(el) {
     const m = el.dataset.v; if (S.ui.setupMode === m) return;
@@ -606,6 +620,7 @@ document.addEventListener('keydown', (ev) => {
     if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
     if (S.ui.endConfirm) { A.endGameNo(); return; }
+    if (S.ui.restartConfirm) { A.restartNo(); return; }
     if (S.ui.declare) { A.closeDeclare(); return; }
     if (S.ui.sheet) { const id = S.ui.sheet; A.closeSheet(); refocus(`[data-a="seat"][data-id="${CSS.escape(id)}"]`, ''); return; }
     return;

@@ -139,7 +139,9 @@ export const hasStoryScript = (room) => nightVersion(room) >= 4;
 export const hasNightOnlyChecks = (room) => nightVersion(room) >= 5;
 // 6: the Godfather shows as a Villager to the Detective's exact-role check (the Cop still sees NOT MAFIA via appearsAs).
 export const hasGodfatherDisguise = (room) => nightVersion(room) >= 6;
-export const LATEST_NIGHT_VERSION = 6;
+// 7: Tracker, Lookout and Coroner results (track/watch/autopsy) are night-only too, through the check card, like the Cop.
+export const hasNightOnlyInfo = (room) => nightVersion(room) >= 7;
+export const LATEST_NIGHT_VERSION = 7;
 
 const isQuiet = (st) => st.kind === 'info' && !st.spoken;
 export function nightScript(room) {
@@ -551,7 +553,7 @@ export function resolveNight(room, actions, opts = {}) {
   for (const a of active.filter((x) => ['investigate', 'track', 'watch', 'autopsy'].includes(x.s.type))) {
     const actorIds = a.s.actors;
     const t = alivePlayer(a.targets[0]);
-    let text; let note = ''; let coinInfo = null;
+    let text; let note = ''; let coinInfo = null; let card = null;
     if (a.s.type === 'investigate') {
       const chk = a.s.check;
       if (chk === 'alignment') text = `${t.name} is ${sideName(appearsAs(room, t))}.`;
@@ -580,13 +582,17 @@ export function resolveNight(room, actions, opts = {}) {
     } else if (a.s.type === 'track') {
       const went = wokeBy(a).filter((x) => x.visitors.includes(t.id) && x.targets.length).flatMap((x) => x.targets).map((id) => nameOf(room, id));
       text = went.length ? `${t.name} visited ${[...new Set(went)].join(', ')}.` : `${t.name} stayed home.`;
+      card = { kind: 'track', text: went.length ? [...new Set(went)].map((n) => n.toUpperCase()).join(' & ') : 'STAYED HOME' };
     } else if (a.s.type === 'watch') {
       const who = wokeBy(a).filter((x) => x.targets.includes(t.id)).flatMap((x) => x.visitors).filter((id) => !actorIds.includes(id)).map((id) => nameOf(room, id));
       text = who.length ? `${[...new Set(who)].join(', ')} visited ${t.name}.` : `Nobody visited ${t.name}.`;
+      card = { kind: 'watch', text: who.length ? [...new Set(who)].map((n) => n.toUpperCase()).join(' & ') : 'NOBODY' };
     } else if (a.s.type === 'autopsy') {
       text = `${t.name} was the ${ROLE_BY_ID[t.roleId].name}.`;
+      card = { kind: 'role', text: ROLE_BY_ID[t.roleId].name.toUpperCase() };
     }
-    if (!(hasNightOnlyChecks(room) && a.s.type === 'investigate' && !opts.preview)) rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(coinInfo ? { flip: coinInfo.flip } : {}) });
+    const nightOnly = a.s.type === 'investigate' ? hasNightOnlyChecks(room) : hasNightOnlyInfo(room);
+    if (!(nightOnly && !opts.preview)) rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(card ? { card } : {}), ...(coinInfo ? { flip: coinInfo.flip } : {}) });
     if (coinInfo) { (rep.coins ||= []).push({ key: a.s.key, flip: coinInfo.flip, text: coinInfo.text }); log(room, `Night ${room.night}: ${coinInfo.text}`, { private: true }); }
   }
 
@@ -641,9 +647,12 @@ export function morningAnnouncement(room, report) {
 // The Host's full-screen "show the player" card for an investigation: { kind, text }, or null. `result` is the
 // previewNight answer (null while a coin flip is pending). Never holds a player name or a number.
 export function checkCard(room, step, result) {
-  if (!hasStoryScript(room) || !step || step.kind !== 'action' || step.type !== 'investigate' || !result) return null;
+  if (!hasStoryScript(room) || !step || step.kind !== 'action' || !result) return null;
+  const isInfo = ['track', 'watch', 'autopsy'].includes(step.type);
+  if (step.type !== 'investigate' && !(isInfo && hasNightOnlyInfo(room))) return null;
   if (result.neutral) return { kind: 'none', text: 'NO ANSWER' };
   if (result.blocked) return null;
+  if (isInfo) return result.card || null;
   const t = String(result.text || '');
   if (step.check === 'role') {
     const hit = Object.values(ROLE_BY_ID).filter((r) => t.endsWith(` is the ${r.name}.`)).sort((a, b) => b.name.length - a.name.length)[0];

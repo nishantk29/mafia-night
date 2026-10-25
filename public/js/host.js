@@ -58,7 +58,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
@@ -91,8 +91,20 @@ function settingsSheet() {
     <div class="rules"><button type="button" class="rule" role="switch" aria-checked="${on}" data-a="toggleAnim">
       <span class="rule-text"><span class="rule-title">Animations</span><span class="rule-desc">Night and day scenes, card flips and the win screen. Off keeps everything still.</span></span>
       <span class="switch" aria-hidden="true"><i></i></span></button></div>
+    ${S.view?.phase && S.view.phase !== 'lobby' ? `<div class="end-game"><button type="button" class="btn ghost" data-a="restartAsk">Restart</button>
+      <p class="muted">Same code and players. New roles, back to the reveal.</p></div>` : ''}
     ${S.mode === 'host' ? `<div class="end-game"><button type="button" class="btn ghost danger" data-a="endGameAsk">End game</button>
       <p class="muted">Closes the room for everyone and frees the code.</p></div>` : ''}
+  </div></div>`;
+}
+
+// Restart: a confirm sheet, because it throws away the current game (the room, players and setup stay).
+function restartSheet() {
+  return `<div class="sheet-bg" data-a="restartNo"><div class="sheet is-entering" role="alertdialog" aria-modal="true" aria-labelledby="restart-title" data-stop>
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><h2 class="sheet-title" id="restart-title">Restart the game?</h2><button type="button" class="icon-btn x-btn" data-a="restartNo" aria-label="Close">${ui('x')}</button></div>
+    <p>Same code and players. Everyone gets a new role and goes back to the reveal.</p>
+    <div class="btn-row"><button type="button" class="btn ghost" data-a="restartNo">Keep playing</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button><button type="button" class="btn" data-a="restart">Restart now</button></div>
   </div></div>`;
 }
 
@@ -446,7 +458,7 @@ function night(v) {
   const n = S.ui.night;
   if (n.n !== v.night) { n.n = v.night; n.actions = {}; n.picks = {}; }
   const steps = v.script;
-  syncCheck(v, steps.filter((s) => s.kind === 'action' && s.type === 'investigate'));
+  syncCheck(v, steps.filter((s) => s.kind === 'action' && (s.type === 'investigate' || (v.nightVersion >= 7 && LIVE.includes(s.type)))));
   const idSteps = steps.filter((s) => s.kind === 'identify');
   const actSteps = steps.filter((s) => s.kind === 'action');
   const pendingAct = actSteps.filter((s) => !n.actions[s.key]);
@@ -529,7 +541,7 @@ function afterCoin(s, set, html) {
 }
 function tellNow(v, s, set) {
   if (s.kind !== 'action' || !LIVE.includes(s.type) || !set?.targets?.length) return '';
-  const nightOnly = v.nightVersion >= 5 && s.type === 'investigate'; // the check card is the only place the answer appears
+  const nightOnly = s.type === 'investigate' ? v.nightVersion >= 5 : v.nightVersion >= 7; // the check card is the only place the answer appears
   if (s.check === 'random' && set.flip) {
     const res = liveResult(v, s, set);
     return coinEl(set) + (res && !nightOnly ? afterCoin(s, set, `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p></div>`) : '');
@@ -671,7 +683,7 @@ function over(v) {
   return {
     body: `<section class="win ${ink}"><span class="win-mark">${ui('crown')}</span><h2 class="phase-title">${side}</h2><p class="muted">${esc(w?.reason || '')}</p></section>
       <section class="block${S.ui.anim === 'roles' ? ' reveal-rows' : ''}"><h2 class="block-title">Final roles</h2>${rows}</section>`,
-    dock: `<button type="button" class="btn big" data-a="newGame">New game with the same players</button>`,
+    dock: `<button type="button" class="btn big" data-a="restart">Restart</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button>`,
   };
 }
 
@@ -718,7 +730,7 @@ function logPane(v) {
     ${lines ? `<div class="log-head" aria-hidden="true"><span></span><span>Round · What happened</span></div><ol class="log">${lines}</ol>` : empty('log', 'The log fills up once night 1 starts.')}
     ${v.sideWins.length ? `<section class="block"><h2 class="block-title">Side wins</h2>${v.sideWins.map((s) => `<p class="note">${ui('trophy')} ${esc(s.reason)}</p>`).join('')}</section>` : ''}
     ${v.phase !== 'lobby' && v.phase !== 'over' ? `<section class="block tools"><h2 class="block-title">Host tools</h2>
-      <div class="btn-row"><button type="button" class="btn ghost" data-a="declare">${ui('crown')} Declare a winner</button><button type="button" class="btn ghost danger" data-a="newGame">Abandon game</button></div></section>` : ''}`;
+      <div class="btn-row"><button type="button" class="btn ghost" data-a="declare">${ui('crown')} Declare a winner</button><button type="button" class="btn ghost" data-a="restartAsk">Restart</button></div></section>` : ''}`;
 }
 
 // ---------------- custom role editor ----------------
