@@ -113,29 +113,16 @@ export function restartIn() {
 // ---------------------------------------------------------------- victory card
 let victoryEl = null;
 export const victoryOpen = () => !!victoryEl;
-const REASON_ICON = { town: 'sun', mafia: 'fedora', third: 'sparkle', none: 'skull' };
+// The victory is the page itself (one heading, then the cast): this only adds the buzz and the one burst on top.
 export function showVictory(ev) {
   closeVictory();
-  const host = layer(); if (!host) return;
-  const isHost = S.view?.kind === 'host';
-  const you = ev.won === true ? 'You won!' : ev.won === false ? 'You lost' : '';
-  const el = document.createElement('div');
-  el.className = `fx-victory is-${ev.theme}${animOn() ? '' : ' is-still'}`;
-  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'fx-v-team');
-  el.innerHTML = `<div class="fx-v-sun" aria-hidden="true"></div>
-    <div class="fx-in"><div class="fx-v-card glass" data-tilt>
-      <span class="fx-v-ico">${ui(REASON_ICON[ev.theme] || 'sparkle')}</span>
-      ${you ? `<p class="fx-v-you ${ev.won ? 'is-win' : 'is-loss'}">${you}</p>` : ''}
-      <h2 class="fx-v-team" id="fx-v-team">${esc(ev.team)} ${ev.theme === 'none' ? '' : 'won'}</h2>
-      ${ev.reason ? `<p class="fx-v-reason">${esc(ev.reason)}</p>` : ''}
-      ${isHost ? '' : '<p class="fx-v-reason">Waiting for the host to restart.</p>'}
-      <div class="fx-v-actions">${isHost ? '<button type="button" class="btn big" data-a="playAgain">Restart</button>' : ''}
-        <button type="button" class="btn ghost" data-a="closeVictory">Close</button></div>
-    </div></div>`;
-  host.append(el); victoryEl = el;
   if (ev.won !== false) buzz([40, 50, 90]);
-  if (animOn()) { const b = burst(el.querySelector('.fx-in'), ev.theme, 26, ev.theme === 'mafia' ? 'sparks' : 'confetti'); drop(b, 700); }
-  el.querySelector(isHost ? '[data-a="playAgain"]' : '[data-a="closeVictory"]').focus({ preventScroll: true });
+  const host = layer(); if (!host || !animOn()) return;
+  const el = document.createElement('div');
+  el.className = `fx-victory-burst is-${ev.theme}`; el.setAttribute('aria-hidden', 'true');
+  host.append(el); victoryEl = el;
+  drop(burst(el, ev.theme, 26, ev.theme === 'mafia' ? 'sparks' : 'confetti'), 700);
+  setTimeout(() => { if (victoryEl === el) closeVictory(); }, dur(900));
 }
 export function closeVictory() { victoryEl?.remove(); victoryEl = null; }
 

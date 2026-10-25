@@ -11,6 +11,7 @@ import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
 import { hostScreen, checkCardFor } from './host.js';
 import { pressNext } from './night-nav.js';
+import { worldOf, applyClosed } from './world.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
@@ -95,6 +96,7 @@ function paintScreen() {
   const { phase, shell } = shellAttrs();
   $html.dataset.phase = phase;
   $html.dataset.shell = shell;
+  $html.dataset.world = shell === 'player' ? worldOf(phase) : 'neutral'; // follows the broadcast phase, dead players included
   const opened = S.ui.anim;
   const keepMark = $app.querySelector('.splash .wordmark'); // the static splash logo stays (its drips and hub handoff keep playing)
   $app.innerHTML = screen();
@@ -209,7 +211,7 @@ let toastT;
 S.toast = (m) => { $toast.textContent = themeText(String(m), themeOf(S.view), seatNames()); $toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $toast.classList.remove('on'), 3200); };
 
 // ---------------- transports ----------------
-function closeTransport() { S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.ended = null; S.conn = true; S.connLong = false; }
+function closeTransport() { closeVictory(); S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.ended = null; S.conn = true; S.connLong = false; }
 
 function wsTransport(code, helloFn) {
   let ws; let closed = false; let tries = 0; let timer; let longTimer;
@@ -221,13 +223,13 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
+        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); if (m.view?.phase === 'over' && prev?.phase !== 'over') S.ui.anim = 'roles'; S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
       else if (m.type === 'graveyard') { S.graveyard = m.entries; S.render(); }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
       else if (m.type === 'error') S.toast(m.error);
       else if (m.type === 'joined') store.set(`mafia.player.${code}`, JSON.stringify({ playerId: m.playerId, token: m.token }));
-      else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); S.ui.endConfirm = false; S.ui.settings = false; S.view = null; S.graveyard = null; S.ended = m.reason === 'ended' ? (S.mode === 'host' ? 'host' : 'ended') : 'expired'; S.render(); }
+      else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); applyClosed(m, S.mode, closeVictory); S.render(); }
       else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = FATAL.closed; S.render(); } }
     };
     ws.onclose = () => { if (closed) return; S.conn = false; if (!longTimer) { longTimer = setTimeout(() => { if (!S.conn && !closed) { S.connLong = true; S.render(); } }, 20000); } S.render(); timer = setTimeout(open, Math.min(8000, 400 * 2 ** tries++)); };

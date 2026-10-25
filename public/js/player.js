@@ -9,6 +9,7 @@ import { ico, cardArt } from './art.js';
 import { ui } from './ui_icons.js';
 import { setupRoleList, rolesSheet, rolesButton } from './roles_sheet.js';
 import { graveyardPanel } from './graveyard.js';
+import { castList } from './world.js';
 import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
 
 const PHASE = { lobby: ['cards', 'Setting up'], dealt: ['cards', 'Roles dealt'], over: ['crown', 'Game over'] };
@@ -36,10 +37,14 @@ export function playerScreen(v) {
     hand = `<div class="waiting">${back()}<h2 class="phase-title">You’re in, ${esc(me.name)}</h2>
       <p class="muted">Waiting for the Host to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
   } else hand = playing(v);
+  const dead = !me.alive && v.phase !== 'lobby';
+  const handHtml = `<section class="hand${dead ? ' is-ghost' : ''}" aria-label="Your role">${hand}${me.role ? `<p class="roles-link"><button type="button" class="linkish" data-a="openRoles">${ui('rules')} Roles in this game</button></p>` : ''}</section>`;
+  const gy = !me.alive && S.graveyard ? graveyardPanel(me.id) : '';
+  // The dead see the Graveyard first; the living get exactly the old layout with no graveyard markup at all.
+  const top = dead && v.phase !== 'over' ? `<header class="gy-hero"><h1 class="gy-hero-title">You’re in the Graveyard</h1><p class="muted">You’re out of the game. You can still watch and talk with the other dead.</p></header>${gy}${handHtml}` : `${handHtml}${gy}`;
   return `${appbar(esc(me.name), `${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${toolsButton()}${rolesButton()}`)}
   <main class="wrap seat-view">
-    <section class="hand" aria-label="Your role">${hand}${me.role ? `<p class="roles-link"><button type="button" class="linkish" data-a="openRoles">${ui('rules')} Roles in this game</button></p>` : ''}</section>
-    ${!me.alive && S.graveyard ? graveyardPanel(me.id) : ''}
+    ${top}
     <section class="table-side" aria-label="The table">${tableSide(v)}</section>
     <p class="leave-row"><button type="button" class="linkish" data-a="leaveGame">${ui('back')} Leave this game</button></p>
   </main>${S.ui.tools ? toolsPanel(v, false) : ''}${S.ui.roles ? rolesSheet(setupRoleList(v.setupRoles || [], { forPlayer: true, unreliable: v.setupUnreliable || [] })) : ''}`;
@@ -85,8 +90,7 @@ function roleCard(v) {
     <div class="secret-rest" ${hid}>${me.target || team || me.knows.length ? `<div class="dossier">
       ${me.target ? `<p class="note">Your target: <b>${esc(me.target)}</b></p>` : ''}${team}
       ${me.knows.length ? `<p class="note">The Mafia are: ${me.knows.map((t) => `<b>${esc(t.name)}</b>`).join(', ')}</p>` : ''}</div>` : ''}
-    ${results(me.results)}${guide(me.guide)}</div></div>
-    ${me.alive || S.graveyard ? '' : `<p class="note is-out">${ui('skull')} You’re out of the game. Stay quiet and enjoy the show.</p>`}`;
+    ${results(me.results)}${guide(me.guide)}</div></div>`;
 }
 
 // What the Host told this player at night, newest first. Only readable while the card is held.
@@ -167,7 +171,7 @@ function over(v) {
   const side = { town: 'Town wins', mafia: 'Mafia wins', killer: 'Serial Killer wins', cult: 'Cult wins', none: 'Nobody wins' }[w?.side] || `${esc(w?.side || 'Nobody')} wins`;
   const ink = { town: 'a-town', mafia: 'a-mafia', none: '' }[w?.side] ?? 'a-third';
   return `<section class="win ${ink}"><span class="win-mark">${ui(me.won ? 'trophy' : 'crown')}</span><h2 class="phase-title">${me.won ? 'You won' : side}</h2>
-      ${me.won ? `<p class="muted">${side}.</p>` : ''}<p class="muted">${esc(w?.reason || '')}</p></section>
-    <section class="block${S.ui.anim === 'roles' ? ' reveal-rows' : ''}"><h2 class="block-title">Final roles</h2>${v.players.map((p) => `<div class="arow"><span class="arow-glyph">${p.role ? ico(p.role) : initial(p.name)}</span>
-      <span class="arow-name"><b>${esc(p.name)}</b> <span class="muted">${esc(p.role?.name || 'Role unknown')}</span></span>${p.alive ? '' : `<span class="arow-mark" aria-label="dead">${ui('skull')}</span>`}</div>`).join('')}</section>`;
+      ${me.won ? `<p class="muted">${side}.</p>` : ''}<p class="muted">${esc(w?.reason || '')}</p>
+      <p class="muted win-wait">Waiting for the host to restart.</p></section>
+    <div class="cast-wrap${S.ui.anim === 'roles' ? ' reveal-rows' : ''}">${castList(v.players, (p) => p.role)}</div>`;
 }
