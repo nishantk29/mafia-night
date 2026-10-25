@@ -9,7 +9,7 @@ import { ui } from './ui_icons.js';
 import { previewNight, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES, cardInfo } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
-import { toolsButton, toolsPanel } from './tools.js';
+import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
 import { animOn } from './fx.js';
 import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
 
@@ -40,7 +40,7 @@ export function hostScreen(v, local) {
   return `<header class="appbar">
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
-    <span class="phase-badge">${ui(picon)} ${plabel}</span>${v.phase === 'lobby' ? '' : toolsButton()}
+    ${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${v.phase === 'lobby' ? '' : toolsButton()}
     <button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">

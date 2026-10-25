@@ -7,7 +7,7 @@ import { SUITS, RANKS } from './engine.js';
 import { board, pc, cardName, teamName } from './board.js';
 import { ico, cardArt } from './art.js';
 import { ui } from './ui_icons.js';
-import { toolsButton, toolsPanel } from './tools.js';
+import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
 
 const PHASE = { lobby: ['cards', 'Setting up'], dealt: ['cards', 'Roles dealt'], over: ['crown', 'Game over'] };
 const appbar = (title, badge = '') => `<header class="appbar">
@@ -34,7 +34,7 @@ export function playerScreen(v) {
     hand = `<div class="waiting">${back()}<h2 class="phase-title">You’re in, ${esc(me.name)}</h2>
       <p class="muted">Waiting for the Host to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
   } else hand = playing(v);
-  return `${appbar(esc(me.name), `<span class="phase-badge">${ui(picon)} ${plabel}</span>${toolsButton()}`)}
+  return `${appbar(esc(me.name), `${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${toolsButton()}`)}
   <main class="wrap seat-view">
     <section class="hand" aria-label="Your role">${hand}</section>
     <section class="table-side" aria-label="The table">${tableSide(v)}</section>
