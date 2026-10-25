@@ -521,7 +521,7 @@ function night(v) {
     ${!current && !total ? empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.') : ''}
     ${next ? `<button type="button" class="next-line" data-a="focusStep" data-key="${next.key}"><span class="next-tag">Next</span> ${callName(next)}</button>` : ''}
     ${earlier.length ? `<details class="earlier"><summary>Earlier tonight <span class="earlier-n">${earlier.length}</span></summary><ol class="cues earlier-list">${earlier.map((s) => cue(v, s, steps.indexOf(s) + 1, false, alive)).join('')}</ol></details>` : ''}`;
-  const dock = btn('big', 'nextStep', nav.action === 'resolve' ? `${ui('sun')} ${nav.label}` : nav.label, { on: nav.enabled, why: nav.label, attrs: `data-left="${nav.open.length}"` });
+  const dock = btn('big', 'nextStep', nav.action === 'resolve' ? `${ui('sun')} ${nav.label}` : nav.short, { on: nav.enabled, why: nav.label, attrs: `data-left="${nav.open.length}" aria-label="${esc(nav.label)}" title="${esc(nav.label)}"` });
   const bar = total ? `<div class="night-progress" role="progressbar" aria-label="Night progress" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${finished}"><i style="--p:${(finished / total).toFixed(3)}"></i></div>` : '';
   return { body: body + checkOverlay(v), dock, bar };
 }

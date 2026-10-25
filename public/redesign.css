@@ -420,3 +420,6 @@ html[data-fx="off"] .check-card{animation:none}
 .pane-game .phase-head .phase-title{font-size:clamp(1.5rem,7vw,1.9rem)}
 .cues.one + .next-line,.story-say + .cues.one{margin-top:var(--s3)}
 /* /host v2 */
+
+/* Next button: one line at 390px; the long label lives in aria-label/title */
+.action-dock .btn.big[data-a="nextStep"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:max(15px,min(var(--fs-lg),5vw))}

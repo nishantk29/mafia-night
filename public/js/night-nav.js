@@ -27,12 +27,25 @@ export function missingLabel(kind, s) {
   return `Show the ${roleName(s)} their card`;
 }
 
+// The same choice in a few words, so the Next button stays on one line at 390px. The long text is its aria-label and title.
+export const SHORT_MAX = 26;
+export function shortLabel(kind, s) {
+  const name = (t, max = 14) => (t.length > max ? `${t.slice(0, max - 1)}…` : t);
+  if (kind === 'identify') {
+    if (isMafiaCall(s)) return 'Mark the Mafia';
+    return s.count > 1 ? `Mark the ${s.count} ${name(roleName(s))}s` : `Mark the ${name(roleName(s))}`;
+  }
+  if (kind === 'target') return `Pick for ${name(s.label || roleName(s))}`;
+  if (kind === 'answer') return `${name(roleName(s))}: yes or no`;
+  return `Show ${name(roleName(s), 12)} the card`;
+}
+
 export function nightNav(view, uiNight = {}) {
   const ui = { actions: {}, picks: {}, ...uiNight };
   const steps = view.script || [];
   const open = steps.filter((s) => s.kind === 'identify' || !isDone(s, ui));
   const current = steps.find((s) => s.key === ui.focus) || open[0] || null;
-  const out = { current, steps, open, needs: null, label: 'Wake everyone up', enabled: true, action: 'resolve', canSkip: false };
+  const out = { current, steps, open, needs: null, label: 'Wake everyone up', short: 'Wake everyone up', enabled: true, action: 'resolve', canSkip: false };
   if (!current) return out;
   const need = isDone(current, ui) ? null : stepNeeds(view, current);
   if (need) {
@@ -41,15 +54,15 @@ export function nightNav(view, uiNight = {}) {
     const picked = need === 'identify' && (ui.picks?.[current.key] || []).length === current.count;
     if (!picked) {
       out.needs = { kind: need, key: current.key };
-      out.label = missingLabel(need, current); out.enabled = false; out.action = 'next';
+      out.label = missingLabel(need, current); out.short = shortLabel(need, current); out.enabled = false; out.action = 'next';
       return out;
     }
   }
   const rest = open.filter((s) => s !== current);
-  out.label = rest.length ? 'Next' : 'Wake everyone up';
+  out.label = rest.length ? 'Next' : 'Wake everyone up'; out.short = out.label;
   out.action = rest.length ? 'next' : 'resolve';
   // An identify step still has to be confirmed before the night can go on, so it never ends the night itself.
-  if (current.kind === 'identify') { out.action = 'next'; if (!rest.length) out.label = 'Next'; }
+  if (current.kind === 'identify') { out.action = 'next'; if (!rest.length) out.label = out.short = 'Next'; }
   return out;
 }
 
