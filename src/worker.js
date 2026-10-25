@@ -68,7 +68,16 @@ export class Room extends DurableObject {
     return false;
   }
 
-  async alarm() { await this.ctx.storage.deleteAll(); this.room = null; }
+  // Inactivity expiry: the alarm is pushed back on every save, so it only fires for a room nobody has touched for ROOM_TTL_MS.
+  async alarm() { await this.ready; await this.closeRoom('expired'); }
+
+  // Close the room for good: tell every socket why, drop them, wipe storage. The code is free to be dealt again.
+  async closeRoom(reason) {
+    for (const ws of this.ctx.getWebSockets()) { this.send(ws, { type: 'closed', reason }); try { ws.close(1000, 'closed'); } catch { /* already closed */ } }
+    this.room = null;
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+  }
 
   async fetch(request) {
     await this.ready;
@@ -99,6 +108,7 @@ export class Room extends DurableObject {
 
   // `announce`: the game just ended, so each socket also gets the game-over event (see messagesFor).
   broadcast(announce = false) {
+    if (!this.room) return; // closed: the sockets are already gone
     const connected = this.connectedIds();
     for (const ws of this.ctx.getWebSockets()) {
       for (const m of messagesFor(this.room, ws.deserializeAttachment(), connected, announce)) this.send(ws, m);
@@ -134,6 +144,13 @@ export class Room extends DurableObject {
       return;
     }
     if (!att.who) return;
+
+    // ---- end the game (host only) ----
+    if (msg.type === 'endGame') {
+      if (att.who !== 'host') { this.send(ws, { type: 'error', error: 'Only the Host can end the game.' }); return; }
+      await this.closeRoom('ended');
+      return;
+    }
 
     // ---- actions ----
     const actor = att.who === 'host' ? { host: true } : { playerId: att.playerId };

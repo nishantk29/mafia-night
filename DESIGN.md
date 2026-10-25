@@ -1,5 +1,7 @@
 # Mafia Night: design spec
 
+> Update: the display face is Limelight (art deco), restored after PR #32; Big Shoulders was dropped. References below are historical.
+
 Owner: design lead. Builders: STYLES, LAYOUT, PWA (see section 13 for who owns which file).
 Status: final direction for the redesign. Builders follow this document literally. Where it is silent, follow the
 principles in section 3 and do not invent new colours, fonts, radii or icons.

@@ -17,7 +17,8 @@ import { gameOverEvent } from './room.js';
 import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
-import { bloodDrips, knifeSvg, suggestions } from './flair.js';
+import { siteFooter } from './footer.js';
+import { wordmark, knifeSvg, suggestions } from './flair.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -97,10 +98,18 @@ function refocus(sel, cls) {
 document.addEventListener('focusout', () => { if (pendingRender) setTimeout(() => S.render(), 50); });
 
 function shellAttrs() {
-  if (S.fatal || S.mode === 'home' || S.mode === 'faq') return { phase: 'home', shell: 'home' };
+  if (S.fatal || S.ended || S.mode === 'home' || S.mode === 'faq') return { phase: 'home', shell: 'home' };
   if (S.mode === 'host' || S.mode === 'local') return { phase: S.view?.phase || 'lobby', shell: 'host' };
   if (S.mode === 'play') return { phase: S.view?.kind === 'player' ? S.view.phase : 'lobby', shell: 'player' };
   return { phase: 'home', shell: 'home' };
+}
+
+// The room is gone: the host ended the game, or it expired from inactivity. Nothing to resume.
+function endedScreen(why) {
+  const [title, line] = why === 'expired' ? ['This room has expired', 'Nobody played in it for a long while, so it was closed.']
+    : why === 'host' ? ['You ended the game', 'The room is closed and its code is free again.'] : ['The host ended the game', 'The room is closed. Thanks for playing.'];
+  return `<main class="wrap fatal ended"><div class="empty">${ui('cards', 'is-big')}<h1 class="phase-title">${title}</h1><p class="muted">${line}</p>
+    <a class="btn" href="#/">Back to the home page</a></div></main>`;
 }
 
 const connecting = (text) => `<main class="wrap"><div class="empty">${ui('cards')}<p>${text}</p></div></main>`;
@@ -111,6 +120,7 @@ function screen() {
     return `<main class="wrap fatal"><div class="empty">${ui('warning', 'is-big')}<h1 class="phase-title">${esc(S.fatal)}</h1>
       <a class="btn" href="#/">Go to the home page</a></div></main>`;
   }
+  if (S.ended) return endedScreen(S.ended);
   if (S.mode === 'home') return home();
   if (S.mode === 'faq') return faqScreen();
   if (S.mode === 'local') return S.view ? hostScreen(S.view, true) : '';
@@ -134,18 +144,18 @@ function home() {
     <a class="hub-link" href="https://gamenight.hatethespurs.com/">${ui('caret-down')}<span>All Games</span></a>
     <div class="home-hero">
       <div class="card-fan" aria-hidden="true"><span class="rcard-back"><span class="rcard-back-mark">${ui('brand')}</span></span></div>
-      <h1 class="wordmark">Mafia<br>Night${bloodDrips()}</h1>
+      <h1 class="wordmark">${wordmark()}</h1>
       <p class="lede">Secret roles for Mafia and Werewolf, dealt to everyone’s phone. You get the script for the night.</p>
     </div>
     <div class="home-paths">
       <section class="path path-host">${knifeSvg()}<h2 class="path-title">Be the Host</h2>
         <p class="muted">You read the night aloud. Everyone else joins on their phone with a 6‑letter code.</p>
         <button type="button" class="btn big" data-a="hostLive">Host a game</button>
-        ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
+        ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a><button type="button" class="resume-x" data-a="forgetRoom" data-k="mafia.host.${esc(c)}" aria-label="Forget room ${esc(c)}">${ui('x')}</button></p>`).join('')}</section>
       <section class="path path-join"><h2 class="path-title">Join with a code</h2>
         <div class="join-row"><label class="field"><span>Code from the Host</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
         <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
-        ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
+        ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a><button type="button" class="resume-x" data-a="forgetRoom" data-k="mafia.player.${esc(c)}" aria-label="Forget room ${esc(c)}">${ui('x')}</button></p>`).join('')}</section>
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
         <p class="muted">Run everything from this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
       <a class="home-rules" href="#/faq"><span><b>Rules &amp; FAQ</b><small>Roles, play modes and tricky calls.</small></span>${ui('caret-down')}</a>
@@ -158,7 +168,7 @@ function home() {
           <li><h3>Win</h3><p>Town wins when every Mafia member is gone. Mafia win when they match the rest of the table.</p></li>
         </ol></section>
     </div>
-    <p class="credits">Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT). <a href="https://gamenight.hatethespurs.com/">All Games</a></p>
+    ${siteFooter()}
   </main>`;
 }
 
@@ -180,7 +190,7 @@ let toastT;
 S.toast = (m) => { $toast.textContent = themeText(String(m), themeOf(S.view), seatNames()); $toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $toast.classList.remove('on'), 3200); };
 
 // ---------------- transports ----------------
-function closeTransport() { S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.conn = true; }
+function closeTransport() { S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.ended = null; S.conn = true; }
 
 function wsTransport(code, helloFn) {
   let ws; let closed = false; let tries = 0; let timer;
@@ -197,6 +207,7 @@ function wsTransport(code, helloFn) {
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
       else if (m.type === 'error') S.toast(m.error);
       else if (m.type === 'joined') store.set(`mafia.player.${code}`, JSON.stringify({ playerId: m.playerId, token: m.token }));
+      else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); S.ui.endConfirm = false; S.ui.settings = false; S.view = null; S.ended = m.reason === 'ended' ? (S.mode === 'host' ? 'host' : 'ended') : 'expired'; S.render(); }
       else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = m.error; S.render(); } }
     };
     ws.onclose = () => { if (closed) return; S.conn = false; S.render(); timer = setTimeout(open, Math.min(8000, 400 * 2 ** tries++)); };
@@ -442,6 +453,10 @@ const A = {
   simpleCards() { const on = S.view.config.mode !== 'cards'; send({ type: 'setConfig', mode: on ? 'cards' : 'app', deckStyle: on ? 'simple' : 'random' }); },
   openSettings() { S.ui.settings = true; S.ui.anim = 'modal'; S.render(); },
   closeSettings() { S.ui.settings = false; S.render(); },
+  endGameAsk() { S.ui.settings = false; S.ui.endConfirm = true; S.ui.anim = 'modal'; S.render(); },
+  endGameNo() { S.ui.endConfirm = false; S.render(); },
+  endGameYes() { S.send({ type: 'endGame' }); S.ui.endConfirm = false; S.render(); },
+  forgetRoom(el) { store.del(el.dataset.k); S.render(); },
   toggleAnim() { setAnim(!animOn()); S.render(); },
   newGame() { if (S.view.phase === 'over' || confirm('Abandon this game and go back to setup?')) { S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'newGame' }); } },
   // board
@@ -563,6 +578,7 @@ document.addEventListener('keydown', (ev) => {
     if (S.ui.showCode) { A.hideCode(); return; }
     if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
+    if (S.ui.endConfirm) { A.endGameNo(); return; }
     if (S.ui.declare) { A.closeDeclare(); return; }
     if (S.ui.sheet) { const id = S.ui.sheet; A.closeSheet(); refocus(`[data-a="seat"][data-id="${CSS.escape(id)}"]`, ''); return; }
     return;

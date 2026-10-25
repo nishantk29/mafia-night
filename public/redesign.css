@@ -1,37 +1,37 @@
 /* ======================================================================================
-   Redesign layer (loaded after styles.css): Big Shoulders display type, blood logo, knife strike, role tokens,
+   Redesign layer (loaded after styles.css): Limelight art-deco display type, blood logo, knife strike, role tokens,
    formatted log, game suggestions, background art, kill splatter.
    Motion: transform and opacity only, ease cubic-bezier(.2,.8,.2,1). All of it is off with reduced motion / data-fx="off".
    ====================================================================================== */
-@font-face{font-family:"Big Shoulders Display";font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/big-shoulders-display-var.woff2) format("woff2")}
-:root{--font-display:"Big Shoulders Display","Arial Narrow",sans-serif-condensed,sans-serif;--ease-butter:cubic-bezier(.2,.8,.2,1);--blood:#B3121F;--blood-deep:#6E0A14}
+@font-face{font-family:"Limelight";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/limelight-400.woff2) format("woff2")}
+:root{--font-display:"Limelight","Rubik",system-ui,sans-serif;--ease-butter:cubic-bezier(.2,.8,.2,1);--blood:#B3121F;--blood-deep:#6E0A14}
 html{background:#0B0B0D;hyphens:manual}
 *{hyphens:none}
 
-/* ---- display type: Big Shoulders for headings, names, buttons, codes (UI body stays Rubik) ---- */
+/* ---- display type: Limelight for headings, names, buttons, codes (UI body stays Rubik) ---- */
 .wordmark,h1,h2,.phase-title,.block-title,.path-title,.sheet-title,.guide-title,.balance-title,.home-how-title,.group-title,.table-phase,
 .home-rules b,.rcard-name,.fx-pop-name,.fx-v-team,.fx-stamp,.btn,.tabbar button,.role-filter button,.rrow-role,.code,.room-code,.tally,.suggest-title,.log-round{
   font-family:var(--font-display);text-wrap:balance}
 .wordmark,h1,h2,.phase-title,.block-title,.path-title,.sheet-title,.guide-title,.balance-title,.home-how-title,.fx-pop-name,.fx-v-team{font-weight:800;letter-spacing:.015em;text-transform:uppercase}
 .wordmark{font-weight:900;font-size:clamp(4.25rem,23vw,7rem);line-height:.86;letter-spacing:.005em}
 .btn,.tabbar button,.role-filter button,.tally{font-weight:800;letter-spacing:.04em;text-transform:uppercase}
-.btn{font-size:1.15em}
-.action-dock .btn.big,.wrap.join .btn.big,.card-picker .btn.big{font-size:clamp(1.7rem,7.5vw,2.2rem);letter-spacing:.05em}
+.btn{font-size:1em}
+.action-dock .btn.big,.wrap.join .btn.big,.card-picker .btn.big{font-size:clamp(1.25rem,5.5vw,1.6rem);letter-spacing:.05em}
 .block-title,.path-title{font-size:clamp(1.6rem,7vw,2rem);line-height:1}
-.path-host .path-title{font-size:clamp(2.6rem,12vw,3.6rem)}
+.path-host .path-title{font-size:clamp(1.9rem,8.5vw,2.6rem);max-width:70%}
 .home-rules b,.rcard-name{font-weight:800;letter-spacing:.03em;text-transform:uppercase;font-size:1.3em}
 @media (min-width:768px){.home-hero .wordmark{font-size:clamp(5.5rem,11vw,9rem)}}
 
-/* ---- logo: blood on the wordmark, drips grow once ---- */
+/* ---- logo: outlined Limelight letters, blood running off their bottoms; the drips grow once, then ooze slowly ---- */
 .home-hero{position:relative}
-.wordmark{position:relative;display:inline-block;color:#FFF4E6}
-.blood-drips{position:absolute;left:0;bottom:-.34em;width:100%;height:.5em;overflow:visible;pointer-events:none}
-.blood-drips path{fill:var(--blood);transform-box:fill-box;transform-origin:50% 0}
-.blood-drips .b-hi{fill:#E0303D;opacity:.55}
-html[data-fx="on"] .blood-drips path{animation:drip 1.4s var(--ease-butter) both}
-html[data-fx="on"] .blood-drips path:nth-child(2n){animation-delay:.25s;animation-duration:1.8s}
-html[data-fx="on"] .blood-drips path:nth-child(3n){animation-delay:.5s;animation-duration:2.2s}
+.wordmark{position:relative;display:block;width:min(100%,430px);margin:0 0 var(--s3)}
+.wordmark-svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+.wm-blood .dr{fill:var(--blood,#B3121F);transform-box:fill-box;transform-origin:50% 0}
+html[data-fx="on"] .wm-blood .dr{animation:drip 1.6s var(--ease-butter) both,ooze 7s ease-in-out calc(1.6s + var(--i) * .45s) infinite}
+html[data-fx="on"] .wm-blood .dr:nth-child(3n){animation-delay:.5s,2s}
 @keyframes drip{from{transform:scaleY(0);opacity:0}25%{opacity:1}}
+@keyframes ooze{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.08)}}
+@media (min-width:768px){.wordmark{width:min(100%,520px)}}
 
 /* ---- knife strike, once, when the Host card first shows ---- */
 .path-host{overflow:clip;overflow-clip-margin:12px}
@@ -134,10 +134,10 @@ html[data-shell="host"] .bg-art .moon,html[data-shell="player"] .bg-art .moon{op
 
 /* ---- calm modes ---- */
 html[data-fx="off"] .role-tile,html[data-fx="off"] .role-group,html[data-fx="off"] .suggest-card{transform:none!important}
-html[data-fx="off"] .blood-drips path,html[data-fx="off"] .knife,html[data-fx="off"] .bg-art .smoke{animation:none!important}
+html[data-fx="off"] .wm-blood .dr,html[data-fx="off"] .knife,html[data-fx="off"] .bg-art .smoke{animation:none!important}
 @media (prefers-reduced-motion:reduce){
   .role-tile,.role-group,.suggest-card{transform:none!important}
-  .blood-drips path,.knife,.bg-art .smoke,.fx-blood *{animation:none!important}
+  .wm-blood .dr,.knife,.bg-art .smoke,.fx-blood *{animation:none!important}
 }
 
 /* ---- first-load rise on the home screen ---- */
@@ -150,10 +150,55 @@ html[data-fx="on"] .home-intro .home-paths > :nth-child(n+5){animation-delay:.28
 .home-intro .path-host{animation-name:rise}
 
 /* fixes from the first look */
-.wordmark{margin-bottom:.34em}
-.blood-drips{bottom:-.46em}
-@media (min-width:768px){.home-hero .wordmark{font-size:clamp(5rem,8.5vw,7.5rem)}}
 .knife{top:14px;right:14px;width:min(40%,170px);transform-origin:80% 60%}
 .fx-blood{z-index:0;inset:-10% -8%;opacity:.8}
 .fx-out.is-night .fx-card > :not(.fx-blood):not(.fx-stamp){position:relative;z-index:1}
 .fx-out.is-night .fx-stamp{z-index:2}
+
+/* ---- Limelight is single-weight: never fake a bold; use it for more of the interface ---- */
+.wordmark,h1,h2,h3,.phase-title,.block-title,.path-title,.sheet-title,.btn,.tabbar button,.role-filter button,.appbar-title,.hub-link,.faq-q summary,.home-how h3,.suggest-name,.rrow-role,.role-name,.log-round,.tally,.code,.room-code,.rcard-name,.fx-pop-name{font-synthesis:none;font-weight:400}
+h3,.appbar-title,.faq-q summary,.home-how h3,.role-name{font-family:var(--font-display)}
+.faq-q summary{font-size:1.08rem;letter-spacing:.02em}
+.btn,.tabbar button,.role-filter button{letter-spacing:.06em}
+
+/* ---- resume chips with a forget button; end-game row ---- */
+.resume-row{display:inline-flex;align-items:center;gap:2px;margin:var(--s2) var(--s4) 0 0}
+.resume-row .resume{margin:0}
+.resume-x{display:inline-grid;place-items:center;width:44px;height:44px;margin-left:-6px;background:none;border:0;color:var(--smoke);border-radius:50%;cursor:pointer}
+.resume-x svg{width:16px;height:16px}
+@media (hover:hover){.resume-x:hover{color:#FFF4E6;background:rgba(255,255,255,.08)}}
+.end-game{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid rgba(255,255,255,.1)}
+.end-game .muted{margin:var(--s2) 0 0}
+.fatal.ended .empty p{max-width:30ch;margin-inline:auto}
+
+/* ---- FAQ answers: short grouped lists, generous spacing ---- */
+.faq-a{line-height:1.6;padding-bottom:var(--s6,32px)}
+.faq-a > * + *{margin-top:var(--s4)}
+.faq-a ul,.faq-a ol{gap:var(--s3);padding-left:1.25em}
+.faq-a li{padding-left:.15em}
+.faq-a li > b{color:#FFF4E6;font-weight:600}
+.faq-a li > span{color:var(--smoke)}
+.faq-sub{margin:var(--s5) 0 calc(var(--s2) * -1);font-size:.95rem;letter-spacing:.06em;text-transform:uppercase;color:var(--blood-soft,#E0606A)}
+.faq-sub:first-child{margin-top:0}
+.faq-roles{list-style:none;padding-left:0!important;gap:0!important}
+.faq-roles li{display:grid;gap:2px;padding:12px 0;border-top:1px solid rgba(255,255,255,.08)}
+.faq-roles li:first-child{border-top:0}
+.faq-roles b{font-family:var(--font-display);font-weight:400;letter-spacing:.03em;font-size:1.05rem}
+.faq-roles span{font-size:.95rem}
+
+/* ---- footer: a clean row of game links, credits tucked away ---- */
+.site-foot{grid-column:1/-1;margin-top:var(--s7,48px);padding:var(--s5) 0 var(--s6,32px);border-top:1px solid rgba(255,255,255,.1);display:grid;gap:var(--s3);justify-items:start}
+.foot-games{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5)}
+.foot-games a{min-height:44px;display:inline-flex;align-items:center;color:#FFF4E6;text-decoration:none;font-family:var(--font-display);letter-spacing:.04em}
+@media (hover:hover){.foot-games a:hover{color:var(--blood-soft,#E0606A)}}
+.foot-credits{font-size:var(--fs-xs);color:var(--smoke)}
+.foot-credits summary{cursor:pointer;min-height:36px;display:inline-flex;align-items:center;list-style:none}
+.foot-credits summary::-webkit-details-marker{display:none}
+.foot-credits ul{margin:var(--s2) 0 0;padding-left:1.1em;display:grid;gap:var(--s2);max-width:var(--measure)}
+.foot-credits a{color:var(--smoke)}
+
+.appbar .code,.appbar-title .code{font-size:.95em;letter-spacing:.06em}
+.room-code{font-size:clamp(2.6rem,13vw,5.5rem);letter-spacing:.06em}
+.appbar-code{font-size:.8rem;gap:6px}
+.appbar-code .code{font-size:.95rem;letter-spacing:.04em}
+@media (max-width:480px){.appbar-code{font-size:.7rem}.appbar-code .code{font-size:.82rem;letter-spacing:.02em}}

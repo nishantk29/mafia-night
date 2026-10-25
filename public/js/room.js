@@ -7,6 +7,7 @@ import {
 import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
 import { roleGuide } from './role_guide.js';
+import { ROOM_MODES, CARD_FLOWS } from './modes.js';
 
 export const DOT_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white'];
 const DEFAULT_LEGEND = {
@@ -121,9 +122,9 @@ export function reduce(room, actor, a) {
     case 'setConfig': {
       if (!['lobby', 'dealt'].includes(room.phase)) return err('Cannot change the setup mid-game.');
       const c = room.config;
-      if (a.mode && ['app', 'cards'].includes(a.mode)) c.mode = a.mode;
+      if (a.mode && ROOM_MODES.includes(a.mode)) c.mode = a.mode;
       if (a.deckStyle && ['fixed', 'random', 'simple'].includes(a.deckStyle)) c.deckStyle = a.deckStyle;
-      if (a.cardFlow && ['blind', 'claim'].includes(a.cardFlow)) c.cardFlow = a.cardFlow;
+      if (a.cardFlow && CARD_FLOWS.includes(a.cardFlow)) c.cardFlow = a.cardFlow;
       if (Array.isArray(a.roles)) c.roles = a.roles.map(resolveRoleId).filter((r) => ROLE_BY_ID[r]).slice(0, MAX_PLAYERS);
       if (typeof a.sharedBoard === 'boolean') c.sharedBoard = a.sharedBoard;
       if (a.theme && THEMES[a.theme]) c.theme = a.theme;
