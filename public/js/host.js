@@ -11,7 +11,7 @@ import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { graveyardPanel } from './graveyard.js';
 import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
-import { animOn } from './fx.js';
+import { animOn, dur } from './fx.js';
 import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
 
 import { qrSvg, joinUrl } from './qr.js';
@@ -513,7 +513,7 @@ function liveResult(v, s, set) {
 // Live answer for an investigator, worked out from the choices of everyone who woke earlier tonight.
 // Confused Cop: a 3D coin flip lands on the stored coin (set.flip), then the result, gesture and close-eyes cue fade in.
 // set.flipAt is when the target was entered; a re-render mid-flip joins the animation where it is instead of restarting it.
-const FLIP_MS = 400;
+const FLIP_MS = dur(400);
 const coinAge = (set) => (animOn() && set.flipAt ? Date.now() - set.flipAt : Infinity);
 function coinEl(set) {
   const heads = set.flip === 'heads'; const age = coinAge(set); const live = age < FLIP_MS;
