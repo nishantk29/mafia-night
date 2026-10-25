@@ -285,6 +285,16 @@ export function reduce(room, actor, a) {
       log(room, `${ROLE_BY_ID[a.roleId].name} identified.`);
       return { ok: true };
     }
+    case 'skipIdentify': { // nobody holds this card: it is not in play, so the night can go on
+      if (room.phase !== 'night' || room.night !== 1 || !isBlind(room)) return err('Not available.');
+      const slot = unidentifiedSlots(room).find((s) => s.roleId === a.roleId);
+      if (!slot) return err('That role is already fully matched.');
+      let left = slot.remaining;
+      for (const m of room.deck.map) if (left && m.roleId === a.roleId && !m.unused) { m.unused = true; left--; }
+      finalizeBlind(room);
+      log(room, `${ROLE_BY_ID[a.roleId].name}: no one has this card.`, { private: true });
+      return { ok: true };
+    }
     case 'setTarget': {
       const p = playerById(room, a.playerId); if (!p) return err('Bad player.');
       p.target = a.targetId || null; return { ok: true };

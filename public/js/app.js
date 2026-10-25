@@ -10,6 +10,7 @@ import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
 import { hostScreen, checkCardFor } from './host.js';
+import { pressNext } from './night-nav.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
@@ -79,6 +80,14 @@ function crash(e) {
 const nothingShown = () => !$app.firstElementChild;
 addEventListener('error', (ev) => { if (nothingShown()) crash(ev.error || ev.message); });
 addEventListener('unhandledrejection', (ev) => { if (nothingShown()) crash(ev.reason); });
+// Host night script: when the current step changes (a pick, No one, Next, Undo), bring it into view. Smooth unless motion is off.
+function followCue() {
+  const cur = $app.querySelector('.cues .cue.is-current[data-ck]');
+  const key = cur ? `${S.view?.night}:${cur.dataset.ck}` : null;
+  if (!cur || key === S.ui.lastCue) { if (!cur) S.ui.lastCue = null; return; }
+  S.ui.lastCue = key;
+  requestAnimationFrame(() => cur.scrollIntoView({ behavior: animOn() ? 'smooth' : 'auto', block: 'center' }));
+}
 function paintScreen() {
   const a = document.activeElement;
   const sel = a && a !== document.body && $app.contains(a) ? focusSelector(a) : null;
@@ -94,6 +103,7 @@ function paintScreen() {
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
   applyRoleSearch();
   afterRender();
+  followCue();
   if (opened === 'restart') restartIn();
   gameAwake((S.mode === 'host' || S.mode === 'local') && ['dealt', 'night', 'day'].includes(S.view?.phase));
   if (opened === 'deal') buzz(18);
@@ -452,6 +462,14 @@ const A = {
   focusStep(el) { S.ui.night.focus = el.dataset.key; S.render(); },
   confirmId(el) { S.ui.night.focus = null; const key = el.dataset.key; const ids = S.ui.night.picks[key] || []; delete S.ui.night.picks[key]; send({ type: 'identifyRole', roleId: el.dataset.role, playerIds: ids }); },
   skip(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { targets: [] }; delete S.ui.night.picks[el.dataset.key]; S.render(); },
+  skipIdentify(el) { const n = S.ui.night; n.focus = null; delete n.picks[el.dataset.key]; send({ type: 'skipIdentify', roleId: el.dataset.role }); },
+  nextStep(el) {
+    if (el.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why);
+    const r = pressNext(S.view, S.ui.night);
+    if (r.blocked) return S.toast(r.blocked);
+    if (r.send) return send(r.send);
+    S.render(); // followCue() scrolls to the next step
+  },
   alert(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { on: el.dataset.v === '1', targets: [] }; S.render(); },
   infoDone(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { done: true }; S.render(); },
   undoStep(el) { delete S.ui.night.actions[el.dataset.key]; S.ui.night.focus = el.dataset.key; S.render(); },

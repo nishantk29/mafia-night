@@ -81,6 +81,7 @@ All in `test/audit-v7.test.js` unless noted. Gated on v7 unless stated.
 | The FAQ lists every role once, every mode, and no stale names. | faq-drift: `FAQ matches the game` (4 tests) |
 | The service worker version matches the content hash of `public/`, so installed phones pick up changes. | sw-version: `public/sw.js VERSION matches the content hash of public/`; `build-deploy` also checks it. |
 | The deploy gate blocks on a red test, never passes on a crash or no tests, and build-deploy has no bypass. | deploy-gate: `deploy gate: …` (6 tests) |
+| Host night script never dead-ends; Next names the missing choice; every choice has No one/Skip. | night-no-dead-end: `Host night script never dead-ends: Next names the missing choice, every choice has No one/Skip (~300 games)`, `a deck with a card nobody holds: skipIdentify finishes the night, the Villagers fill the rest`, `old rooms (v1..v7) caught mid-night 1, blind and partly identified, can finish the night`; night-next: `<single/multi phone>: <step type>: Next is blocked and names the choice; a skip chip exists; …`, `blind identify: label names the role, count and Mafia; …` |
 
 ## How to add a rule
 
