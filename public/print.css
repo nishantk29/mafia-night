@@ -1,12 +1,12 @@
 /* Printable card guide. Self-contained: light paper, the app's own fonts and team colours for the card art. */
-@font-face{font-family:"Big Shoulders Display";font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/big-shoulders-display-var.woff2) format("woff2")}
+@font-face{font-family:"Limelight";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/limelight-400.woff2) format("woff2")}
 @font-face{font-family:"Alegreya Sans";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/alegreya-sans-400.woff2) format("woff2")}
 @font-face{font-family:"Alegreya Sans";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/alegreya-sans-700.woff2) format("woff2")}
 
 *{box-sizing:border-box}
 html{color-scheme:light}
 body{margin:0;background:#F4E9D3;color:#1B1410;font:16px/1.45 "Alegreya Sans",system-ui,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-h1,h2,h3{font-family:"Big Shoulders Display","Alegreya Sans",sans-serif;text-transform:uppercase;letter-spacing:.03em;margin:0}
+h1,h2,h3{font-family:"Limelight","Alegreya Sans",sans-serif;text-transform:uppercase;letter-spacing:.03em;margin:0}
 a{color:#7A1F26}
 .bar{max-width:860px;margin:0 auto;padding:20px 16px 8px}
 .bar h1{font-size:2.2rem;margin:.2em 0}
@@ -58,7 +58,7 @@ a{color:#7A1F26}
 .sheet{display:grid;grid-template-columns:repeat(3,63mm);grid-auto-rows:88mm;width:189mm;max-width:none;padding:0;gap:0;justify-content:center}
 .pcard{position:relative;width:63mm;height:88mm;border:.2mm solid #1B1410;padding:3mm;display:flex;flex-direction:column;background:#F4E9D3;overflow:hidden;break-inside:avoid}
 .pcard .cardart{flex:1 1 0;min-height:0;aspect-ratio:auto;border-radius:1.5mm}
-.pcard-name{font:800 14pt "Big Shoulders Display",sans-serif;text-transform:uppercase;text-align:center;margin-top:1.5mm;line-height:1.1}
+.pcard-name{font:800 14pt "Limelight",sans-serif;text-transform:uppercase;text-align:center;margin-top:1.5mm;line-height:1.1}
 .pcard-team{font-size:7pt;text-align:center;text-transform:uppercase;letter-spacing:.1em;color:#4A3A2C}
 .pcard p{margin:1mm 0 0;font-size:7.5pt;line-height:1.25;text-align:center}
 .corner{position:absolute;z-index:2;font:700 9pt "Alegreya Sans",sans-serif;background:rgba(244,233,211,.92);padding:0 1mm;border-radius:1mm}

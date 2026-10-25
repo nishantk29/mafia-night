@@ -57,7 +57,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
@@ -83,6 +83,18 @@ function settingsSheet() {
     <div class="rules"><button type="button" class="rule" role="switch" aria-checked="${on}" data-a="toggleAnim">
       <span class="rule-text"><span class="rule-title">Animations</span><span class="rule-desc">Night and day scenes, card flips and the win screen. Off keeps everything still.</span></span>
       <span class="switch" aria-hidden="true"><i></i></span></button></div>
+    ${S.mode === 'host' ? `<div class="end-game"><button type="button" class="btn ghost danger" data-a="endGameAsk">End game</button>
+      <p class="muted">Closes the room for everyone and frees the code.</p></div>` : ''}
+  </div></div>`;
+}
+
+// End game: a confirm sheet, because it closes the room for every player and cannot be undone.
+function endGameSheet() {
+  return `<div class="sheet-bg" data-a="endGameNo"><div class="sheet is-entering" role="alertdialog" aria-modal="true" aria-labelledby="end-title" data-stop>
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><h2 class="sheet-title" id="end-title">End the game?</h2><button type="button" class="icon-btn x-btn" data-a="endGameNo" aria-label="Close">${ui('x')}</button></div>
+    <p>This closes the room for every player and frees the code. It can’t be undone.</p>
+    <div class="btn-row"><button type="button" class="btn ghost" data-a="endGameNo">Keep playing</button><button type="button" class="btn danger" data-a="endGameYes">End game for everyone</button></div>
   </div></div>`;
 }
 

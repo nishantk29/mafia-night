@@ -1,7 +1,7 @@
 // Shared client state + tiny helpers.
 export const S = {
   mode: 'home', // home | host | play | local
-  code: null, view: null, fatal: null, conn: true,
+  code: null, view: null, fatal: null, ended: null, conn: true,
   ui: {
     tab: 'game', // game | table | log (phone tab bar)
     sideTab: 'table', // table | log (side switch, 768-1439px)
