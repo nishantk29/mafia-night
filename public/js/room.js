@@ -3,6 +3,7 @@ import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
   setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
+  hasStoryScript, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
@@ -21,7 +22,7 @@ const rid = (n = 6) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) =>
 export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
-    nightVersion: 3, // dead roles are still called at night (2) and the Host's steps look the same alive or dead (3); rooms stored without this field are version 1 (see engine nightVersion)
+    nightVersion: 4, // dead roles are still called at night (2), the Host's steps look the same alive or dead (3), the Host script (4); rooms stored without this field are version 1 (see engine nightVersion)
     config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
     players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
@@ -372,10 +373,22 @@ export function roleCard(roleId) {
   return r && { id: r.id, name: r.name, emoji: r.emoji, alignment: r.alignment, blurb: r.blurb, meeting: r.meeting };
 }
 
+// v4 rooms only: the read-aloud script, computed here so the client never decides the version itself.
+function storyOf(room) {
+  if (!hasStoryScript(room)) return undefined;
+  const steps = {};
+  if (room.phase === 'night') for (const st of nightScript(room)) { const x = stepScript(st, room); if (x) steps[st.key] = x; }
+  return {
+    open: nightOpen(room), close: nightClose(room), prep: room.phase === 'night' ? prepNotes(room) : [], steps,
+    morning: room.lastReport ? morningAnnouncement(room, room.lastReport) : null,
+  };
+}
+
 export function viewForHost(room, connected = new Set()) {
   registerRoles(room.config.customRoles);
   const over = room.phase === 'over';
   return {
+    story: storyOf(room),
     kind: 'host', code: room.code, nightVersion: room.nightVersion || 1, phase: room.phase, day: room.day, night: room.night, config: room.config,
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,

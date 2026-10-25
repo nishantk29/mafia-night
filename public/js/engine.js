@@ -132,8 +132,17 @@ export const nightVersion = (room) => room?.nightVersion || 1;
 // alive or dead, and a dead investigator gets a neutral non-answer instead of the real result (previewNight).
 export const hasGraveyard = (room) => nightVersion(room) >= 3;
 export const NEUTRAL_ANSWER = 'No answer tonight.';
+// 4 adds the Host script (stepScript, prepNotes, morningAnnouncement, checkCard) and keeps every v2/v3 rule.
+// In v4 the night step list holds only calls that wake somebody; silent host notes move to prepNotes.
+export const hasStoryScript = (room) => nightVersion(room) >= 4;
 
+const isQuiet = (st) => st.kind === 'info' && !st.spoken;
 export function nightScript(room) {
+  const steps = scriptSteps(room);
+  return hasStoryScript(room) ? steps.filter((st) => !isQuiet(st)) : steps;
+}
+
+function scriptSteps(room) {
   const rules = rulesOf(room);
   const steps = [];
   const v2 = nightVersion(room) >= 2;
@@ -225,6 +234,42 @@ export function nightScript(room) {
     st.hint = `More than one player answers to this call. Tap ${st.actors.map((id) => nameOf(room, id)).join(' and ')} on the shoulder so only they wake.`;
   }
   return steps.sort((a, b) => a.order - b.order);
+}
+
+// ---------- Host script (v4) ----------
+// Host-only "Before night N" notes: the steps where nobody wakes (private notes such as an Executioner's target).
+export function prepNotes(room) {
+  if (!hasStoryScript(room)) return [];
+  return scriptSteps(room).filter(isQuiet).map((st) => ({ key: st.key, roleId: st.roleId, actors: st.actors, text: st.prompt }));
+}
+export const nightOpen = () => START_CUE;
+export const nightClose = () => END_CUE;
+
+// One read-aloud line per step: { say, then, notes }. `say` calls the step, `then` closes it after the choice
+// (null when `say` already closes), `notes` are for the Host only. Identical alive or dead.
+export function stepScript(step, room) {
+  if (!hasStoryScript(room) || !step) return null;
+  const cues = stepCues(step);
+  if (!cues) return null;
+  const notes = [];
+  let say = cues.open;
+  if (step.kind === 'info' && cues.close) {
+    // "Merlin, open your eyes. Show them the Mafia.": only the call is spoken, the rest tells the Host what to do.
+    const parts = String(step.prompt).match(/[^.!?]+[.!?]*/g).map((x) => x.trim()).filter(Boolean);
+    const at = Math.max(0, parts.findIndex((x) => /open your eyes/i.test(x)));
+    say = parts.slice(0, at + 1).join(' ');
+    if (parts.length > at + 1) notes.push(parts.slice(at + 1).join(' '));
+  }
+  if (step.kind === 'identify') {
+    notes.push(`Tap who ${step.count > 1 ? 'they are' : 'it is'} in the app.`);
+  }
+  if (step.hint) notes.push(step.hint);
+  else if (step.kind === 'action' && step.actors.length === 1 && !step.key.startsWith('meeting:')) notes.push(`Tap ${nameOf(room, step.actors[0])} on the shoulder so only they wake.`);
+  if (step.kind === 'action') {
+    notes.push(step.targets === 0 ? 'Tap their yes / no answer in the app.' : `Tap the ${step.targets > 1 ? `${step.targets} players` : 'player'} they point to.`);
+    if (step.type === 'investigate') notes.push('Then show them the result card.');
+  }
+  return { say, then: cues.close, notes };
 }
 
 // What the Host says out loud around a night step: { open, close }, or null when nobody wakes
@@ -562,6 +607,46 @@ export function resolveNight(room, actions, opts = {}) {
 }
 
 // ---------- day events ----------
+// The morning read-aloud (v4): { say, notes }. `say` is only what the table may hear (deaths, and their roles when
+// the rules show them); saves, results, coins and the Janitor stay in `notes`. Computed from the night's report.
+export function morningAnnouncement(room, report) {
+  if (!hasStoryScript(room)) return null;
+  const rep = report || room.lastReport || { deaths: [], saves: [], info: [], conversions: [], notes: [] };
+  const reveal = rulesOf(room).revealOnDeath;
+  const say = ['Everyone, open your eyes.'];
+  if (!rep.deaths?.length) say.push('Nobody died last night.');
+  for (const d of rep.deaths || []) {
+    say.push(`${nameOf(room, d.id)} was killed in the night.`);
+    if (d.hidden) say.push('Their role stays a mystery.');
+    else if (reveal) say.push(`They were the ${ROLE_BY_ID[playerById(room, d.id)?.roleId]?.name || 'Villager'}.`);
+  }
+  const notes = [];
+  for (const sv of rep.saves || []) notes.push(sv.text);
+  for (const i of rep.info || []) if (i.text) notes.push(`${i.actorIds.map((id) => nameOf(room, id)).join(', ')} (${ROLE_BY_ID[i.roleId]?.name}): ${i.text}${i.note ? ` ${i.note}` : ''}`);
+  for (const c of rep.coins || []) notes.push(c.text);
+  for (const c of rep.conversions || []) notes.push(c.text);
+  for (const d of rep.deaths || []) notes.push(`${nameOf(room, d.id)}: ${d.cause}.`);
+  notes.push(...(rep.notes || []));
+  return { say: say.join(' '), notes };
+}
+
+// The Host's full-screen "show the player" card for an investigation: { kind, text }, or null. `result` is the
+// previewNight answer (null while a coin flip is pending). Never holds a player name or a number.
+export function checkCard(room, step, result) {
+  if (!hasStoryScript(room) || !step || step.kind !== 'action' || step.type !== 'investigate' || !result) return null;
+  if (result.neutral) return { kind: 'none', text: 'NO ANSWER' };
+  if (result.blocked) return null;
+  const t = String(result.text || '');
+  if (step.check === 'role') {
+    const hit = Object.values(ROLE_BY_ID).filter((r) => t.endsWith(` is the ${r.name}.`)).sort((a, b) => b.name.length - a.name.length)[0];
+    return hit ? { kind: 'role', text: hit.name.toUpperCase() } : null;
+  }
+  if (step.check === 'parity') return t.endsWith('SAME side.') ? { kind: 'parity', text: 'SAME' } : t.endsWith('DIFFERENT sides.') ? { kind: 'parity', text: 'DIFFERENT' } : null;
+  if (t.endsWith(' is MAFIA.')) return { kind: 'alignment', text: 'MAFIA' };
+  if (t.endsWith(' is NOT Mafia.')) return { kind: 'alignment', text: 'NOT MAFIA' };
+  return null;
+}
+
 export function condemn(room, id) {
   const p = playerById(room, id);
   if (!p || !p.alive) return { error: 'Player is not alive' };

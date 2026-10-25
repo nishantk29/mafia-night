@@ -16,7 +16,7 @@ function mk(spec, { night = 1, phase = 'night' } = {}) {
     assert.ok(r.ok, r.error);
     room.players.find((p) => p.name === name).roleId = roleId;
   }
-  room.phase = phase; room.night = night;
+  room.nightVersion = 3; room.phase = phase; room.night = night; // pinned: v4 moves silent info steps out of nightScript (storyteller-v4.test.js)
   return room;
 }
 const P = (room, name) => room.players.find((p) => p.name === name);
