@@ -251,3 +251,12 @@ export function factionOf(roleId) {
   if (r.faction) return r.faction;
   return r.alignment;
 }
+
+// What a player may be told the setup is: each disguised role is listed as the role it believes it is.
+// `unreliable` holds the believed ids that merged in at least one look-alike. Never exposes the real variant ids.
+export const believedId = (id) => (id === 'confused_cop' ? 'cop' : ROLE_BY_ID[id]?.seesAs || id);
+export function believedSetup(roleIds) {
+  const ids = roleIds.map(believedId);
+  const unreliable = [...new Set(roleIds.filter((id, i) => ids[i] !== id).map(believedId))];
+  return { ids, unreliable };
+}

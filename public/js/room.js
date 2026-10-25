@@ -1,12 +1,12 @@
 // Room state + reducer + per-viewer projections. Pure functions: used by the Durable Object and by local mode.
 import {
-  FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
+  FULL_DECK, roleMax, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
   setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
   hasStoryScript, hasNightOnlyChecks, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
-import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
+import { ROLE_BY_ID, believedSetup, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
 import { roleGuide } from './role_guide.js';
 import { ROOM_MODES, CARD_FLOWS } from './modes.js';
 
@@ -157,7 +157,10 @@ export function reduce(room, actor, a) {
       if (a.mode && ROOM_MODES.includes(a.mode)) c.mode = a.mode;
       if (a.deckStyle && ['fixed', 'random', 'simple'].includes(a.deckStyle)) c.deckStyle = a.deckStyle;
       if (a.cardFlow && CARD_FLOWS.includes(a.cardFlow)) c.cardFlow = a.cardFlow;
-      if (Array.isArray(a.roles)) c.roles = a.roles.map(resolveRoleId).filter((r) => ROLE_BY_ID[r]).slice(0, MAX_PLAYERS);
+      if (Array.isArray(a.roles)) {
+        const seen = {};
+        c.roles = a.roles.map(resolveRoleId).filter((r) => ROLE_BY_ID[r]).filter((r) => (seen[r] = (seen[r] || 0) + 1) <= roleMax(r)).slice(0, MAX_PLAYERS);
+      }
       if (typeof a.sharedBoard === 'boolean') c.sharedBoard = a.sharedBoard;
       if (a.theme && THEMES[a.theme]) c.theme = a.theme;
       if (a.rules && typeof a.rules === 'object') {
@@ -431,6 +434,12 @@ export function roomFromView(v) {
   };
 }
 
+// Static setup for the "Roles in this game" sheet: believed roles only, so look-alike ids never reach a phone.
+function setupFor(room) {
+  const { ids, unreliable } = believedSetup(room.config.roles);
+  return { setupRoles: ids, setupUnreliable: unreliable };
+}
+
 export function viewForPlayer(room, playerId, connected = new Set()) {
   registerRoles(room.config.customRoles);
   const me = playerById(room, playerId);
@@ -470,6 +479,7 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
     deckCards: room.config.mode === 'cards' && room.phase === 'dealt' ? room.deck?.map.length : null,
     deckKey: room.config.mode === 'cards' && room.config.cardFlow === 'blind' && room.deck
       ? [...room.deck.map].sort((x, y) => FULL_DECK.indexOf(x.card) - FULL_DECK.indexOf(y.card)).map((m) => ({ card: m.card, role: roleCard(ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) })) : null, // disguised roles show what they think they are
+    ...setupFor(room),
     winner: over ? room.winner : null,
     winners: over ? finalWinners(room) : [],
     publicLog: room.log.filter((l) => !l.private && /died|condemned|Game over|taken down|eliminated|nobody/i.test(l.text)).slice(-20).map((l) => ({ night: l.night, day: l.day, text: l.text.replace(/\s*\(.*?\)\s*$/, '') })),
