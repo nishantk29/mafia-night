@@ -1,12 +1,13 @@
 /* Mafia Night: "The card room after midnight", restyled in a bold transit-app language (DESIGN.md section 18).
    Spec: DESIGN.md (sections 4-10, 15, 16, 18).
-   Fonts (all SIL OFL 1.1, self-hosted): Rubik, Limelight, Alegreya italic. */
+   Fonts (all SIL OFL 1.1, self-hosted): Limelight for display, Rubik for everything else. */
 
 /* ==================================================================== fonts */
-@font-face{font-family:"Alegreya";font-style:italic;font-weight:400 900;font-display:swap;src:url(/fonts/alegreya-italic-var.woff2) format("woff2")}
 
 /* =================================================================== tokens */
 :root{
+  /* family hooks (family.css) */
+  --f-accent:#E0AE52; --f-display-font:"Limelight","Rubik",system-ui,sans-serif; --f-bg:#0B0B0D; --f-ink:#F1E6D2;
   /* surfaces */
   --room:#1B1410;
   --room-night:#150F0C;
@@ -37,7 +38,7 @@
   /* type */
   --font-display:"Rubik",system-ui,sans-serif;
   --font-ui:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-voice:"Alegreya",Georgia,serif;
+  --font-voice:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
   --fs-xs:.875rem;
   --fs-sm:clamp(.9375rem, .9rem + .15vw, 1rem);
   --fs-md:clamp(1.0625rem, 1rem + .25vw, 1.125rem);
@@ -1623,3 +1624,42 @@ html[data-fx="off"] .gy-in{animation:none}
 html[data-fx="off"] .check-card{animation:none}
 .rcard-call{margin:var(--s1) 0 0;font-size:var(--fs-sm);color:var(--candle);max-width:30ch}
 .call-label{font-weight:700}
+
+/* player v2 */
+/* World: night and day are a change of place, not a badge. Layers cross-fade by opacity only (2x slow); same layout both ways. */
+html[data-world] body::before,html[data-world] body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity calc(900ms * var(--dur-scale)) var(--ease-out,ease)}
+html[data-world="night"] body::before{opacity:1;background:
+  radial-gradient(circle at 82% 9%,rgba(232,236,255,.95) 0 14px,rgba(190,205,255,.28) 15px 46px,transparent 90px),
+  radial-gradient(ellipse at 50% 38%,transparent 35%,rgba(0,0,6,.78) 100%),
+  linear-gradient(180deg,#070B1C 0%,#05060F 100%)}
+html[data-world="day"] body::after{opacity:1;background:
+  radial-gradient(ellipse at 12% 104%,rgba(255,196,110,.38) 0,rgba(255,170,80,.12) 40%,transparent 70%),
+  radial-gradient(ellipse at 50% 40%,transparent 50%,rgba(20,10,2,.5) 100%),
+  linear-gradient(180deg,#2B2014 0%,#3A2918 100%)}
+html[data-world="night"] .appbar,html[data-world="day"] .appbar{background:transparent}
+@media (prefers-reduced-motion:reduce){html[data-world] body::before,html[data-world] body::after{transition:none}}
+html[data-fx="off"][data-world] body::before,html[data-fx="off"][data-world] body::after{transition:none}
+
+/* Dead player: the first screen says it plainly, the Graveyard comes first, the ghost card sits below. */
+.gy-hero{display:grid;gap:var(--s1);margin:var(--s3) 0 var(--s4)}
+.gy-hero-title{margin:0;font-family:"Limelight",var(--font-display);font-weight:400;font-size:var(--fs-2xl,1.75rem);line-height:1.1;color:var(--candle);text-transform:none;letter-spacing:0}
+.gy-hero .muted{margin:0}
+.hand.is-ghost{filter:grayscale(1) brightness(.8);opacity:.6}
+.seat-view > .gy{margin-bottom:var(--s5)}
+
+/* End screen: one heading, then the cast one by one. */
+.win-wait{margin-top:var(--s2)}
+.cast-list{--cast-step:calc(260ms * var(--dur-scale));list-style:none;margin:0;padding:0}
+.cast-row{display:flex;align-items:center;gap:var(--s2) var(--s3);min-height:56px;padding:var(--s2) 0;border-bottom:1px solid var(--rule)}
+.cast-row:last-child{border-bottom:0}
+.cast-row .arow-name{flex:1;min-width:0}
+.cast-row .meta{margin-left:auto}
+.cast-row.is-winner .arow-name,.cast-row.is-winner b{color:var(--candle)}
+.cast-row.is-dead .arow-name b{opacity:.7}
+.reveal-rows .cast-row{animation:cast-in calc(420ms * var(--dur-scale)) var(--ease-out,ease) both;animation-delay:calc(var(--i) * var(--cast-step))}
+@keyframes cast-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.reveal-rows .cast-row{animation:none}}
+html[data-fx="off"] .reveal-rows .cast-row{animation:none}
+.fx-victory-burst{position:fixed;inset:0;pointer-events:none;z-index:50}
+.end-actions{display:grid;gap:var(--s2);width:100%}
+.end-actions .btn{width:100%;white-space:nowrap}

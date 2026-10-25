@@ -9,17 +9,20 @@ const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
-import { hostScreen, checkCardFor } from './host.js';
+import { hostScreen, checkCardFor, staysAfterAnswer } from './host.js';
 import { pressNext } from './night-nav.js';
+import { worldOf, applyClosed } from './world.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
 import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn, restartIn } from './fx.js';
 import { gameOverEvent, isNewGame } from './room.js';
+import { presetById } from './presets.js';
 import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
 import { siteFooter } from './footer.js';
+import { HOST_HELP_ACTIONS, hostHelpOpen } from './host_help.js';
 import { errorBody, errorButtons, crashHtml, FATAL, ENDED } from './error-screen.js';
 import { wordmark, knifeSvg, suggestions } from './flair.js';
 
@@ -95,6 +98,7 @@ function paintScreen() {
   const { phase, shell } = shellAttrs();
   $html.dataset.phase = phase;
   $html.dataset.shell = shell;
+  $html.dataset.world = shell === 'player' ? worldOf(phase) : 'neutral'; // follows the broadcast phase, dead players included
   const opened = S.ui.anim;
   const keepMark = $app.querySelector('.splash .wordmark'); // the static splash logo stays (its drips and hub handoff keep playing)
   $app.innerHTML = screen();
@@ -209,7 +213,7 @@ let toastT;
 S.toast = (m) => { $toast.textContent = themeText(String(m), themeOf(S.view), seatNames()); $toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $toast.classList.remove('on'), 3200); };
 
 // ---------------- transports ----------------
-function closeTransport() { S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.ended = null; S.conn = true; S.connLong = false; }
+function closeTransport() { closeVictory(); S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.ended = null; S.conn = true; S.connLong = false; }
 
 function wsTransport(code, helloFn) {
   let ws; let closed = false; let tries = 0; let timer; let longTimer;
@@ -221,13 +225,13 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
+        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); if (m.view?.phase === 'over' && prev?.phase !== 'over') S.ui.anim = 'roles'; S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
       else if (m.type === 'graveyard') { S.graveyard = m.entries; S.render(); }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
       else if (m.type === 'error') S.toast(m.error);
       else if (m.type === 'joined') store.set(`mafia.player.${code}`, JSON.stringify({ playerId: m.playerId, token: m.token }));
-      else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); S.ui.endConfirm = false; S.ui.settings = false; S.view = null; S.graveyard = null; S.ended = m.reason === 'ended' ? (S.mode === 'host' ? 'host' : 'ended') : 'expired'; S.render(); }
+      else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); applyClosed(m, S.mode, closeVictory); S.render(); }
       else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = FATAL.closed; S.render(); } }
     };
     ws.onclose = () => { if (closed) return; S.conn = false; if (!longTimer) { longTimer = setTimeout(() => { if (!S.conn && !closed) { S.connLong = true; S.render(); } }, 20000); } S.render(); timer = setTimeout(open, Math.min(8000, 400 * 2 ** tries++)); };
@@ -283,7 +287,7 @@ async function route() {
   closeVictory();
   hold.cancel();
   S.graveyard = null; S.gyShown = 0;
-  Object.assign(S.ui, { gy: false, tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
+  Object.assign(S.ui, { gy: false, tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, addRole: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
   const h = location.hash.replace(/^#\/?/, '');
   const [kind, arg] = h.split('/');
   S.code = null;
@@ -422,7 +426,7 @@ const A = {
   },
   showCode() { S.ui.showCode = true; S.ui.anim = 'modal'; S.render(); },
   hideCode() { S.ui.showCode = false; S.render(); },
-  showQr() { S.ui.showQr = true; S.ui.anim = 'modal'; S.render(); },
+  showQr() { S.ui.showCode = false; S.ui.showQr = true; S.ui.anim = 'modal'; S.render(); },
   hideQr() { S.ui.showQr = false; S.render(); },
   // The system share sheet where there is one; otherwise (and if it fails) the link is copied.
   async share(el) {
@@ -455,7 +459,7 @@ const A = {
     else {
       const need = step.targets || 1;
       const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-      if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; if (step.check === 'random') Object.assign(n.actions[key], { flip: flipCoin(), flipAt: Date.now() }); delete n.picks[key]; n.focus = null; } else n.picks[key] = next;
+      if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; if (step.check === 'random') Object.assign(n.actions[key], { flip: flipCoin(), flipAt: Date.now() }); delete n.picks[key]; n.focus = staysAfterAnswer(key) ? key : null; } else n.picks[key] = next;
     }
     S.render();
   },
@@ -470,8 +474,8 @@ const A = {
     if (r.send) return send(r.send);
     S.render(); // followCue() scrolls to the next step
   },
-  alert(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { on: el.dataset.v === '1', targets: [] }; S.render(); },
-  infoDone(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { done: true }; S.render(); },
+  alert(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { on: el.dataset.v === '1', targets: [] }; n.focus = staysAfterAnswer(k) ? k : null; S.render(); },
+  infoDone(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { done: true }; n.focus = staysAfterAnswer(k) ? k : null; S.render(); },
   undoStep(el) { delete S.ui.night.actions[el.dataset.key]; S.ui.night.focus = el.dataset.key; S.render(); },
   // A coin flip for results that are random by design; kept with the step so the morning report says the same thing.
   coin(el) {
@@ -513,6 +517,11 @@ const A = {
     send({ type: 'setConfig', roles: simpleRoleIds(counts) });
   },
   simpleCards() { const on = S.view.config.mode !== 'cards'; send({ type: 'setConfig', mode: on ? 'cards' : 'app', deckStyle: on ? 'simple' : 'random' }); },
+  preset(el) { const p = presetById(el.dataset.id); if (!p) return; S.ui.deckShown = []; syncLibrary(); send({ type: 'setConfig', roles: [...p.roles] }); },
+  openAddRole() { S.ui.addRole = true; S.ui.anim = 'sheet'; S.render(); },
+  closeAddRole() { S.ui.addRole = false; S.render(); },
+  menuOpen(el) { S.ui.settings = false; ({ tools: () => A.tools(), gy: () => A.openGy(), roles: () => A.openRoles() })[el.dataset.v]?.(); },
+  ...HOST_HELP_ACTIONS,
   openRoles() { S.ui.roles = true; S.ui.anim = 'sheet'; S.render(); },
   closeRoles() { S.ui.roles = false; S.render(); },
   openSettings() { S.ui.settings = true; S.ui.anim = 'modal'; S.render(); },
@@ -637,11 +646,13 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
-    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.addRole || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if (hostHelpOpen()) { S.ui.hhWalk ? A.hhSkip() : A.closeHostHelp(); return; }
     if (S.ui.roles) { A.closeRoles(); return; }
     if (S.ui.gy) { A.closeGy(); return; }
     if (S.ui.showKey) { A.hideKey(); return; }
     if (S.ui.tools) { A.closeTools(); return; }
+    if (S.ui.addRole) { A.closeAddRole(); return; }
     if (S.ui.showCode) { A.hideCode(); return; }
     if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }

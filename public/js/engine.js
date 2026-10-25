@@ -227,7 +227,7 @@ function scriptSteps(room) {
       const twins = room.deck.map.filter((m) => !m.unused && m.roleId !== roleId && (ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) === shown.id);
       const cards = room.deck.map.filter((m) => !m.unused && m.roleId === roleId).map((m) => m.card);
       steps.push({ key: `id:${roleId}`, kind: 'identify', roleId, count: remaining, candidates: open, order: base - 0.5,
-        prompt: `${shown.name}${remaining > 1 ? 's' : ''}, open your eyes. Tap who ${remaining > 1 ? 'they are' : 'it is'}.`,
+        prompt: `${shown.name}${remaining > 1 && shown.id !== 'mafia' ? 's' : ''}, open your eyes. Tap who ${remaining > 1 ? 'they are' : 'it is'}.`,
         hint: r.seesAs || twins.length
           ? `Several players think they are the ${shown.name}. Ask them to show you their card without a word: ${cards.join(' or ')} is the ${r.name}.` : '' });
     }

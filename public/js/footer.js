@@ -13,7 +13,7 @@ export function siteFooter() {
       <ul>
         <li>Role icons: ${ext('https://game-icons.net', 'game-icons.net')} by Lorc, Delapouite and contributors, ${ext('https://creativecommons.org/licenses/by/3.0/', 'CC BY 3.0')}.</li>
         <li>Interface icons: ${ext('https://phosphoricons.com', 'Phosphor')}, MIT.</li>
-        <li>Fonts: Rubik, Alegreya and Limelight, SIL Open Font License.</li>
+        <li>Fonts: Rubik and Limelight, SIL Open Font License.</li>
       </ul>
     </details>
   </footer>`;

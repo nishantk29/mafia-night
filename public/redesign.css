@@ -246,3 +246,182 @@ html.hub-go .wrap.home > :not(.home-hero),html.hub-go .home-hero > :not(.wordmar
 .banner.banner-lost .err-actions{grid-template-columns:1fr auto;align-items:center;gap:var(--s2);max-width:none;margin-top:0}
 .banner.banner-lost .err-actions .btn{min-height:48px;padding:0 12px;font-size:var(--fs-sm);width:100%}
 .banner.banner-lost .err-link{min-height:44px;padding:0 var(--s1);font-size:var(--fs-sm)}
+
+/* ======================================================================================
+   Design v2 (DESIGN.md): two fonts, three buttons, family tokens. This layer comes last and wins on purpose:
+   `:not(#v2)` lifts the selectors above the older button layers in styles.css without !important.
+   Display = Limelight (wordmark, titles, role names, check results, win headings). Everything else = Rubik.
+   ====================================================================================== */
+:root{--font-ui:var(--f-ui-font,"Rubik",system-ui,sans-serif);--font-voice:var(--font-ui)}
+
+/* ---- Rubik: labels, tabs, small headings, codes, errors, sentences ---- */
+h3,h4,.group-title,.sheet-title,.balance-title,.guide-title,.appbar-title,.faq-q summary,.home-how h3,.log-round,.tally,.code,.room-code,.code-show-code,
+.tabbar button,.role-filter button,.faq-sub,.foot-games a,.hub-link,.sheet-sub,.tool-big,.appbar-timer,.table-alive,.vote-n,.pc,.pcb,.steps > li::before,.how li::before,.faq-roles b{
+  font-family:var(--font-ui);font-synthesis:none;letter-spacing:0;text-transform:none}
+h3,h4,.group-title,.sheet-title,.balance-title,.guide-title,.appbar-title,.faq-q summary,.home-how h3,.log-round,.sheet-sub,.faq-roles b{font-weight:700}
+.code,.room-code,.code-show-code,.tool-big,.appbar-timer,.table-alive,.vote-n,.pc,.pcb{font-weight:700;font-variant-numeric:tabular-nums}
+.room-code,.code-show-code{letter-spacing:.06em}
+.faq-sub{font-weight:600;font-size:var(--fs-sm)}
+.say,.rcard-blurb,.tell-say b,.followup-q{font-family:var(--font-ui);font-style:normal}
+
+/* ---- Limelight: display only ---- */
+.wordmark,h1,h2,.phase-title,.block-title,.path-title,.table-phase,.rcard-name,.role-name,.rrow-role,.fx-pop-name,.fx-v-team,.fx-stamp,.check-text,.suggest-title,.suggest-name,.home-rules b,.home-how-title{
+  font-family:var(--f-display-font);font-synthesis:none;font-weight:400}
+
+/* ---- buttons: gold primary / outlined secondary / red-outlined danger ---- */
+.btn:not(#v2){min-height:var(--f-btn-h);padding:0 var(--s5);border:2px solid var(--brass);border-radius:var(--r-pill);background:var(--brass);color:var(--on-brass);
+  font:600 var(--fs-md)/1.2 var(--font-ui);letter-spacing:0;text-transform:none;white-space:nowrap;text-overflow:clip;box-shadow:none;filter:none;
+  transition:background-color var(--f-dur-fast) var(--f-ease),border-color var(--f-dur-fast) var(--f-ease),transform var(--f-dur-fast) var(--f-ease)}
+.btn.big:not(#v2){display:flex;width:100%;min-height:var(--f-btn-h);font-size:var(--fs-md);letter-spacing:0}
+.action-dock .btn.big:not(#v2),.wrap.join .btn.big:not(#v2),.card-picker .btn.big:not(#v2){min-height:56px;font-size:var(--fs-lg);font-weight:600;border:2px solid var(--brass);box-shadow:none}
+.btn:not(#v2):active,.action-dock .btn.big:not(#v2):active{transform:scale(.98);box-shadow:none}
+.btn.ghost:not(#v2),.block .btn.ghost:not(#v2),.whisper .btn.ghost:not(#v2),.guide .btn.ghost:not(#v2),.cue-body .btn.ghost:not(#v2),
+.block .btn:not(.big):not(.danger):not(#v2),.whisper .btn:not(.big):not(.danger):not(#v2),.guide .btn:not(.big):not(.danger):not(#v2),.cue-body .btn:not(.danger):not(#v2){
+  min-height:var(--f-btn-h-sm);background:transparent;border:2px solid var(--rule-strong);color:var(--candle)}
+.btn.danger:not(#v2),.btn.ghost.danger:not(#v2),.btn.big.danger:not(#v2){background:transparent;border:2px solid var(--mafia);color:var(--mafia);min-height:var(--f-btn-h-sm)}
+.btn.disabled:not(#v2),.btn[aria-disabled="true"]:not(#v2),.action-dock .btn.big.disabled:not(#v2),.action-dock .btn.big[aria-disabled="true"]:not(#v2){
+  background:transparent;border:2px solid var(--rule-strong);color:var(--candle);opacity:.5;box-shadow:none;cursor:not-allowed}
+.btn.secondary:not(#v2),.action-dock .btn.big.secondary:not(#v2){background:transparent;border:2px solid var(--rule-strong);color:var(--candle)}
+.fx-victory .btn.big:not(#v2){background:var(--brass);border-color:var(--brass);color:var(--on-brass);box-shadow:none}
+.join-row .btn:not(#v2){height:var(--f-btn-h);background:var(--brass);border-color:var(--brass);color:var(--on-brass)}
+.modal-foot .btn:not(.ghost):not(.danger):not(#v2){background:var(--brass);border-color:var(--brass);color:var(--on-brass)}
+@media (hover:hover){
+  .btn:not(#v2):hover{background:var(--brass-hi);border-color:var(--brass-hi);filter:none}
+  .btn.ghost:not(#v2):hover,.block .btn:not(.big):not(.danger):not(#v2):hover,.whisper .btn:not(.big):not(#v2):hover,.guide .btn:not(.big):not(#v2):hover,.cue-body .btn:not(.danger):not(#v2):hover{background:transparent;border-color:var(--brass);color:var(--candle)}
+  .btn.secondary:not(#v2):hover,.action-dock .btn.big.secondary:not(#v2):hover{background:transparent;border-color:var(--brass);color:var(--candle)}
+  .btn.danger:not(#v2):hover,.btn.ghost.danger:not(#v2):hover{background:var(--mafia-dim);border-color:var(--mafia);color:var(--mafia)}
+  .btn.disabled:not(#v2):hover,.btn[aria-disabled="true"]:not(#v2):hover{background:transparent;border-color:var(--rule-strong);color:var(--candle)}
+}
+.btn:not(#v2):focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.mini[aria-pressed="true"],.mini.spent{border-style:solid}
+.tabbar button,.role-filter button{font-weight:600;font-size:var(--fs-sm);white-space:nowrap}
+/* side by side buttons stack full width when the row is narrow (labels never wrap) */
+.btn-row{container-type:inline-size}
+.btn-row .btn:not(#v2){flex:1 1 auto}
+@container (max-width:30rem){.btn-row .btn:not(#v2){flex-basis:100%}}
+.modal-foot{container-type:inline-size}
+@container (max-width:30rem){.modal-foot .btn:not(#v2){flex:1 1 100%}}
+@media (prefers-reduced-motion:reduce){.btn:not(#v2){transition:none}.btn:not(#v2):active{transform:none}}
+
+/* ---- footer credits: 44px tap areas ---- */
+.foot-credits summary{min-height:var(--f-tap)}
+.foot-credits li{display:flex;flex-wrap:wrap;align-items:center;column-gap:.35em}
+.foot-credits a{display:inline-flex;align-items:center;min-height:var(--f-tap);padding-inline:2px}
+
+/* host help */
+.hh-lines{margin:0 0 var(--f-space-4,16px);padding-left:1.4em;display:grid;gap:.6em;line-height:1.45}
+.hw-card{min-height:11em;animation:hw-in calc(240ms * var(--dur-scale)) ease-out both}
+.hw-card[data-dir="back"]{--hw-from:-24px}
+.hw-step{margin:0 0 .4em;font-size:.8em;opacity:.7}
+.hw-title{margin:0 0 .5em;font-family:var(--f-display-font,inherit);font-weight:400;font-size:1.6em;line-height:1.15}
+.hw-line{margin:.4em 0;line-height:1.45}
+.hw-dots{display:flex;justify-content:center;gap:8px;margin:var(--f-space-3,12px) 0}
+.hw-dots i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.3;transition:opacity calc(160ms * var(--dur-scale)),transform calc(160ms * var(--dur-scale))}
+.hw-dots i.on{opacity:1;transform:scale(1.25);background:var(--f-accent,currentColor)}
+@keyframes hw-in{from{opacity:0;transform:translateX(var(--hw-from,24px))}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.hw-card{animation:none}.hw-dots i{transition:none}}
+/* host v2 */
+/* Top bar: icon-only home mark, the room code as its own chip, phase badge, one menu button. */
+.appbar{position:sticky}
+.appbar-mark-label{display:none}
+.appbar .appbar-title{flex:1 1 auto;min-width:0;overflow:visible}
+.appbar-code{display:inline-flex;align-items:center;gap:var(--s2);min-height:44px;margin:0;padding:0 var(--s3);border:1px solid var(--rule-strong,var(--rule));border-radius:999px;background:var(--panel-2);color:var(--candle);font-family:var(--font-ui);font-size:var(--fs-sm);white-space:nowrap}
+.appbar-code .code{font-size:1.05rem;font-weight:700;letter-spacing:.08em}
+.appbar-code svg{width:16px;height:16px;opacity:.7}
+@media (hover:hover){.appbar-code:hover{border-color:var(--brass)}}
+.night-progress{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--rule);overflow:hidden;pointer-events:none}
+.night-progress i{position:absolute;inset:0;background:var(--brass);transform-origin:0 50%;transform:scaleX(var(--p,0));transition:transform calc(300ms * var(--dur-scale)) cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion:reduce){.night-progress i{transition:none}}
+html[data-fx="off"] .night-progress i{transition:none}
+.menu-list{display:grid;gap:var(--s2);margin-bottom:var(--s4)}
+.menu-list .btn{width:100%;justify-content:flex-start;white-space:nowrap}
+
+/* Night script: one step per screen */
+.cues.one{display:block}
+.cues.one .cue{display:block;padding-bottom:0}
+.cues.one .cue::before,.cues.one .cue-n{display:none}
+.cues.one .cue.is-current .cue-body{padding:var(--s4);margin-bottom:var(--s3)}
+.step-head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3)}
+.step-head .cue-result{margin-left:auto;font-weight:600;color:var(--smoke)}
+.call-label{font-family:var(--font-ui);font-size:var(--fs-lg);font-weight:700}
+.step-links{display:flex;gap:var(--s4);flex-wrap:wrap}
+.step-links .link,.cue-after .link,.earlier .link{min-height:44px;display:inline-flex;align-items:center}
+/* Say: large Limelight, high contrast, no hyphens. */
+.cue-body .story-line q,.cue-body .story-then q,.cue-body .tell-say b,.story-say .story-line q{font-family:"Limelight",var(--font-display);font-weight:400;font-size:clamp(1.6rem,1.2rem + 2vw,2rem);line-height:1.45;color:#fff;hyphens:none;overflow-wrap:break-word}
+.cue-body .story-then q{font-size:clamp(1.3rem,1.1rem + 1.4vw,1.6rem)}
+.cue-body .tell-say b{display:block}
+.cue-body .tell-say{display:block}
+.story-tag{font-family:var(--font-ui);font-size:var(--fs-sm);font-weight:700;color:var(--brass)}
+.story-notes,.story-prep,.cue-body .note.is-private{font-family:var(--font-ui);font-size:var(--fs-sm);color:var(--smoke)}
+.private-tag{margin-left:var(--s2);padding:1px var(--s2);border:1px solid var(--rule-strong,var(--rule));border-radius:999px;font-size:var(--fs-xs);font-weight:600;color:var(--smoke)}
+.next-line{display:flex;align-items:center;gap:var(--s2);width:100%;min-height:44px;padding:0 var(--s3);margin:0 0 var(--s3);background:none;border:1px dashed var(--rule-strong,var(--rule));border-radius:var(--r-control);color:var(--smoke);font-family:var(--font-ui);font-size:var(--fs-sm);text-align:left}
+.next-line .next-tag{font-weight:700;color:var(--brass)}
+.earlier{margin:0 0 var(--s4);border:1px solid var(--rule);border-radius:var(--r-panel);background:var(--panel)}
+.earlier summary{display:flex;align-items:center;gap:var(--s2);min-height:48px;padding:0 var(--s4);cursor:pointer;list-style:none;font-weight:600;color:var(--smoke)}
+.earlier summary::-webkit-details-marker{display:none}
+.earlier-n{margin-left:auto;font-weight:700;color:var(--candle)}
+.earlier-list{padding:0 var(--s4) var(--s3)}
+.earlier-list .cue{display:grid}
+.earlier-list .cue-line{min-height:44px}
+/* Each Cop or Detective number has its own colour and shape. */
+.call-badge{display:inline-grid;place-items:center;flex:none;width:28px;height:28px;font-family:var(--font-ui);font-size:.95rem;font-weight:800;line-height:1;color:#0B0B0D;background:var(--badge,#E8B923);border-radius:50%}
+.call-badge[data-num="1"]{--badge:#E8B923}
+.call-badge[data-num="2"]{--badge:#5FC3E4;border-radius:7px}
+.call-badge[data-num="3"]{--badge:#E5484D;border-radius:50% 50% 7px 7px}
+.call-badge[data-num="4"]{--badge:#7BD88F;border-radius:7px 50% 7px 50%}
+.call-badge[data-num="5"]{--badge:#C79BFF;border-radius:50% 7px 50% 7px}
+.call-badge[data-num="6"]{--badge:#FF9F5A;border-radius:4px}
+.check-caption{display:flex;align-items:center;justify-content:center;gap:var(--s3);margin:0 0 var(--s5);font-family:var(--font-ui);font-size:var(--fs-md);font-weight:500;color:var(--smoke)}
+.check-caption .call-badge{width:34px;height:34px;font-size:1.1rem}
+.check-card{animation:check-fade calc(260ms * var(--dur-scale)) cubic-bezier(.2,.8,.2,1) both}
+@keyframes check-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.check-card{animation:none}}
+html[data-fx="off"] .check-card{animation:none}
+/* Dealt: full-width primary with a small secondary above it. */
+.action-dock .dock-stack{flex:1 1 100%;display:grid;gap:var(--s2);min-width:0}
+.action-dock .dock-stack .btn{width:100%;margin:0}
+.dock-stack .back-setup{min-height:44px;font-size:var(--fs-sm)}
+/* Setup: presets, "In this game", balance split, add-role sheet. */
+.setup-mode .seg-btn small{display:none}
+.deal-setup .choice-desc,.game-style .choice-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--s2);margin:0 0 var(--s3)}
+.presets .btn{width:100%;white-space:nowrap}
+.in-game-head{display:flex;align-items:center;justify-content:space-between;margin:var(--s3) 0 var(--s1)}
+.in-game-title{margin:0;font-family:var(--font-ui);font-size:var(--fs-md);font-weight:700}
+.setup-roles .deck-list{margin:0}
+.setup-roles .deck-item{padding-block:var(--s1)}
+.balance-split{display:grid;gap:var(--s2);margin:var(--s3) 0}
+.split-bar{display:flex;gap:2px;height:12px;border-radius:999px;overflow:hidden;background:var(--rule)}
+.split-seg{display:block;flex-basis:0;min-width:6px}
+.split-seg.is-town{background:var(--town)}
+.split-seg.is-mafia{background:var(--mafia)}
+.split-seg.is-neutral{background:var(--third)}
+.split-legend{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);margin:0;font-size:var(--fs-sm);font-weight:600}
+.split-legend .is-town{color:var(--town)}.split-legend .is-mafia{color:var(--mafia)}.split-legend .is-neutral{color:var(--third)}
+.balance-split .balance-text{margin:0;font-size:var(--fs-sm);color:var(--smoke)}
+.add-row{margin-top:var(--s3)}
+.add-role-sheet{display:flex;flex-direction:column;max-height:90dvh}
+.add-role-sheet .search-field{margin:0 0 var(--s3)}
+.add-role-list{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding-bottom:var(--s3)}
+.side-title{margin:var(--s4) 0 var(--s2);font-family:var(--font-ui);font-size:var(--fs-md);font-weight:700;color:var(--team,var(--candle))}
+.add-role-done{flex:none;width:100%;margin-top:var(--s3)}
+/* Declare a winner: uniform full-width buttons. */
+.declare-sides{display:grid;gap:var(--s3);margin-top:var(--s4)}
+.declare-sides .btn{width:100%;min-height:52px;justify-content:center;white-space:nowrap}
+.declare-sides .btn.ghost{min-height:44px}
+/* Lobby: the join block is compact (the code chip in the top bar opens the full code and QR). */
+.join-code{padding-block:var(--s4)}
+.join-code .room-code{font-size:clamp(2rem,10vw,3rem)}
+.join-code .join-qr{width:140px;max-width:100%}
+.join-code .join-actions{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.deal-setup .choice-text .choice-desc{font-size:var(--fs-xs)}
+/* The sticky dock never covers content: the game pane leaves room under it. */
+.pane-game{padding-bottom:calc(112px + var(--s4))}
+.pane-game:has(.dock-stack){padding-bottom:calc(170px + var(--s4))}
+.pane-game .phase-head{padding-block:var(--s3)}
+.pane-game .phase-head .phase-title{font-size:clamp(1.5rem,7vw,1.9rem)}
+.cues.one + .next-line,.story-say + .cues.one{margin-top:var(--s3)}
+/* /host v2 */
+
+/* Next button: one line at 390px; the long label lives in aria-label/title */
+.action-dock .btn.big[data-a="nextStep"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:max(15px,min(var(--fs-lg),5vw))}
