@@ -6,12 +6,13 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES, cardInfo, LATEST_NIGHT_VERSION } from './engine.js';
+import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, roleMax, MAX_PLAYERS, DEFAULT_RULES, cardInfo, LATEST_NIGHT_VERSION } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { graveyardPanel } from './graveyard.js';
 import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
 import { animOn, dur } from './fx.js';
+import { setupRoleList, rolesSheet, rolesButton } from './roles_sheet.js';
 import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
 
 import { qrSvg, joinUrl } from './qr.js';
@@ -36,13 +37,14 @@ export function hostScreen(v, local) {
   const side = S.ui.sideTab;
   const title = local ? 'On this device<span class="appbar-sub">Private to this device</span>' :`<button type="button" class="appbar-code" data-a="showCode" aria-label="Show room code ${esc(v.code)} full screen">Room <b class="code">${esc(v.code)}</b>${ui('expand')}</button>`;
   const [picon, plabel] = v.phase === 'night' ? ['moon', `Night ${v.night}`] : v.phase === 'day' ? ['sun', `Day ${v.day}`] : PHASE[v.phase];
+  if (v.phase !== 'lobby') S.ui.deckShown = [];
   const { body, dock } = ({ lobby, dealt, night, day, over })[v.phase](v, local);
   const tabs = [['game', 'Game'], ['table', 'Table'], ['log', 'Log']];
   return `<header class="appbar">
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
     ${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${v.phase === 'lobby' ? '' : toolsButton()}${S.mode === 'host' && v.nightVersion >= 3 && v.phase !== 'lobby' ? `<button type="button" class="icon-btn gy-open" data-a="openGy" aria-label="Open the Graveyard">${ui('skull')}</button>` : ''}
-    <button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
+    ${rolesButton()}<button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
     <section class="pane pane-game" aria-label="Game">${v.stalemate ? `<section class="block stalemate"><p class="note">${ui('crown')} ${esc(v.stalemate.reason)}</p><div class="btn-row"><button type="button" class="btn" data-a="declare">Declare a winner</button></div></section>` : ''}${body}
@@ -58,7 +60,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.roles ? rolesSheet(setupRoleList(v.config.roles)) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
@@ -91,8 +93,20 @@ function settingsSheet() {
     <div class="rules"><button type="button" class="rule" role="switch" aria-checked="${on}" data-a="toggleAnim">
       <span class="rule-text"><span class="rule-title">Animations</span><span class="rule-desc">Night and day scenes, card flips and the win screen. Off keeps everything still.</span></span>
       <span class="switch" aria-hidden="true"><i></i></span></button></div>
+    ${S.view?.phase && S.view.phase !== 'lobby' ? `<div class="end-game"><button type="button" class="btn ghost" data-a="restartAsk">Restart</button>
+      <p class="muted">Same code and players. New roles, back to the reveal.</p></div>` : ''}
     ${S.mode === 'host' ? `<div class="end-game"><button type="button" class="btn ghost danger" data-a="endGameAsk">End game</button>
       <p class="muted">Closes the room for everyone and frees the code.</p></div>` : ''}
+  </div></div>`;
+}
+
+// Restart: a confirm sheet, because it throws away the current game (the room, players and setup stay).
+function restartSheet() {
+  return `<div class="sheet-bg" data-a="restartNo"><div class="sheet is-entering" role="alertdialog" aria-modal="true" aria-labelledby="restart-title" data-stop>
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><h2 class="sheet-title" id="restart-title">Restart the game?</h2><button type="button" class="icon-btn x-btn" data-a="restartNo" aria-label="Close">${ui('x')}</button></div>
+    <p>Same code and players. Everyone gets a new role and goes back to the reveal.</p>
+    <div class="btn-row"><button type="button" class="btn ghost" data-a="restartNo">Keep playing</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button><button type="button" class="btn" data-a="restart">Restart now</button></div>
   </div></div>`;
 }
 
@@ -147,12 +161,14 @@ function lobby(v, local) {
   const need = Math.max(n, min);
   const have = c.roles.length;
   const tallyState = have === need ? 'ok' : have < need ? 'short' : 'over';
-  const order = [...new Set(c.roles)];
+  // Roles stay listed at 0 (S.ui.deckShown) so the host can step them back up; cleared once setup is left.
+  for (const id of c.roles) if (!S.ui.deckShown.includes(id)) S.ui.deckShown.push(id);
+  const order = S.ui.deckShown.filter((id) => ROLE_BY_ID[id]);
   const deckList = order.length
     ? `<ul class="deck-list">${order.map((id) => { const r = ROLE_BY_ID[id]; if (!r) return '';
       return `<li class="deck-item">${roleChip(r)}<span class="stepper">
-        <button type="button" class="icon-btn" data-a="subRole" data-id="${id}" aria-label="One fewer ${esc(r.name)}">${ui('minus')}</button><b class="stepper-n">${counts[id]}</b>
-        <button type="button" class="icon-btn" data-a="addRole" data-id="${id}" aria-label="One more ${esc(r.name)}">${ui('plus')}</button></span></li>`; }).join('')}</ul>`
+        <button type="button" class="icon-btn" data-a="subRole" data-id="${id}" aria-label="One fewer ${esc(r.name)}" ${counts[id] ? '' : 'disabled'}>${ui('minus')}</button><b class="stepper-n">${counts[id] || 0}</b>
+        <button type="button" class="icon-btn" data-a="addRole" data-id="${id}" aria-label="One more ${esc(r.name)}" ${(counts[id] || 0) >= roleMax(id) || have >= MAX_PLAYERS ? 'disabled' : ''}>${ui('plus')}</button></span></li>`; }).join('')}</ul>`
     : '<p class="muted deck-empty">Tap roles below to add them, or let the app suggest a balanced set.</p>';
   const team = S.ui.roleTeam;
   const custom = lib.map((x) => ROLE_BY_ID[x.id] || x);
@@ -181,7 +197,7 @@ function lobby(v, local) {
   };
   const roles = `<section class="block roles">
     <header class="block-head"><h2 class="block-title">Roles</h2>
-      <span class="tally" data-state="${tallyState}">${ui(tallyState === 'ok' ? 'check' : 'warning')} ${have} of ${need} roles</span></header>
+      <span class="tally" data-state="${tallyState}" aria-live="polite">${ui(tallyState === 'ok' ? 'check' : 'warning')} ${have} of ${need} roles</span></header>
     <div class="btn-row">
       <button type="button" class="btn ${have ? 'ghost' : ''}" data-a="suggest">${ui('sparkle')} Suggest roles for ${need} players</button>
       ${have ? '<button type="button" class="btn ghost" data-a="clearRoles">Clear</button>' : ''}
@@ -446,7 +462,7 @@ function night(v) {
   const n = S.ui.night;
   if (n.n !== v.night) { n.n = v.night; n.actions = {}; n.picks = {}; }
   const steps = v.script;
-  syncCheck(v, steps.filter((s) => s.kind === 'action' && s.type === 'investigate'));
+  syncCheck(v, steps.filter((s) => s.kind === 'action' && (s.type === 'investigate' || (v.nightVersion >= 7 && LIVE.includes(s.type)))));
   const idSteps = steps.filter((s) => s.kind === 'identify');
   const actSteps = steps.filter((s) => s.kind === 'action');
   const pendingAct = actSteps.filter((s) => !n.actions[s.key]);
@@ -523,14 +539,14 @@ function coinEl(set) {
     <p class="coin-label${live ? ' is-waiting' : ''}"${live ? ` style="animation-delay:${FLIP_MS - Math.round(age)}ms"` : ''} role="status">${heads ? 'Heads: TRUE answer' : 'Tails: FLIPPED answer'}</p></div>`;
 }
 function afterCoin(s, set, html) {
-  if (s.check !== 'random' || !html) return html;
+  if (s.check !== 'random' || s.silentFlip || !html) return html;
   const age = coinAge(set); const wait = age < FLIP_MS;
   return `<div class="coin-after${wait ? ' is-waiting' : ''}"${wait ? ` style="animation-delay:${FLIP_MS - Math.round(age)}ms"` : ''}>${html}</div>`;
 }
 function tellNow(v, s, set) {
   if (s.kind !== 'action' || !LIVE.includes(s.type) || !set?.targets?.length) return '';
-  const nightOnly = v.nightVersion >= 5 && s.type === 'investigate'; // the check card is the only place the answer appears
-  if (s.check === 'random' && set.flip) {
+  const nightOnly = s.type === 'investigate' ? v.nightVersion >= 5 : v.nightVersion >= 7; // the check card is the only place the answer appears
+  if (s.check === 'random' && set.flip && !s.silentFlip) {
     const res = liveResult(v, s, set);
     return coinEl(set) + (res && !nightOnly ? afterCoin(s, set, `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p></div>`) : '');
   }
@@ -547,7 +563,7 @@ function tellNow(v, s, set) {
 function cue(v, s, num, current, alive) {
   const n = S.ui.night;
   const r = ROLE_BY_ID[s.roleId];
-  const roleEl = r ? roleChip(r) : '';
+  const roleEl = s.label ? `<b class="call-label">${esc(s.label)}</b>` : r ? roleChip(r) : '';
   const isDone = (s.kind === 'info' || s.kind === 'action') && !!n.actions[s.key];
   if (isDone && !current) {
     const set = n.actions[s.key];
@@ -565,7 +581,7 @@ function cue(v, s, num, current, alive) {
     return `<li class="cue" data-ck="${s.key}"><span class="cue-n">${num}</span><button type="button" class="cue-line" data-a="focusStep" data-key="${s.key}">${roleEl}<span class="meta">${what}</span></button></li>`;
   }
   const cues = stepCues(s);
-  const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>` : '';
+  const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>${s.realRole ? `<p class="note is-private">Real role: ${esc(s.realRole)}</p>` : ''}` : '';
   const st = v.story?.steps?.[s.key];
   const say = st ? `${storySay(st.say, n.actions[s.key] ? st.then : null, st.notes)}${hint}` : cues ? `${sayLine(cues.open)}${hint}` : `<p class="note is-private">${ui('ear')} Just for you: ${esc(s.prompt)}</p>`;
   let inner;
@@ -671,7 +687,7 @@ function over(v) {
   return {
     body: `<section class="win ${ink}"><span class="win-mark">${ui('crown')}</span><h2 class="phase-title">${side}</h2><p class="muted">${esc(w?.reason || '')}</p></section>
       <section class="block${S.ui.anim === 'roles' ? ' reveal-rows' : ''}"><h2 class="block-title">Final roles</h2>${rows}</section>`,
-    dock: `<button type="button" class="btn big" data-a="newGame">New game with the same players</button>`,
+    dock: `<button type="button" class="btn big" data-a="restart">Restart</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button>`,
   };
 }
 
@@ -718,7 +734,7 @@ function logPane(v) {
     ${lines ? `<div class="log-head" aria-hidden="true"><span></span><span>Round · What happened</span></div><ol class="log">${lines}</ol>` : empty('log', 'The log fills up once night 1 starts.')}
     ${v.sideWins.length ? `<section class="block"><h2 class="block-title">Side wins</h2>${v.sideWins.map((s) => `<p class="note">${ui('trophy')} ${esc(s.reason)}</p>`).join('')}</section>` : ''}
     ${v.phase !== 'lobby' && v.phase !== 'over' ? `<section class="block tools"><h2 class="block-title">Host tools</h2>
-      <div class="btn-row"><button type="button" class="btn ghost" data-a="declare">${ui('crown')} Declare a winner</button><button type="button" class="btn ghost danger" data-a="newGame">Abandon game</button></div></section>` : ''}`;
+      <div class="btn-row"><button type="button" class="btn ghost" data-a="declare">${ui('crown')} Declare a winner</button><button type="button" class="btn ghost" data-a="restartAsk">Restart</button></div></section>` : ''}`;
 }
 
 // ---------------- custom role editor ----------------

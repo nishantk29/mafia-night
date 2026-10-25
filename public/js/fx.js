@@ -103,6 +103,13 @@ export function shake() {
   els.forEach((el) => { el.classList.remove('fx-shake'); void el.offsetWidth; el.classList.add('fx-shake'); el.addEventListener('animationend', () => el.classList.remove('fx-shake'), { once: true }); });
 }
 
+// The new game's screen fades up once (opacity + transform only); the action dock stays put because a transform would re-anchor it.
+export function restartIn() {
+  if (!animOn()) return;
+  const els = [...document.querySelectorAll('#app > main > *')].flatMap((el) => (el.classList.contains('pane-game') ? [...el.children].filter((c) => !c.classList.contains('action-dock')) : [el]));
+  els.forEach((el) => { el.classList.add('is-restarting'); el.addEventListener('animationend', () => el.classList.remove('is-restarting'), { once: true }); });
+}
+
 // ---------------------------------------------------------------- victory card
 let victoryEl = null;
 export const victoryOpen = () => !!victoryEl;
@@ -110,6 +117,7 @@ const REASON_ICON = { town: 'sun', mafia: 'fedora', third: 'sparkle', none: 'sku
 export function showVictory(ev) {
   closeVictory();
   const host = layer(); if (!host) return;
+  const isHost = S.view?.kind === 'host';
   const you = ev.won === true ? 'You won!' : ev.won === false ? 'You lost' : '';
   const el = document.createElement('div');
   el.className = `fx-victory is-${ev.theme}${animOn() ? '' : ' is-still'}`;
@@ -120,13 +128,14 @@ export function showVictory(ev) {
       ${you ? `<p class="fx-v-you ${ev.won ? 'is-win' : 'is-loss'}">${you}</p>` : ''}
       <h2 class="fx-v-team" id="fx-v-team">${esc(ev.team)} ${ev.theme === 'none' ? '' : 'won'}</h2>
       ${ev.reason ? `<p class="fx-v-reason">${esc(ev.reason)}</p>` : ''}
-      <div class="fx-v-actions"><button type="button" class="btn big" data-a="playAgain">Play again</button>
+      ${isHost ? '' : '<p class="fx-v-reason">Waiting for the host to restart.</p>'}
+      <div class="fx-v-actions">${isHost ? '<button type="button" class="btn big" data-a="playAgain">Restart</button>' : ''}
         <button type="button" class="btn ghost" data-a="closeVictory">Close</button></div>
     </div></div>`;
   host.append(el); victoryEl = el;
   if (ev.won !== false) buzz([40, 50, 90]);
   if (animOn()) { const b = burst(el.querySelector('.fx-in'), ev.theme, 26, ev.theme === 'mafia' ? 'sparks' : 'confetti'); drop(b, 700); }
-  el.querySelector('[data-a="playAgain"]').focus({ preventScroll: true });
+  el.querySelector(isHost ? '[data-a="playAgain"]' : '[data-a="closeVictory"]').focus({ preventScroll: true });
 }
 export function closeVictory() { victoryEl?.remove(); victoryEl = null; }
 

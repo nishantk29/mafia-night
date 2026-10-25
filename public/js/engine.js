@@ -5,6 +5,10 @@ import { simpleDeckMap } from './simple.js';
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 50;
 
+// Most copies of one role the host can put in the deck: Lovers come in pairs, anything else up to the table size.
+export const roleMax = (roleId, playerCount = MAX_PLAYERS) =>
+  roleId === 'lover' ? 2 : Math.min(MAX_PLAYERS, Math.max(1, playerCount | 0));
+
 // ---------- randomness ----------
 export function randInt(n) {
   const a = new Uint32Array(1);
@@ -139,7 +143,52 @@ export const hasStoryScript = (room) => nightVersion(room) >= 4;
 export const hasNightOnlyChecks = (room) => nightVersion(room) >= 5;
 // 6: the Godfather shows as a Villager to the Detective's exact-role check (the Cop still sees NOT MAFIA via appearsAs).
 export const hasGodfatherDisguise = (room) => nightVersion(room) >= 6;
-export const LATEST_NIGHT_VERSION = 6;
+// 7: Tracker, Lookout and Coroner results (track/watch/autopsy) are night-only too, through the check card, like the Cop.
+export const hasNightOnlyInfo = (room) => nightVersion(room) >= 7;
+export const LATEST_NIGHT_VERSION = 7;
+// 7: every look-alike call family is numbered 1..N (Cop 1, Cop 2...), the player's phone shows their number, and the Confused Cop is a disguised Cop
+export const hasNumberedCalls = (room) => nightVersion(room) >= 7;
+
+// The role id a player believes they hold. v7 treats the Confused Cop as a disguised Cop (older rooms keep it open).
+export const shownRoleId = (roleId, room) => (hasNumberedCalls(room) && roleId === 'confused_cop' ? 'cop' : ROLE_BY_ID[roleId]?.seesAs || roleId);
+const callHash = (room, id) => [...`${room.copSalt}:${id}`].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
+// Holders of each family that has its own individual wake-up call (alive and dead, so numbers never move on a death).
+function callFamilies(room) {
+  const fams = {};
+  for (const p of room.players || []) {
+    const r = ROLE_BY_ID[p.roleId];
+    if (!r?.action || r.action.group || r.meeting) continue;
+    const fam = ROLE_BY_ID[shownRoleId(p.roleId, room)] || r;
+    (fams[fam.id] ||= { fam, ids: [] }).ids.push(p.id);
+  }
+  return Object.values(fams).filter((f) => f.ids.length > 1);
+}
+// { playerId: { family, n, of } } for every holder of a family with 2+ players. Uses the stored room.callNo shuffle
+// when it still covers the family exactly, otherwise a deterministic shuffle seeded by copSalt.
+export function callNumbers(room) {
+  const out = {};
+  if (!room || !hasNumberedCalls(room)) return out;
+  for (const { fam, ids } of callFamilies(room)) {
+    const stored = ids.map((id) => room.callNo?.[id]);
+    const ok = [...stored].sort((a, b) => a - b).every((n, i) => n === i + 1);
+    const order = [...ids].sort((a, b) => (ok ? room.callNo[a] - room.callNo[b] : callHash(room, a) - callHash(room, b) || (a < b ? -1 : 1)));
+    order.forEach((id, i) => { out[id] = { family: fam.name, n: i + 1, of: ids.length }; });
+  }
+  return out;
+}
+// Stores a fresh random numbering on the room (deal time, role changes, night start). Keeps families that are already valid.
+export function assignCallNumbers(room) {
+  if (!hasNumberedCalls(room)) return;
+  const callNo = {};
+  for (const { ids } of callFamilies(room)) {
+    const keep = room.callNo && ids.every((id) => room.callNo[id]) && [...ids].map((id) => room.callNo[id]).sort((a, b) => a - b).every((n, i) => n === i + 1);
+    if (keep) { for (const id of ids) callNo[id] = room.callNo[id]; continue; }
+    const pool = [...ids];
+    for (let i = pool.length - 1; i > 0; i--) { const j = randInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    pool.forEach((id, i) => { callNo[id] = i + 1; });
+  }
+  room.callNo = callNo;
+}
 
 const isQuiet = (st) => st.kind === 'info' && !st.spoken;
 export function nightScript(room) {
@@ -211,10 +260,30 @@ function scriptSteps(room) {
       steps.push({ key: `act:${p.id}`, kind: 'action', roleId: r.id, actors: [p.id], ...r.action });
     }
   }
+  if (hasNumberedCalls(room)) {
+    const nums = callNumbers(room);
+    // A disguised role is called with the exact words (and wake order) of the role it believes it is, numbered or not,
+    // so neither the wording nor an out-of-sequence number points at the Confused Cop.
+    for (const st of steps) {
+      const shown = st.kind === 'action' && st.key.startsWith('act:') && st.roleId !== shownRoleId(st.roleId, room) ? ROLE_BY_ID[shownRoleId(st.roleId, room)] : null;
+      if (shown?.action) st.prompt = shown.action.prompt;
+    }
+    for (const st of steps) {
+      const num = st.kind === 'action' && st.key.startsWith('act:') && nums[st.actors[0]];
+      if (!num) continue;
+      const label = `${num.family} ${num.n}`;
+      st.prompt = /^[^,]+,/.test(st.prompt) ? st.prompt.replace(/^[^,]+,/, `${label},`) : `${label}, ${st.prompt}`;
+      st.order = (ROLE_BY_ID[shownRoleId(st.roleId, room)]?.action?.order ?? st.order) + num.n * 0.001;
+      st.label = label;
+      st.realRole = ROLE_BY_ID[st.roleId]?.name;
+      if (st.check === 'random') st.silentFlip = true;
+      st.hint = `${label} is ${nameOf(room, st.actors[0])}. Tap them on the shoulder so only they wake.`;
+    }
+  }
   // Several players who look like "Cop" (real, disguised, or the same type twice) each get their own neutral
   // numbered call. Numbers follow a per-game shuffled rank stored on the room, so they never hint at the real role.
   const looksCop = (st) => st.kind === 'action' && (ROLE_BY_ID[ROLE_BY_ID[st.roleId]?.seesAs] || ROLE_BY_ID[st.roleId])?.id === 'cop';
-  const copSteps = steps.filter(looksCop);
+  const copSteps = hasNumberedCalls(room) ? [] : steps.filter(looksCop);
   if (copSteps.length > 1) {
     const rank = (st) => [...`${room.copSalt}:${st.actors[0]}`].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
     copSteps.sort((a, b) => rank(a) - rank(b));
@@ -226,7 +295,7 @@ function scriptSteps(room) {
     });
   }
   // Confused Cops are an open role: own calls, numbered only when there are several.
-  const confSteps = steps.filter((st) => st.kind === 'action' && st.roleId === 'confused_cop');
+  const confSteps = hasNumberedCalls(room) ? [] : steps.filter((st) => st.kind === 'action' && st.roleId === 'confused_cop');
   if (confSteps.length > 1) confSteps.forEach((st, i) => {
     st.prompt = st.prompt.replace(/^Confused Cop,/, `Confused Cop ${i + 1},`);
     st.order += i * 0.001;
@@ -388,7 +457,7 @@ export function setupWarnings(roleIds, playerCount) {
   const savers = count((r) => ['protect', 'guard', 'jail'].includes(r.action?.type));
   if (savers > killers + 1) out.push({ level: 'warn', text: `${savers} protectors against ${killers} killer${killers === 1 ? '' : 's'}: nights may often end with nobody dead.` });
   const uniques = ['godfather', 'doctor', 'cop', 'jailer', 'mayor', 'president', 'janitor'];
-  for (const id of uniques) if (count((r) => r.id === id) > 1) out.push({ level: 'tip', text: `More than one ${ROLE_BY_ID[id].name}. That works, but it's unusual.` });
+  for (const id of uniques) if (count((r) => r.id === id) > 1) out.push({ level: 'tip', text: `More than one ${ROLE_BY_ID[id].name}. Fine for a big table, but each extra one changes the balance.` });
   return out;
 }
 
@@ -399,6 +468,7 @@ export function finalizeBlind(room) {
   if (slots.length && slots.every((s) => s.roleId === 'villager') && slots[0].remaining === open.length) {
     for (const p of open) p.roleId = 'villager';
   }
+  assignCallNumbers(room);
 }
 
 // ---------- killing ----------
@@ -454,7 +524,8 @@ export function resolveNight(room, actions, opts = {}) {
   const jailed = new Set(acts.filter((a) => a.s.type === 'jail').map((a) => a.targets[0]));
   let blockedPlayers = new Set(jailed);
   let blockedActs = new Set();
-  const isBlocked = (a) => blockedActs.has(a) || a.s.actors.every((id) => blockedPlayers.has(id));
+  // v7: a team call (the Mafia kill) is stopped when every LIVING member is blocked; dead teammates are only there so the call looks the same.
+  const isBlocked = (a) => blockedActs.has(a) || (hasNumberedCalls(room) ? a.s.actors.filter((id) => playerById(room, id)?.alive || a.s.key === opts.ghost) : a.s.actors).every((id) => blockedPlayers.has(id));
   for (let i = 0; i < 4; i++) {
     const active = acts.filter((a) => !isBlocked(a));
     const nbp = new Set(jailed);
@@ -551,10 +622,10 @@ export function resolveNight(room, actions, opts = {}) {
   for (const a of active.filter((x) => ['investigate', 'track', 'watch', 'autopsy'].includes(x.s.type))) {
     const actorIds = a.s.actors;
     const t = alivePlayer(a.targets[0]);
-    let text; let note = ''; let coinInfo = null;
+    let text; let note = ''; let coinInfo = null; let card = null;
     if (a.s.type === 'investigate') {
       const chk = a.s.check;
-      if (chk === 'alignment') text = `${t.name} is ${sideName(appearsAs(room, t))}.`;
+      if (chk === 'alignment') text = `${t.name} is ${sideName(a.s.roleId === 'psychic' && hasNumberedCalls(room) ? (factionOf(t.roleId) === 'mafia' ? 'mafia' : 'innocent') : appearsAs(room, t))}.`; // v7: the Psychic reads the TRUE side, past frames and disguises
       else if (chk === 'inverted') { text = `${t.name} is ${sideName(appearsAs(room, t) === 'mafia' ? 'innocent' : 'mafia')}.`; note = 'Insane Cop: this is the flipped result. Say it as if it were true.'; }
       else if (chk === 'random') {
         // Open role: heads = the true Cop result, tails = the opposite. The flip is decided when the target is entered.
@@ -580,13 +651,17 @@ export function resolveNight(room, actions, opts = {}) {
     } else if (a.s.type === 'track') {
       const went = wokeBy(a).filter((x) => x.visitors.includes(t.id) && x.targets.length).flatMap((x) => x.targets).map((id) => nameOf(room, id));
       text = went.length ? `${t.name} visited ${[...new Set(went)].join(', ')}.` : `${t.name} stayed home.`;
+      card = { kind: 'track', text: went.length ? [...new Set(went)].map((n) => n.toUpperCase()).join(' & ') : 'STAYED HOME' };
     } else if (a.s.type === 'watch') {
       const who = wokeBy(a).filter((x) => x.targets.includes(t.id)).flatMap((x) => x.visitors).filter((id) => !actorIds.includes(id)).map((id) => nameOf(room, id));
       text = who.length ? `${[...new Set(who)].join(', ')} visited ${t.name}.` : `Nobody visited ${t.name}.`;
+      card = { kind: 'watch', text: who.length ? [...new Set(who)].map((n) => n.toUpperCase()).join(' & ') : 'NOBODY' };
     } else if (a.s.type === 'autopsy') {
       text = `${t.name} was the ${ROLE_BY_ID[t.roleId].name}.`;
+      card = { kind: 'role', text: ROLE_BY_ID[t.roleId].name.toUpperCase() };
     }
-    if (!(hasNightOnlyChecks(room) && a.s.type === 'investigate' && !opts.preview)) rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(coinInfo ? { flip: coinInfo.flip } : {}) });
+    const nightOnly = a.s.type === 'investigate' ? hasNightOnlyChecks(room) : hasNightOnlyInfo(room);
+    if (!(nightOnly && !opts.preview)) rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(card ? { card } : {}), ...(coinInfo ? { flip: coinInfo.flip } : {}) });
     if (coinInfo) { (rep.coins ||= []).push({ key: a.s.key, flip: coinInfo.flip, text: coinInfo.text }); log(room, `Night ${room.night}: ${coinInfo.text}`, { private: true }); }
   }
 
@@ -625,8 +700,9 @@ export function morningAnnouncement(room, report) {
   if (!rep.deaths?.length) say.push('Nobody died last night.');
   for (const d of rep.deaths || []) {
     say.push(`${nameOf(room, d.id)} was killed in the night.`);
+    if (!reveal) continue; // roles are never announced under this rule, so a cleaned victim must not stand out
     if (d.hidden) say.push('Their role stays a mystery.');
-    else if (reveal) say.push(`They were the ${ROLE_BY_ID[playerById(room, d.id)?.roleId]?.name || 'Villager'}.`);
+    else say.push(`They were the ${ROLE_BY_ID[playerById(room, d.id)?.roleId]?.name || 'Villager'}.`);
   }
   const notes = [];
   for (const sv of rep.saves || []) notes.push(sv.text);
@@ -641,9 +717,12 @@ export function morningAnnouncement(room, report) {
 // The Host's full-screen "show the player" card for an investigation: { kind, text }, or null. `result` is the
 // previewNight answer (null while a coin flip is pending). Never holds a player name or a number.
 export function checkCard(room, step, result) {
-  if (!hasStoryScript(room) || !step || step.kind !== 'action' || step.type !== 'investigate' || !result) return null;
+  if (!hasStoryScript(room) || !step || step.kind !== 'action' || !result) return null;
+  const isInfo = ['track', 'watch', 'autopsy'].includes(step.type);
+  if (step.type !== 'investigate' && !(isInfo && hasNightOnlyInfo(room))) return null;
   if (result.neutral) return { kind: 'none', text: 'NO ANSWER' };
   if (result.blocked) return null;
+  if (isInfo) return result.card || null;
   const t = String(result.text || '');
   if (step.check === 'role') {
     const hit = Object.values(ROLE_BY_ID).filter((r) => t.endsWith(` is the ${r.name}.`)).sort((a, b) => b.name.length - a.name.length)[0];
@@ -664,10 +743,10 @@ export function condemn(room, id) {
   if (r.shield) room.shield = true;
   // side wins
   room.sideWins ||= [];
-  if (r.sideWin === 'condemned') room.sideWins.push({ id: p.id, reason: `${p.name} (Jester) got condemned.` });
+  if (r.sideWin === 'condemned') room.sideWins.push({ id: p.id, by: p.id, reason: `${p.name} (Jester) got condemned.` });
   for (const q of room.players) {
     if (q.alive && ROLE_BY_ID[q.roleId]?.sideWin === 'target' && q.target === id) {
-      room.sideWins.push({ id: q.id, reason: `${q.name} (Executioner): target ${p.name} was condemned.` });
+      room.sideWins.push({ id: q.id, by: p.id, reason: `${q.name} (Executioner): target ${p.name} was condemned.` });
     }
   }
   applyWinChecks(room);

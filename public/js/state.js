@@ -7,7 +7,7 @@ export const S = {
     sideTab: 'table', // table | log (side switch, 768-1439px)
     sheet: null, reveal: false, modal: null, search: '', roleTeam: 'all', dealMore: false,
     night: { n: 0, actions: {}, picks: {} }, condemn: null, draft: {}, showKey: false,
-    claim: null, claimSuit: null,
+    claim: null, claimSuit: null, roles: false, deckShown: [], // roles: the "Roles in this game" sheet; deckShown: roles kept visible at 0 while the host sets up
     anim: null, // 'sheet' | 'reveal' | 'hide' | 'modal' | null: set by an action, cleared after one render
   },
   send: () => {}, render: () => {}, toast: () => {}, transport: null,

@@ -7,6 +7,7 @@ import { SUITS, RANKS } from './engine.js';
 import { board, pc, cardName, teamName } from './board.js';
 import { ico, cardArt } from './art.js';
 import { ui } from './ui_icons.js';
+import { setupRoleList, rolesSheet, rolesButton } from './roles_sheet.js';
 import { graveyardPanel } from './graveyard.js';
 import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
 
@@ -35,13 +36,13 @@ export function playerScreen(v) {
     hand = `<div class="waiting">${back()}<h2 class="phase-title">You’re in, ${esc(me.name)}</h2>
       <p class="muted">Waiting for the Host to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
   } else hand = playing(v);
-  return `${appbar(esc(me.name), `${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${toolsButton()}`)}
+  return `${appbar(esc(me.name), `${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${toolsButton()}${rolesButton()}`)}
   <main class="wrap seat-view">
-    <section class="hand" aria-label="Your role">${hand}</section>
+    <section class="hand" aria-label="Your role">${hand}${me.role ? `<p class="roles-link"><button type="button" class="linkish" data-a="openRoles">${ui('rules')} Roles in this game</button></p>` : ''}</section>
     ${!me.alive && S.graveyard ? graveyardPanel(me.id) : ''}
     <section class="table-side" aria-label="The table">${tableSide(v)}</section>
     <p class="leave-row"><button type="button" class="linkish" data-a="leaveGame">${ui('back')} Leave this game</button></p>
-  </main>${S.ui.tools ? toolsPanel(v, false) : ''}`;
+  </main>${S.ui.tools ? toolsPanel(v, false) : ''}${S.ui.roles ? rolesSheet(setupRoleList(v.setupRoles || [], { forPlayer: true, unreliable: v.setupUnreliable || [] })) : ''}`;
 }
 
 function playing(v) {
@@ -72,6 +73,7 @@ function roleCard(v) {
           <div class="rcard-body">
             <span class="team-tag a-${r.alignment}"><i class="team-mark a-${r.alignment}"></i>${teamName(r.alignment)}</span>
             <h2 class="rcard-name">${esc(r.name)}</h2>
+            ${me.callName ? `<p class="rcard-call">You are <b>${esc(me.callName)}</b>. Wake when the Host calls ${esc(me.callName)}.</p>` : ''}
             <p class="rcard-blurb">${esc(r.blurb)}</p>
           </div>
           <span class="rcard-index rcard-index-br" aria-hidden="true">${ico(r)}</span>

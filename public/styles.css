@@ -1232,6 +1232,8 @@ html[data-noblur="1"] .glass::after{display:none}
 .fx-stamp{position:absolute;top:14px;right:10px;padding:2px 10px;border:3px solid var(--mafia);border-radius:8px;color:var(--mafia);background:rgba(27,20,16,.55);
   font:800 var(--fs-md)/1.2 var(--font-display);text-transform:uppercase;letter-spacing:.06em;transform:rotate(-8deg);animation:fx-slam calc(320ms * var(--dur-scale)) var(--ease-out) calc(240ms * var(--dur-scale)) both;will-change:transform,opacity}
 @keyframes fx-slam{0%{transform:rotate(-8deg) scale(2.8);opacity:0}60%{transform:rotate(-8deg) scale(.9);opacity:1}100%{transform:rotate(-8deg) scale(1);opacity:1}}
+.is-restarting{animation:restart-in calc(160ms * var(--dur-scale)) var(--ease-out) both}
+@keyframes restart-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .fx-shake{animation:fx-shake calc(320ms * var(--dur-scale)) var(--ease-out) both}
 @keyframes fx-shake{0%,100%{transform:none}15%{transform:translate(-5px,2px)}30%{transform:translate(4px,-2px)}45%{transform:translate(-3px,1px)}60%{transform:translate(2px,-1px)}}
 
@@ -1617,3 +1619,5 @@ html[data-fx="off"] .gy-in{animation:none}
 @keyframes check-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.check-card{animation:none}}
 html[data-fx="off"] .check-card{animation:none}
+.rcard-call{margin:var(--s1) 0 0;font-size:var(--fs-sm);color:var(--candle);max-width:30ch}
+.call-label{font-weight:700}

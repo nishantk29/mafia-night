@@ -13,8 +13,8 @@ import { hostScreen, checkCardFor } from './host.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
-import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn } from './fx.js';
-import { gameOverEvent } from './room.js';
+import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn, restartIn } from './fx.js';
+import { gameOverEvent, isNewGame } from './room.js';
 import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
@@ -83,6 +83,7 @@ function paint() {
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
   applyRoleSearch();
   afterRender();
+  if (opened === 'restart') restartIn();
   gameAwake((S.mode === 'host' || S.mode === 'local') && ['dealt', 'night', 'day'].includes(S.view?.phase));
   if (opened === 'deal') buzz(18);
   window.scrollTo(0, y);
@@ -205,7 +206,7 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
+        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
       else if (m.type === 'graveyard') { S.graveyard = m.entries; S.render(); }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
@@ -223,6 +224,14 @@ function wsTransport(code, helloFn) {
   };
 }
 
+// A restarted game (same code, new gameNo): forget everything tied to the old game; the stored player token still works.
+function newGameUi(next) {
+  closeVictory();
+  Object.assign(S.ui, { night: { n: 0, actions: {}, picks: {} }, checkCard: null, checkSeen: {}, reveal: false, endConfirm: false, restartConfirm: false, condemn: null, declare: false, gy: false, tab: 'game', sheet: null, settings: false, anim: 'restart' });
+  S.graveyard = null; S.gyShown = 0;
+  if (next?.kind === 'player') S.toast('New game started');
+}
+
 // Cult + Serial Killer stalemate: open the Host's Declare a winner sheet once, the moment it starts.
 function autoDeclare(prev, view) {
   if (view?.kind === 'host' && view.stalemate && !prev?.stalemate) { S.ui.declare = true; S.ui.anim = 'modal'; }
@@ -236,7 +245,7 @@ function localTransport() {
   if (!room) { room = newRoom('LOCAL', 'local'); room.config.mode = 'cards'; }
   const emit = () => {
     store.set(KEY, JSON.stringify(room)); registerRoles(room.config.customRoles);
-    const prev = S.view; S.view = viewForHost(room, new Set()); autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
+    const prev = S.view; const next = viewForHost(room, new Set()); if (isNewGame(prev, next)) newGameUi(next); S.view = next; autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
     if (prev && prev.phase !== 'over' && room.phase === 'over') showVictory(gameOverEvent(room)); // single device: no server to announce it
   };
   setTimeout(emit, 0);
@@ -246,6 +255,7 @@ function localTransport() {
       const r = reduce(room, { host: true }, a);
       if (r.error) S.toast(r.error);
       else if (r.data?.skipped?.length) S.toast(`Skipped: ${r.data.skipped.join(', ')}`);
+      if (r.data?.error) S.toast(r.data.error);
       emit();
     },
     close() {},
@@ -373,9 +383,9 @@ const A = {
   },
   rmPlayer(el) { send({ type: 'removePlayer', playerId: el.dataset.id }); },
   cfg(el) { send({ type: 'setConfig', [el.dataset.k]: el.dataset.v }); },
-  suggest() { syncLibrary(); send({ type: 'suggestRoles' }); },
+  suggest() { S.ui.deckShown = []; syncLibrary(); send({ type: 'suggestRoles' }); },
   rebalance() { const roles = S.view?.config?.roles || []; if (roles.length) send({ type: 'setConfig', roles: rebalance(roles) }); },
-  clearRoles() { send({ type: 'setConfig', roles: [] }); },
+  clearRoles() { S.ui.deckShown = []; send({ type: 'setConfig', roles: [] }); },
   addRole(el) { syncLibrary(); send({ type: 'setConfig', roles: [...S.view.config.roles, el.dataset.id] }); },
   subRole(el) { const r = [...S.view.config.roles]; const i = r.lastIndexOf(el.dataset.id); if (i >= 0) r.splice(i, 1); send({ type: 'setConfig', roles: r }); },
   roleTeam(el) { S.ui.roleTeam = el.dataset.v; S.render(); },
@@ -390,7 +400,7 @@ const A = {
     if (c) { S.ui.checkCard = c; S.render(); }
   },
   hideKey() { S.ui.showKey = false; S.render(); },
-  resetLocal() { if (confirm('Remove every player and role and start a fresh game on this device?')) { S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'resetLocal' }); } },
+  resetLocal() { if (confirm('Remove every player and role and start a fresh game on this device?')) { S.ui.deckShown = []; S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'resetLocal' }); } },
   leaveGame() {
     if (!confirm('Leave this game on this phone? You can join again with the room code, but the Host may need to remove your old seat.')) return;
     store.del(`mafia.player.${S.code}`); location.hash = '#/';
@@ -461,6 +471,10 @@ const A = {
     send({ type: 'declareWinner', side, reason });
   },
   playAgain() { closeVictory(); S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'playAgain' }); },
+  restart() { S.ui.restartConfirm = false; S.ui.settings = false; send({ type: 'restart' }); },
+  restartSetup() { S.ui.restartConfirm = false; S.ui.settings = false; send({ type: 'restart', setup: true }); },
+  restartAsk() { S.ui.settings = false; S.ui.restartConfirm = true; S.ui.anim = 'modal'; S.render(); },
+  restartNo() { S.ui.restartConfirm = false; S.render(); },
   closeVictory() { closeVictory(); S.ui.anim = 'roles'; S.render(); },
   setupMode(el) {
     const m = el.dataset.v; if (S.ui.setupMode === m) return;
@@ -476,6 +490,8 @@ const A = {
     send({ type: 'setConfig', roles: simpleRoleIds(counts) });
   },
   simpleCards() { const on = S.view.config.mode !== 'cards'; send({ type: 'setConfig', mode: on ? 'cards' : 'app', deckStyle: on ? 'simple' : 'random' }); },
+  openRoles() { S.ui.roles = true; S.ui.anim = 'sheet'; S.render(); },
+  closeRoles() { S.ui.roles = false; S.render(); },
   openSettings() { S.ui.settings = true; S.ui.anim = 'modal'; S.render(); },
   closeSettings() { S.ui.settings = false; S.render(); },
   endGameAsk() { S.ui.settings = false; S.ui.endConfirm = true; S.ui.anim = 'modal'; S.render(); },
@@ -598,7 +614,8 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
-    if ((S.ui.tools || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if (S.ui.roles) { A.closeRoles(); return; }
     if (S.ui.gy) { A.closeGy(); return; }
     if (S.ui.showKey) { A.hideKey(); return; }
     if (S.ui.tools) { A.closeTools(); return; }
@@ -606,6 +623,7 @@ document.addEventListener('keydown', (ev) => {
     if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
     if (S.ui.endConfirm) { A.endGameNo(); return; }
+    if (S.ui.restartConfirm) { A.restartNo(); return; }
     if (S.ui.declare) { A.closeDeclare(); return; }
     if (S.ui.sheet) { const id = S.ui.sheet; A.closeSheet(); refocus(`[data-a="seat"][data-id="${CSS.escape(id)}"]`, ''); return; }
     return;

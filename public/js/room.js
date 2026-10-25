@@ -1,9 +1,9 @@
 // Room state + reducer + per-viewer projections. Pure functions: used by the Durable Object and by local mode.
 import {
-  FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
+  FULL_DECK, roleMax, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
   setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
-  hasStoryScript, hasNightOnlyChecks, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
+  hasStoryScript, hasNightOnlyChecks, assignCallNumbers, callNumbers, hasNumberedCalls, shownRoleId, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
@@ -42,12 +42,26 @@ function addPlayer(room, name, offline) {
 }
 
 function resetDeal(room) {
-  for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; }
+  for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; delete p.note; }
+  delete room.callNo; // fresh random Cop 1/2/... numbers each game
   room.copSalt = Math.random(); // seeds the neutral "Cop 1/2/..." numbering for this game
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.condemnedDay = null; room.usage = {}; room.dayUsed = {};
   room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.results = []; room.shield = false; room.framed = [];
   delete room.graveyard;
 }
+
+// Restart: a fresh game for the same room. Keeps code, hostKey, players and config; moves the room to the latest night version.
+export function restartGame(room) {
+  resetDeal(room);
+  room.nightVersion = LATEST_NIGHT_VERSION;
+  delete room.upgradeNext;
+  room.results = []; room.lastReport = null; room.log = []; room.framed = []; room.pending = [];
+  room.gameNo = (room.gameNo || 1) + 1;
+  log(room, `Game ${room.gameNo} started.`);
+}
+
+// A restart keeps the code and players but bumps gameNo; the client then drops its per-game UI state.
+export const isNewGame = (prev, next) => !!prev && !!next && !!prev.code && prev.code === next.code && (prev.gameNo || 1) !== (next.gameNo || 1);
 
 // ---------- Graveyard chat (v3 rooms) ----------
 // Only the dead and the Host may post, and only the dead and the Host are ever sent it (see messagesFor).
@@ -105,7 +119,7 @@ export function reduce(room, actor, a) {
     const slot = room.deck?.map.find((m) => m.card === card);
     if (!isCard(card) || !slot) { me.wrongClaims++; return err('That card is not in this game.'); }
     if (room.deck.claimed[card] && room.deck.claimed[card] !== me.id) { me.wrongClaims++; return err('Someone already has that card.'); }
-    room.deck.claimed[card] = me.id; me.card = card; me.roleId = slot.roleId;
+    room.deck.claimed[card] = me.id; me.card = card; me.roleId = slot.roleId; assignCallNumbers(room);
     return { ok: true };
   }
 
@@ -113,7 +127,7 @@ export function reduce(room, actor, a) {
   if (t === 'playAgain') {
     if (!host && !(actor.playerId && playerById(room, actor.playerId))) return err('Not in this room.');
     if (room.phase !== 'over') return err('The game is not over.');
-    resetDeal(room); return { ok: true };
+    restartGame(room); return { ok: true };
   }
 
   if (!host) return err('Host only.');
@@ -157,7 +171,10 @@ export function reduce(room, actor, a) {
       if (a.mode && ROOM_MODES.includes(a.mode)) c.mode = a.mode;
       if (a.deckStyle && ['fixed', 'random', 'simple'].includes(a.deckStyle)) c.deckStyle = a.deckStyle;
       if (a.cardFlow && CARD_FLOWS.includes(a.cardFlow)) c.cardFlow = a.cardFlow;
-      if (Array.isArray(a.roles)) c.roles = a.roles.map(resolveRoleId).filter((r) => ROLE_BY_ID[r]).slice(0, MAX_PLAYERS);
+      if (Array.isArray(a.roles)) {
+        const seen = {};
+        c.roles = a.roles.map(resolveRoleId).filter((r) => ROLE_BY_ID[r]).filter((r) => (seen[r] = (seen[r] || 0) + 1) <= roleMax(r)).slice(0, MAX_PLAYERS);
+      }
       if (typeof a.sharedBoard === 'boolean') c.sharedBoard = a.sharedBoard;
       if (a.theme && THEMES[a.theme]) c.theme = a.theme;
       if (a.rules && typeof a.rules === 'object') {
@@ -181,22 +198,14 @@ export function reduce(room, actor, a) {
     }
     case 'deal': {
       if (room.phase !== 'lobby') return err('Already dealt.');
-      const n = room.players.length;
-      if (n < MIN_PLAYERS) return err(`Need at least ${MIN_PLAYERS} players (you have ${n}).`);
-      if (room.config.roles.length !== n) return err(`Pick exactly ${n} roles (you picked ${room.config.roles.length}).`);
-      const needsMafia = room.config.roles.some((r) => factionOf(r) === 'mafia');
-      if (!needsMafia) return err('Add at least one Mafia-aligned role.');
-      const fatal = setupWarnings(room.config.roles, n).find((w) => w.level === 'error');
-      if (fatal) return err(fatal.text);
-      if (room.config.mode === 'app') {
-        const map = dealRoles(room.config.roles, room.players.map((p) => p.id));
-        for (const p of room.players) p.roleId = map[p.id];
-      } else {
-        room.deck = { map: buildDeckMap(room.config.roles, room.config.deckStyle), claimed: {} };
-      }
-      room.phase = 'dealt';
-      log(room, room.config.mode === 'app' ? 'Roles dealt to phones.' : 'Card deck built. Deal the cards.');
-      return { ok: true };
+      return dealNow(room);
+    }
+    case 'restart': {
+      if (room.phase === 'lobby') return err('Nothing to restart yet.');
+      restartGame(room);
+      if (a.setup) return { ok: true, data: { dealt: false } };
+      const r = dealNow(room);
+      return r.error ? { ok: true, data: { dealt: false, error: r.error } } : { ok: true, data: { dealt: true } };
     }
     case 'undeal': {
       if (room.phase !== 'dealt') return err('Nothing to undo.');
@@ -210,7 +219,7 @@ export function reduce(room, actor, a) {
       const owner = room.deck.claimed[a.card];
       if (owner && owner !== p.id) return err(`${playerById(room, owner)?.name || 'Someone'} already has that card.`);
       if (p.card) delete room.deck.claimed[p.card];
-      room.deck.claimed[a.card] = p.id; p.card = a.card; p.roleId = slot.roleId; p.wrongClaims = 0;
+      room.deck.claimed[a.card] = p.id; p.card = a.card; p.roleId = slot.roleId; p.wrongClaims = 0; assignCallNumbers(room);
       return { ok: true };
     }
     case 'clearCard': {
@@ -222,7 +231,7 @@ export function reduce(room, actor, a) {
     case 'setRole': { // manual correction by the host
       const p = playerById(room, a.playerId);
       if (!p || !ROLE_BY_ID[resolveRoleId(a.roleId)]) return err('Bad role.');
-      p.roleId = resolveRoleId(a.roleId); return { ok: true };
+      p.roleId = resolveRoleId(a.roleId); assignCallNumbers(room); return { ok: true };
     }
     case 'upgradeNight': { // host opt-in for legacy rooms; always applied when the next night starts, never mid-step
       if (nightVersion(room) >= LATEST_NIGHT_VERSION) return err('Already using the new night script.');
@@ -237,7 +246,7 @@ export function reduce(room, actor, a) {
       const blindFirst = isBlind(room) && room.night === 0;
       if (!blindFirst && room.players.some((p) => !p.roleId)) return err('Every player needs a role first.');
       if (room.upgradeNext) { room.nightVersion = Math.max(nightVersion(room), room.upgradeNext); delete room.upgradeNext; }
-      room.night += 1; room.phase = 'night'; room.condemnedDay = null;
+      room.night += 1; room.phase = 'night'; room.condemnedDay = null; assignCallNumbers(room);
       if (room.night === 1) {
         finalizeBlind(room);
         assignTargets(room);
@@ -292,7 +301,11 @@ export function reduce(room, actor, a) {
       if (r.ok) room.condemnedDay = room.day;
       return r;
     }
-    case 'noCondemn': { if (!['day', 'night'].includes(room.phase)) return err('Not in play.'); log(room, 'Nobody was condemned.'); return { ok: true }; }
+    case 'noCondemn': {
+      if (!['day', 'night'].includes(room.phase)) return err('Not in play.');
+      if (nightVersion(room) >= 7 && room.phase !== 'day') return err('It is not day.');
+      if (nightVersion(room) >= 7 && room.condemnedDay === room.day) return err('Someone was already condemned today.');
+      log(room, 'Nobody was condemned.'); return { ok: true }; }
     case 'resolvePending': return resolvePending(room, a.pendingId, a.targetId);
     case 'kill': {
       const p = playerById(room, a.playerId);
@@ -307,8 +320,14 @@ export function reduce(room, actor, a) {
       const p = playerById(room, a.playerId); if (!p) return err('Bad player.');
       if (!['day', 'night'].includes(room.phase)) return err('The game is not in play.');
       if (p.alive) return err('Already alive.');
+      const wasCondemned = p.deathCause === 'condemned', condemnedToday = p.deathDay === room.day;
       p.alive = true; p.deathCause = null; p.roleHidden = false; p.deathDay = null; p.deathNight = null;
       room.pending = room.pending.filter((x) => x.playerId !== p.id); // no dead-player prompt for someone back in play
+      if (nightVersion(room) >= 7 && wasCondemned) { // undoing a condemnation also undoes what it set off
+        room.sideWins = (room.sideWins || []).filter((s) => s.by !== p.id);
+        if (ROLE_BY_ID[p.roleId]?.shield) room.shield = false;
+        if (condemnedToday && room.phase === 'day') room.condemnedDay = null;
+      }
       applyWinChecks(room);
       return { ok: true };
     }
@@ -337,9 +356,31 @@ export function reduce(room, actor, a) {
       room.winner = { side: String(a.side || 'manual').slice(0, 20), reason: String(a.reason || 'Declared by the Host.').slice(0, 120) };
       room.phase = 'over'; log(room, `Game over: ${room.winner.side} wins.`); return { ok: true };
     }
-    case 'newGame': { resetDeal(room); return { ok: true }; }
+    case 'newGame': { restartGame(room); return { ok: true }; }
     default: return err('Unknown action.');
   }
+}
+
+// Validates the setup and deals (app mode: roles to phones; cards mode: builds the deck).
+function dealNow(room) {
+  const err = (e) => ({ error: e });
+  const n = room.players.length;
+  if (n < MIN_PLAYERS) return err(`Need at least ${MIN_PLAYERS} players (you have ${n}).`);
+  if (room.config.roles.length !== n) return err(`Pick exactly ${n} roles (you picked ${room.config.roles.length}).`);
+  const needsMafia = room.config.roles.some((r) => factionOf(r) === 'mafia');
+  if (!needsMafia) return err('Add at least one Mafia-aligned role.');
+  const fatal = setupWarnings(room.config.roles, n).find((w) => w.level === 'error');
+  if (fatal) return err(fatal.text);
+  if (room.config.mode === 'app') {
+    const map = dealRoles(room.config.roles, room.players.map((p) => p.id));
+    for (const p of room.players) p.roleId = map[p.id];
+    assignCallNumbers(room);
+  } else {
+    room.deck = { map: buildDeckMap(room.config.roles, room.config.deckStyle), claimed: {} };
+  }
+  room.phase = 'dealt';
+  log(room, room.config.mode === 'app' ? 'Roles dealt to phones.' : 'Card deck built. Deal the cards.');
+  return { ok: true };
 }
 
 // ---------- projections (what each viewer is allowed to see) ----------
@@ -397,13 +438,13 @@ export function viewForHost(room, connected = new Set()) {
   const over = room.phase === 'over';
   return {
     story: storyOf(room),
-    kind: 'host', code: room.code, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: room.config,
+    kind: 'host', code: room.code, gameNo: room.gameNo || 1, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: room.config,
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
       deathCause: p.deathCause || null, roleHidden: !!p.roleHidden, convertedFrom: p.convertedFrom || null,
     })),
-    deck: room.deck, copSalt: room.copSalt, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
+    deck: room.deck, copSalt: room.copSalt, callNo: room.callNo, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
     report: room.lastReport, log: room.log.slice(-60), winner: room.winner, winners: over ? finalWinners(room) : [],
     sideWins: room.sideWins, usage: room.usage, dayUsed: room.dayUsed, shield: room.shield,
     stalemate: stalemateOf(room),
@@ -425,10 +466,19 @@ export function migrateRoleIds(room) {
 export function roomFromView(v) {
   migrateRoleIds(v);
   return {
-    code: v.code, nightVersion: v.nightVersion, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, winner: null,
+    code: v.code, gameNo: v.gameNo, nightVersion: v.nightVersion, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, callNo: v.callNo, winner: null,
     players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },
     shield: v.shield, dayUsed: { ...(v.dayUsed || {}) }, sideWins: [...(v.sideWins || [])], pending: [], log: [], framed: [],
   };
+}
+
+// Static setup for the "Roles in this game" sheet: believed roles only, so look-alike ids never reach a phone.
+function setupFor(room) {
+  // What each role looks like to its holder (v7: the Confused Cop is a Cop), so variant ids never reach phones.
+  const roles = room.config.roles || [];
+  const ids = roles.map((id) => shownRoleId(id, room));
+  const unreliable = [...new Set(roles.filter((id, i) => ids[i] !== id).map((id, i) => shownRoleId(id, room)))];
+  return { setupRoles: ids, setupUnreliable: unreliable };
 }
 
 export function viewForPlayer(room, playerId, connected = new Set()) {
@@ -437,7 +487,8 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
   if (!me) return { kind: 'gone' };
   const over = room.phase === 'over';
   const real = me.roleId && ROLE_BY_ID[me.roleId];
-  const shownId = real ? (real.seesAs || real.id) : null;
+  const shownId = real ? shownRoleId(real.id, room) : null;
+  const callNo = callNumbers(room)[me.id];
   const team = [];
   if (real?.meeting) {
     for (const q of room.players) {
@@ -453,9 +504,10 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
   }
   const visible = (q) => over || (rulesOf(room).revealOnDeath && !q.alive && !q.roleHidden);
   return {
-    kind: 'player', code: room.code, phase: room.phase, day: room.day, night: room.night, mode: room.config.mode, theme: room.config.theme || 'city',
+    kind: 'player', code: room.code, gameNo: room.gameNo || 1, phase: room.phase, day: room.day, night: room.night, mode: room.config.mode, theme: room.config.theme || 'city',
     me: {
       id: me.id, name: me.name, alive: me.alive, card: me.card,
+      callName: callNo && room.phase !== 'lobby' && (room.config.mode === 'app' || room.phase !== 'dealt') ? `${callNo.family} ${callNo.n}` : null,
       role: shownId ? roleCard(shownId) : null, guide: shownId ? roleGuide(shownId, rulesOf(room)) : null,
       results: hasNightOnlyChecks(room) ? [] : (room.results || []).filter((r) => r.ids.includes(me.id)).map((r) => ({ night: r.night, text: r.text })), team, knows,
       target: real?.needsTarget && me.target ? playerById(room, me.target)?.name : null,
@@ -469,7 +521,8 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
     sharedBoard: room.config.sharedBoard,
     deckCards: room.config.mode === 'cards' && room.phase === 'dealt' ? room.deck?.map.length : null,
     deckKey: room.config.mode === 'cards' && room.config.cardFlow === 'blind' && room.deck
-      ? [...room.deck.map].sort((x, y) => FULL_DECK.indexOf(x.card) - FULL_DECK.indexOf(y.card)).map((m) => ({ card: m.card, role: roleCard(ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) })) : null, // disguised roles show what they think they are
+      ? [...room.deck.map].sort((x, y) => FULL_DECK.indexOf(x.card) - FULL_DECK.indexOf(y.card)).map((m) => ({ card: m.card, role: roleCard(shownRoleId(m.roleId, room)) })) : null, // disguised roles show what they think they are
+    ...setupFor(room),
     winner: over ? room.winner : null,
     winners: over ? finalWinners(room) : [],
     publicLog: room.log.filter((l) => !l.private && /died|condemned|Game over|taken down|eliminated|nobody/i.test(l.text)).slice(-20).map((l) => ({ night: l.night, day: l.day, text: l.text.replace(/\s*\(.*?\)\s*$/, '') })),

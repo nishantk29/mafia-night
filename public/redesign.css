@@ -222,3 +222,16 @@ html.hub-in .wrap.home > :not(.home-hero),html.hub-in .home-hero > :not(.wordmar
 html.hub-go .wordmark{transform:none!important;transition:transform calc(.45s * var(--dur-scale)) var(--ease-butter)}
 html.hub-go .wrap.home > :not(.home-hero),html.hub-go .home-hero > :not(.wordmark),html.hub-go .bg-art{animation:hub-fade calc(.45s * var(--dur-scale)) var(--ease-butter) both}
 @keyframes hub-fade{from{opacity:0}to{opacity:1}}
+
+/* Roles in this game sheet */
+.rs-group{margin-top:var(--s4)}
+.rs-team{font-size:var(--fs-md,1rem);margin:0 0 var(--s1)}
+.rs-list{list-style:none;padding:0;margin:0}
+.rs-row{display:grid;grid-template-columns:auto 1fr;gap:var(--s3);padding:12px 0;border-top:1px solid rgba(255,255,255,.08)}
+.rs-row:first-child{border-top:0}
+.rs-ico{font-size:1.5rem;line-height:1.2}
+.rs-main{display:grid;gap:2px;min-width:0}
+.rs-name{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2)}
+.rs-warn,.rs-blurb{color:var(--smoke)}
+.roles-link{text-align:center;margin:var(--s3) 0 0}
+.stepper .icon-btn:disabled{opacity:.35;cursor:not-allowed}
