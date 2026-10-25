@@ -21,6 +21,7 @@ const rid = (n = 6) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) =>
 export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
+    nightVersion: 2, // dead roles are still called at night; rooms stored without this field are version 1 (see engine nightVersion)
     config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
     players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
@@ -344,7 +345,7 @@ export function viewForHost(room, connected = new Set()) {
   registerRoles(room.config.customRoles);
   const over = room.phase === 'over';
   return {
-    kind: 'host', code: room.code, phase: room.phase, day: room.day, night: room.night, config: room.config,
+    kind: 'host', code: room.code, nightVersion: room.nightVersion || 1, phase: room.phase, day: room.day, night: room.night, config: room.config,
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
@@ -372,7 +373,7 @@ export function migrateRoleIds(room) {
 export function roomFromView(v) {
   migrateRoleIds(v);
   return {
-    code: v.code, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, winner: null,
+    code: v.code, nightVersion: v.nightVersion, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, winner: null,
     players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },
     shield: v.shield, dayUsed: { ...(v.dayUsed || {}) }, sideWins: [...(v.sideWins || [])], pending: [], log: [], framed: [],
   };
