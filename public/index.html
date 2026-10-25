@@ -41,7 +41,7 @@ if(hub&&!r&&!off&&(location.hash===''||location.hash==='#/'))d.className+=' hub-
 <script>(function(d){if(!/\bhub-in\b/.test(d.className))return;var w=document.querySelector('.wordmark');if(!w){d.className=d.className.replace(' hub-in','');return}
 var b=w.getBoundingClientRect(),vw=innerWidth,vh=innerHeight,s=112/b.height;
 w.style.transform='translate3d('+(vw/2-b.left-b.width/2)+'px,'+(vh*.45-b.top-b.height/2)+'px,0) scale('+s+')';
-requestAnimationFrame(function(){requestAnimationFrame(function(){d.className+=' hub-go';setTimeout(function(){d.className=d.className.replace(/ hub-(in|go)/g,'');var x=document.querySelector('.wordmark');if(x)x.style.transform='';try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}},700)})})})(document.documentElement)</script>
+var k=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dur-scale'))||1;requestAnimationFrame(function(){requestAnimationFrame(function(){d.className+=' hub-go';setTimeout(function(){d.className=d.className.replace(/ hub-(in|go)/g,'');var x=document.querySelector('.wordmark');if(x)x.style.transform='';try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}},700*k)})})})(document.documentElement)</script>
 <div id="fx" aria-live="off"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <noscript>This game needs JavaScript.</noscript>

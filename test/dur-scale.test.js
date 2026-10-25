@@ -38,10 +38,10 @@ function offenders(src) {
   return bad;
 }
 
-test(':root defines --dur-scale: 1.5', () => {
+test(':root defines --dur-scale: 2', () => {
   const css = read('styles.css');
   const root = /:root\s*\{[\s\S]*?\n\}/.exec(css)[0];
-  assert.match(root, /--dur-scale:\s*1\.5\s*;/);
+  assert.match(root, /--dur-scale:\s*2\s*;/);
 });
 
 test('no raw durations/delays in CSS', () => {

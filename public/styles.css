@@ -65,7 +65,7 @@
 
   /* motion */
   --ease-out:cubic-bezier(.22,1,.36,1); --ease-in-out:var(--ease-out);
-  --dur-scale:1.5;
+  --dur-scale:2;
   --t-press:calc(90ms * var(--dur-scale)); --t-open:calc(220ms * var(--dur-scale)); --t-reveal:calc(360ms * var(--dur-scale));
   --ease-spring:cubic-bezier(.34,1.56,.64,1); /* overshoot: tiny button press only */
 
@@ -1496,6 +1496,7 @@ html[data-vt] .home-rules,html[data-vt] .wrap.faq > .phase-title{view-transition
 ::view-transition-old(step){animation:vt-out calc(160ms * var(--dur-scale)) var(--ease-out) both}
 ::view-transition-new(step){animation:vt-in calc(360ms * var(--dur-scale)) var(--ease-out) both}
 ::view-transition-group(role-card),::view-transition-group(rules-card){animation-duration:calc(520ms * var(--dur-scale));animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+::view-transition-group(step),::view-transition-group(root){animation-duration:calc(250ms * var(--dur-scale));animation-timing-function:cubic-bezier(.2,.8,.2,1)}
 @keyframes vt-out{to{opacity:0;transform:translateX(-26px)}}
 @keyframes vt-in{from{opacity:0;transform:translateX(40px)}}
 .step-in{animation:step-in calc(360ms * var(--dur-scale)) var(--ease-out) both}
