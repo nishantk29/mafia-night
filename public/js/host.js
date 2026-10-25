@@ -6,7 +6,7 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { previewNight, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES, cardInfo } from './engine.js';
+import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES, cardInfo } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { graveyardPanel } from './graveyard.js';
@@ -446,6 +446,7 @@ function night(v) {
   const n = S.ui.night;
   if (n.n !== v.night) { n.n = v.night; n.actions = {}; n.picks = {}; }
   const steps = v.script;
+  syncCheck(v, steps.filter((s) => s.kind === 'action' && s.type === 'investigate'));
   const idSteps = steps.filter((s) => s.kind === 'identify');
   const actSteps = steps.filter((s) => s.kind === 'action');
   const pendingAct = actSteps.filter((s) => !n.actions[s.key]);
@@ -457,10 +458,43 @@ function night(v) {
   const body = `<header class="phase-head"><h2 class="phase-title">Night ${v.night}</h2>
       <p class="muted">${blind1 ? 'Read each line aloud. When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
       ${v.shield ? `<p class="note is-warn">${ui('shield')} Virgin shield: nobody can be killed tonight.</p>` : ''}</header>
-    ${steps.length ? `${sayLine(START_CUE)}<ol class="cues" data-night="${v.night}" style="--steps:${steps.length}">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
+    ${v.story?.prep?.length ? `<section class="story-prep"><h3 class="story-just">${ui('ear')} Before night ${v.night}: just for you</h3><ul>${v.story.prep.map((p) => `<li>${esc(p.text)}</li>`).join('')}</ul></section>` : ''}
+    ${steps.length ? `${v.story ? storySay(v.story.open) : sayLine(START_CUE)}<ol class="cues" data-night="${v.night}" style="--steps:${steps.length}">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
       : empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.')}`;
   const label = canResolve ? 'Wake everyone up' : idSteps.length ? 'Find every role first' : `${plural(pendingAct.length, 'step')} left`;
-  return { body: body + (steps.length ? sayLine(END_CUE) : ''), dock: btn('big', 'resolve', canResolve ? `${ui('sun')} ${label}` : label, { on: canResolve, why: label }) };
+  return { body: body + (steps.length ? (v.story ? storySay(v.story.close) : sayLine(END_CUE)) : '') + checkOverlay(v), dock: btn('big', 'resolve', canResolve ? `${ui('sun')} ${label}` : label, { on: canResolve, why: label }) };
+}
+
+// v4: one big read-aloud block, with the Host-only notes below it.
+function storySay(text, then, notes = []) {
+  return `<div class="story-say"><p class="story-line"><span class="story-tag">Say:</span> <q>${esc(text)}</q></p>${then ? `<p class="story-then"><span class="story-tag">Then say:</span> <q>${esc(then)}</q></p>` : ''}</div>${storyNotes(notes)}`;
+}
+function storyNotes(notes) {
+  return notes?.length ? `<div class="story-notes"><h4 class="story-just">${ui('ear')} Just for you</h4><ul>${notes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
+}
+// Full-screen check card for the investigator step that just got its answer (v4). UI state only.
+function checkOverlay(v) {
+  const c = S.ui.checkCard;
+  if (!v.story || !c) return '';
+  return `<div class="check-card${c.kind === 'alignment' && c.text === 'MAFIA' ? ' is-mafia' : c.kind === 'role' ? ' is-role' : ''}" data-a="closeCheck" role="dialog" aria-modal="true" aria-label="Show this card"><p class="check-text">${esc(c.text)}</p><p class="check-close">Tap to close</p></div>`;
+}
+// Opens the card once, the first time a step's answer exists; `again` re-opens it.
+function checkFor(v, s, set) {
+  if (!v.story) return null;
+  const res = liveResult(v, s, set);
+  return res ? checkCard(roomFromView(v), s, res) : null;
+}
+export const checkCardFor = (s) => checkFor(S.view, s, S.ui.night.actions[s.key]);
+function syncCheck(v, steps) {
+  if (!v.story) return;
+  const seen = (S.ui.checkSeen ||= {});
+  const key = (s) => `${v.night}:${s.key}`;
+  for (const s of steps) {
+    const set = S.ui.night.actions[s.key];
+    const card = set && checkFor(v, s, set);
+    if (!card) { delete seen[key(s)]; continue; }
+    if (!seen[key(s)]) { seen[key(s)] = 1; S.ui.checkCard = card; }
+  }
 }
 
 // A line the host reads aloud, in the same ear-icon style as the live answers.
@@ -522,7 +556,7 @@ function cue(v, s, num, current, alive) {
         : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
     }
     return `<li class="cue is-done" data-ck="${s.key}"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
-      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div><div class="cue-after">${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}</div></li>`;
+      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div><div class="cue-after">${checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button>` : ''}${v.story?.steps?.[s.key]?.then ? storySay(v.story.steps[s.key].say, v.story.steps[s.key].then, v.story.steps[s.key].notes) : ''}${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}</div></li>`;
   }
   if (!current) {
     const what = s.kind === 'identify' ? 'Find who it is' : s.kind === 'info' ? 'Wake them up' : 'Record their choice';
@@ -530,7 +564,8 @@ function cue(v, s, num, current, alive) {
   }
   const cues = stepCues(s);
   const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>` : '';
-  const say = cues ? `${sayLine(cues.open)}${hint}` : `<p class="note is-private">${ui('ear')} Just for you: ${esc(s.prompt)}</p>`;
+  const st = v.story?.steps?.[s.key];
+  const say = st ? `${storySay(st.say, n.actions[s.key] ? st.then : null, st.notes)}${hint}` : cues ? `${sayLine(cues.open)}${hint}` : `<p class="note is-private">${ui('ear')} Just for you: ${esc(s.prompt)}</p>`;
   let inner;
   if (s.kind === 'identify') {
     const picks = n.picks[s.key] || [];
@@ -581,12 +616,13 @@ function day(v) {
       return `<li class="event is-death">${ui('skull')}<div><b>${esc(pname(v, d.id))}</b> ${what}<p class="meta">${esc(d.cause)}</p></div></li>`;
     }).join('');
     report = `<header class="phase-head"><h2 class="phase-title">Morning of day ${v.day}</h2></header>
-      <ul class="events">
+      ${v.story?.morning ? `<div class="story-say is-morning"><p class="story-line"><span class="story-tag">Read this out:</span> <q>${esc(v.story.morning.say)}</q></p></div>${storyNotes(v.story.morning.notes)}` : ''}
+      ${v.story?.morning ? '' : `<ul class="events">
         ${deaths || `<li class="event is-quiet">${ui('sun')}<div>Nobody died last night.</div></li>`}
         ${rep.saves.map((s) => `<li class="event is-save">${ui('save')}<div>${esc(s.text)}</div></li>`).join('')}
         ${rep.conversions.map((c) => `<li class="event is-convert">${ui('convert')}<div>${esc(c.text)}</div></li>`).join('')}
         ${rep.notes.map((t) => `<li class="event is-note">${ui('info')}<div>${esc(t)}</div></li>`).join('')}
-      </ul>
+      </ul>`}
       ${rep.info.length ? `<section class="whisper"><h3 class="whisper-title">${ui('ear')} Tell these players in private</h3>
         ${rep.info.map((i) => `<div class="whisper-item">${names(v, i.actorIds)} <span class="muted">${esc(rname(i.roleId))}</span><p>${esc(i.text)}</p>${i.note ? `<p class="note is-private">${esc(i.note)}</p>` : ''}</div>`).join('')}</section>` : ''}`;
   }

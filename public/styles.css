@@ -1593,3 +1593,25 @@ html,body{overflow-x:clip}
 @keyframes gy-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.gy-in{animation:none}}
 html[data-fx="off"] .gy-in{animation:none}
+
+/* ---- v4 storyteller script: read-aloud block, Just-for-you notes, full-screen check card ---- */
+.story-say{margin:var(--s3) 0;padding:var(--s4);border-radius:var(--r2,12px);background:#140E0B;border:1px solid var(--brass-lo);color:var(--candle)}
+.story-line,.story-then{margin:0}
+.story-tag{display:block;font-family:"Limelight",var(--font-display);font-weight:400;font-size:var(--fs-md);color:var(--brass);letter-spacing:.04em;margin-bottom:var(--s1)}
+.story-line q,.story-then q{quotes:"\201C" "\201D";font-family:var(--font-ui);font-weight:600;font-size:clamp(1.25rem,1.1rem + .8vw,1.4rem);line-height:1.4;color:var(--candle)}
+.story-line q::before,.story-line q::after,.story-then q::before,.story-then q::after{font-family:"Limelight",serif;font-weight:400;color:var(--brass)}
+.story-then{margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--rule-strong)}
+.story-then .story-tag{font-size:var(--fs-sm)}
+.story-then q{font-size:1.05rem}
+.story-notes,.story-prep{margin:var(--s2) 0 var(--s3);color:var(--smoke);font-size:var(--fs-sm)}
+.story-notes ul,.story-prep ul{margin:0;padding-left:var(--s4)}
+.story-just{display:flex;gap:var(--s1);align-items:center;margin:0 0 var(--s1);font-family:var(--font-ui);font-size:var(--fs-sm);font-weight:700;color:var(--smoke)}
+.story-just > .ui-ico{color:var(--brass)}
+.check-card{position:fixed;inset:0;z-index:2147483000;background:#0A0706;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--s5,24px);text-align:center;cursor:pointer;animation:check-in 260ms cubic-bezier(.2,.8,.2,1) both}
+.check-text{margin:0;font-family:"Limelight",var(--font-display);font-weight:400;font-size:clamp(3rem,16vw,7rem);line-height:1.05;color:var(--candle);text-transform:uppercase;overflow-wrap:break-word;hyphens:none;max-width:100%}
+.check-card.is-mafia .check-text{color:#E5484D}
+.check-card.is-role .check-text{color:var(--brass)}
+.check-close{position:absolute;bottom:max(var(--s4,16px),env(safe-area-inset-bottom));margin:0;font-size:var(--fs-sm);color:var(--smoke)}
+@keyframes check-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.check-card{animation:none}}
+html[data-fx="off"] .check-card{animation:none}

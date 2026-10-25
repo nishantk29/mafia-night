@@ -3,6 +3,7 @@ import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
   setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
+  hasStoryScript, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
@@ -372,10 +373,22 @@ export function roleCard(roleId) {
   return r && { id: r.id, name: r.name, emoji: r.emoji, alignment: r.alignment, blurb: r.blurb, meeting: r.meeting };
 }
 
+// v4 rooms only: the read-aloud script, computed here so the client never decides the version itself.
+function storyOf(room) {
+  if (!hasStoryScript(room)) return undefined;
+  const steps = {};
+  if (room.phase === 'night') for (const st of nightScript(room)) { const x = stepScript(st, room); if (x) steps[st.key] = x; }
+  return {
+    open: nightOpen(room), close: nightClose(room), prep: room.phase === 'night' ? prepNotes(room) : [], steps,
+    morning: room.lastReport ? morningAnnouncement(room, room.lastReport) : null,
+  };
+}
+
 export function viewForHost(room, connected = new Set()) {
   registerRoles(room.config.customRoles);
   const over = room.phase === 'over';
   return {
+    story: storyOf(room),
     kind: 'host', code: room.code, nightVersion: room.nightVersion || 1, phase: room.phase, day: room.day, night: room.night, config: room.config,
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,

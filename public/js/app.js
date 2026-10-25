@@ -9,7 +9,7 @@ const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
-import { hostScreen } from './host.js';
+import { hostScreen, checkCardFor } from './host.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
@@ -383,6 +383,12 @@ const A = {
   deal() { syncLibrary(); send({ type: 'deal' }); },
   undeal() { send({ type: 'undeal' }); },
   showKey() { S.ui.showKey = true; S.ui.anim = 'modal'; S.render(); },
+  closeCheck() { S.ui.checkCard = null; S.render(); },
+  showCheck(el) {
+    const s = S.view?.script?.find((x) => x.key === el.dataset.key);
+    const c = s && S.ui.night.actions[s.key] && S.view.story && checkCardFor(s);
+    if (c) { S.ui.checkCard = c; S.render(); }
+  },
   hideKey() { S.ui.showKey = false; S.render(); },
   resetLocal() { if (confirm('Remove every player and role and start a fresh game on this device?')) { S.ui.night = { n: 0, actions: {}, picks: {} }; send({ type: 'resetLocal' }); } },
   leaveGame() {
@@ -587,6 +593,7 @@ document.addEventListener('click', (ev) => { if (swallowClick) { clearTimeout(sw
 // ---------------- keyboard ----------------
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && drag) { dragEnd(false); return; }
+  if (ev.key === 'Escape' && S.ui.checkCard) { A.closeCheck(); return; }
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.

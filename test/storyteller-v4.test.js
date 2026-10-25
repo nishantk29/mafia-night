@@ -133,3 +133,14 @@ describe('morningAnnouncement', () => {
     assert.equal(morningAnnouncement(room, rep), null);
   });
 });
+
+describe('v4 host view story fields', () => {
+  test('v4 view carries story; v3 does not', async () => {
+    const { viewForHost } = await import('../public/js/room.js');
+    const v4 = viewForHost(withRole('cop', true, 1));
+    assert.ok(v4.story && v4.story.open && v4.story.close && v4.story.steps && Array.isArray(v4.story.prep));
+    for (const st of v4.script) assert.ok(v4.story.steps[st.key]?.say || !stepScript(st, withRole('cop', true, 1)));
+    const r3 = withRole('cop', true, 1); r3.nightVersion = 3;
+    assert.equal(viewForHost(r3).story, undefined);
+  });
+});
