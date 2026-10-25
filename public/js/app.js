@@ -19,6 +19,7 @@ import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSim
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
 import { siteFooter } from './footer.js';
+import { errorBody, errorButtons, crashHtml, FATAL, ENDED } from './error-screen.js';
 import { wordmark, knifeSvg, suggestions } from './flair.js';
 
 const $app = document.getElementById('app');
@@ -65,10 +66,20 @@ S.render = function render() {
   const a = document.activeElement;
   if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; if (a.dataset.i === 'gyText') patchGraveyard(); return; }
   pendingRender = false;
-  syncSimple();
-  step(paint);
+  try { syncSimple(); step(paint); } catch (e) { crash(e); }
 };
 function paint() {
+  try { paintScreen(); } catch (e) { crash(e); }
+}
+// A render that throws, or an uncaught error before anything is on screen, ends on the friendly error page.
+function crash(e) {
+  console.error(e);
+  try { $html.dataset.phase = 'home'; $html.dataset.shell = 'home'; $app.innerHTML = crashHtml(); } catch { /* nothing more to do */ }
+}
+const nothingShown = () => !$app.firstElementChild;
+addEventListener('error', (ev) => { if (nothingShown()) crash(ev.error || ev.message); });
+addEventListener('unhandledrejection', (ev) => { if (nothingShown()) crash(ev.reason); });
+function paintScreen() {
   const a = document.activeElement;
   const sel = a && a !== document.body && $app.contains(a) ? focusSelector(a) : null;
   const y = window.scrollY;
@@ -109,21 +120,15 @@ function shellAttrs() {
 }
 
 // The room is gone: the host ended the game, or it expired from inactivity. Nothing to resume.
-function endedScreen(why) {
-  const [title, line] = why === 'expired' ? ['This room has expired', 'Nobody played in it for a long while, so it was closed.']
-    : why === 'host' ? ['You ended the game', 'The room is closed and its code is free again.'] : ['The host ended the game', 'The room is closed. Thanks for playing.'];
-  return `<main class="wrap fatal ended"><div class="empty">${ui('cards', 'is-big')}<h1 class="phase-title">${title}</h1><p class="muted">${line}</p>
-    <a class="btn" href="#/">Back to the home page</a></div></main>`;
-}
+const errorScreen = ({ title, line, icon = 'warning' }) => errorBody({ title, line, icon: ui(icon, 'is-big') });
+function endedScreen(why) { return errorScreen({ ...(ENDED[why] || ENDED.expired), icon: 'cards' }); }
 
 const connecting = (text) => `<main class="wrap"><div class="empty">${ui('cards')}<p>${text}</p></div></main>`;
 
 function screen() {
-  const banner = !S.conn && (S.mode === 'host' || S.mode === 'play') ? `<div class="banner" role="status">${ui('wifi-off')} Reconnecting to the room…</div>` : '';
-  if (S.fatal) {
-    return `<main class="wrap fatal"><div class="empty">${ui('warning', 'is-big')}<h1 class="phase-title">${esc(S.fatal)}</h1>
-      <a class="btn" href="#/">Go to the home page</a></div></main>`;
-  }
+  const lost = !S.conn && (S.mode === 'host' || S.mode === 'play');
+  const banner = lost ? `<div class="banner${S.connLong ? ' banner-lost' : ''}" role="status"><span>${ui('wifi-off')} Reconnecting to the room…</span>${S.connLong ? errorButtons() : ''}</div>` : '';
+  if (S.fatal) return errorScreen(S.fatal);
   if (S.ended) return endedScreen(S.ended);
   if (S.mode === 'home') return home();
   if (S.mode === 'faq') return faqScreen();
@@ -194,13 +199,13 @@ let toastT;
 S.toast = (m) => { $toast.textContent = themeText(String(m), themeOf(S.view), seatNames()); $toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $toast.classList.remove('on'), 3200); };
 
 // ---------------- transports ----------------
-function closeTransport() { S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.ended = null; S.conn = true; }
+function closeTransport() { S.transport?.close?.(); S.transport = null; S.view = null; S.fatal = null; S.ended = null; S.conn = true; S.connLong = false; }
 
 function wsTransport(code, helloFn) {
-  let ws; let closed = false; let tries = 0; let timer;
+  let ws; let closed = false; let tries = 0; let timer; let longTimer;
   const open = () => {
     ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/${code}`);
-    ws.onopen = () => { tries = 0; S.conn = true; const h = helloFn(); if (h) ws.send(JSON.stringify(h)); S.render(); };
+    ws.onopen = () => { tries = 0; S.conn = true; S.connLong = false; clearTimeout(longTimer); longTimer = null; const h = helloFn(); if (h) ws.send(JSON.stringify(h)); S.render(); };
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.type === 'view') {
@@ -213,14 +218,14 @@ function wsTransport(code, helloFn) {
       else if (m.type === 'error') S.toast(m.error);
       else if (m.type === 'joined') store.set(`mafia.player.${code}`, JSON.stringify({ playerId: m.playerId, token: m.token }));
       else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); S.ui.endConfirm = false; S.ui.settings = false; S.view = null; S.graveyard = null; S.ended = m.reason === 'ended' ? (S.mode === 'host' ? 'host' : 'ended') : 'expired'; S.render(); }
-      else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = m.error; S.render(); } }
+      else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = FATAL.closed; S.render(); } }
     };
-    ws.onclose = () => { if (closed) return; S.conn = false; S.render(); timer = setTimeout(open, Math.min(8000, 400 * 2 ** tries++)); };
+    ws.onclose = () => { if (closed) return; S.conn = false; if (!longTimer) { longTimer = setTimeout(() => { if (!S.conn && !closed) { S.connLong = true; S.render(); } }, 20000); } S.render(); timer = setTimeout(open, Math.min(8000, 400 * 2 ** tries++)); };
   };
   open();
   return {
     send: (a) => { if (ws?.readyState === 1) ws.send(JSON.stringify(a)); else S.toast('Not connected to the room yet. Try again in a moment.'); },
-    close: () => { closed = true; clearTimeout(timer); ws?.close(); },
+    close: () => { closed = true; clearTimeout(timer); clearTimeout(longTimer); ws?.close(); },
   };
 }
 
@@ -276,12 +281,12 @@ async function route() {
   else if (kind === 'host' && /^[A-Za-z]{6}$/.test(arg || '')) {
     S.mode = 'host'; S.code = arg.toUpperCase();
     const key = store.get(`mafia.host.${S.code}`);
-    if (!key) { S.fatal = 'This device isn’t hosting that room. Open it on the device that created it.'; }
+    if (!key) { S.fatal = FATAL.notHost; }
     else { S.transport = wsTransport(S.code, () => ({ type: 'hello', hostKey: key })); S.send = (a) => S.transport.send(a); }
   } else if ((kind === 'play' || kind === 'join') && /^[A-Za-z]{6}$/.test(arg || '')) {
     S.mode = 'play'; S.code = arg.toUpperCase();
     const ex = await fetch(`/api/room/${S.code}`).then((r) => r.ok).catch(() => false);
-    if (!ex) { S.fatal = `There’s no room with the code ${S.code}. Check the letters and try again.`; }
+    if (!ex) { S.fatal = FATAL.noRoom(S.code); }
     else {
       S.transport = wsTransport(S.code, () => { try { const c = JSON.parse(store.get(`mafia.player.${S.code}`) || 'null'); return c ? { type: 'hello', ...c } : null; } catch { return null; } });
       S.send = (a) => S.transport.send(a);

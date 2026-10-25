@@ -235,3 +235,14 @@ html.hub-go .wrap.home > :not(.home-hero),html.hub-go .home-hero > :not(.wordmar
 .rs-warn,.rs-blurb{color:var(--smoke)}
 .roles-link{text-align:center;margin:var(--s3) 0 0}
 .stepper .icon-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ---- error screens (public/js/error-screen.js) ---- */
+.err-actions{display:grid;gap:var(--s3);width:100%;max-width:20rem;margin-top:var(--s3)}
+.err-actions .btn{min-height:52px;width:100%}
+.banner.banner-lost{flex-wrap:wrap;gap:var(--s2) var(--s3);padding-bottom:var(--s3)}
+.err-actions{justify-items:center}
+.err-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 var(--s2);font:500 var(--fs-md)/1.2 var(--font-ui);color:var(--candle);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.err-title{font-family:var(--font-ui);font-weight:700;font-size:clamp(1.5rem,1.2rem + 1.4vw,1.75rem);line-height:1.2;letter-spacing:0;text-transform:none;text-wrap:balance;hyphens:none}
+.banner.banner-lost .err-actions{grid-template-columns:1fr auto;align-items:center;gap:var(--s2);max-width:none;margin-top:0}
+.banner.banner-lost .err-actions .btn{min-height:48px;padding:0 12px;font-size:var(--fs-sm);width:100%}
+.banner.banner-lost .err-link{min-height:44px;padding:0 var(--s1);font-size:var(--fs-sm)}
