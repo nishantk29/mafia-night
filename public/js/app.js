@@ -337,15 +337,19 @@ const roleLib = () => loadLibrary();
 function syncLibrary() { const lib = roleLib(); registerRoles(lib); send({ type: 'setCustomRoles', roles: lib }); }
 const suitOf = (card) => (card === 'RJ' || card === 'BJ' ? 'J' : card ? card.slice(-1) : null);
 
+// Leave any focused field so the render deferred while typing flushes once a submit has been triggered.
+const leaveField = () => { const a = document.activeElement; if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur(); };
+
 const A = {
   async hostLive() {
+    leaveField();
     const res = await fetch('/api/create', { method: 'POST' }).then((r) => r.json()).catch(() => null);
     if (!res?.code) return S.toast('Couldn’t create a room. Check your connection and try again.');
     store.set(`mafia.host.${res.code}`, res.hostKey);
     location.hash = `#/host/${res.code}`;
   },
-  goJoin() { const c = (S.ui.draft.joinCode || '').toUpperCase().replace(/[^A-Z]/g, ''); if (c.length !== 6) return S.toast('Room codes have 6 letters.'); location.hash = `#/join/${c}`; },
-  join() { const n = (S.ui.draft.joinName || '').trim(); if (!n) return S.toast('Type your name to join.'); S.transport?.send({ type: 'hello', join: n }); },
+  goJoin() { leaveField(); const c = (S.ui.draft.joinCode || '').toUpperCase().replace(/[^A-Z]/g, ''); if (c.length !== 6) return S.toast('Room codes have 6 letters.'); location.hash = `#/join/${c}`; },
+  join() { leaveField(); const n = (S.ui.draft.joinName || '').trim(); if (!n) return S.toast('Type your name to join.'); S.transport?.send({ type: 'hello', join: n }); },
   tab(el) { S.ui.tab = el.dataset.v; S.render(); window.scrollTo(0, 0); },
   side(el) { S.ui.sideTab = el.dataset.v; S.render(); },
   toggleUi(el) { const k = el.dataset.k; S.ui[k] = !S.ui[k]; S.render(); },
@@ -586,7 +590,7 @@ document.addEventListener('keydown', (ev) => {
     return;
   }
   // Enter in the home code field and the join name field submits.
-  if (ev.key === 'Enter' && ev.target.dataset?.i === 'joinCode') { ev.preventDefault(); ev.target.blur(); A.goJoin(); return; }
+  if (ev.key === 'Enter' && ev.target.dataset?.i === 'joinCode') { ev.preventDefault(); A.goJoin(); return; }
   if (ev.key === 'Enter' && ev.target.dataset?.i === 'joinName') { ev.preventDefault(); A.join(); return; }
   // Arrow keys move through radiogroups and tablists (roving tabindex); the newly focused option is chosen.
   const item = ev.target.closest?.('[role="radio"], [role="tab"]');
