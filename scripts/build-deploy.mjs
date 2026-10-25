@@ -2,9 +2,11 @@
 // Writes a Cloudflare-API deploy function file. Worker name, DO bindings and compatibility_date come from wrangler.jsonc only.
 import fs from 'node:fs';
 import { deployConfig } from './deploy-config.mjs';
+import { computeVersion, swVersion, FIX_HINT } from './sw-version.mjs';
 
 const out = process.argv[2];
 if (!out) { console.error('usage: node scripts/build-deploy.mjs <outFile>'); process.exit(1); }
+if (swVersion() !== computeVersion()) { console.error('public/sw.js VERSION is stale (public/ changed since make-pwa); installed PWAs would keep old files.\n' + FIX_HINT); process.exit(1); }
 const { name, metadata } = deployConfig(fs.readFileSync('wrangler.jsonc', 'utf8'));
 const W = fs.readFileSync('dist-embedded/worker.js', 'utf8');
 const fn = `async () => { const ACC="a3303cef4b0984b2859ef104bd74df1e"; const NAME=${JSON.stringify(name)}; const WORKER=${JSON.stringify(W)};

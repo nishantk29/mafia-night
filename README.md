@@ -82,6 +82,7 @@ Cloudflare token, account ID and R2 keys, and the Spaceship API key and secret, 
 For deploying through the Cloudflare API without wrangler (worker name, Room binding and compat date are read from `wrangler.jsonc`; no migrations are sent, so never pass a name by hand):
 
 ```
+node /workspace/code-team/shared/pwa/make-pwa.mjs public pwa/pwa.json   # FIRST: refreshes sw.js VERSION; build-deploy refuses a stale one
 node scripts/build-embedded.mjs          # needs esbuild: `npm i`, or `npx esbuild`'s copy from wrangler
 node scripts/build-deploy.mjs <outFile>  # writes the deploy function file; no secrets embedded
 ```
