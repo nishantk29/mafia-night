@@ -106,7 +106,7 @@ export function sheet(view) {
     ${n > 1 ? `<h3 class="sheet-sub">Seat ${seatNo} of ${n}</h3>
     <div class="btn-row seat-move"><button type="button" class="btn ghost" data-a="moveSeat" data-id="${p.id}" data-v="-1">Move left</button><button type="button" class="btn ghost" data-a="moveSeat" data-id="${p.id}" data-v="1">Move right</button></div>` : ''}
     <div class="btn-row">
-      ${p.alive ? `<button type="button" class="btn danger" data-a="killp" data-id="${p.id}">${ui('skull')} Eliminate ${esc(p.name)}</button>` : `<button type="button" class="btn" data-a="revive" data-id="${p.id}">Bring ${esc(p.name)} back</button>`}
+      ${p.alive ? `<button type="button" class="btn ghost" data-a="killp" data-id="${p.id}">${ui('skull')} Eliminate ${esc(p.name)}</button>` : `<button type="button" class="btn" data-a="revive" data-id="${p.id}">Bring ${esc(p.name)} back</button>`}
       <button type="button" class="btn ghost" data-a="rename" data-id="${p.id}">${ui('pencil')} Rename</button>
     </div>
   </div></div>`;

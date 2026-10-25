@@ -95,7 +95,7 @@ function settingsSheet() {
       <span class="switch" aria-hidden="true"><i></i></span></button></div>
     ${S.view?.phase && S.view.phase !== 'lobby' ? `<div class="end-game"><button type="button" class="btn ghost" data-a="restartAsk">Restart</button>
       <p class="muted">Same code and players. New roles, back to the reveal.</p></div>` : ''}
-    ${S.mode === 'host' ? `<div class="end-game"><button type="button" class="btn ghost danger" data-a="endGameAsk">End game</button>
+    ${S.mode === 'host' ? `<div class="end-game"><button type="button" class="btn danger" data-a="endGameAsk">End game</button>
       <p class="muted">Closes the room for everyone and frees the code.</p></div>` : ''}
   </div></div>`;
 }
@@ -154,7 +154,7 @@ function lobby(v, local) {
     <label class="field"><span>${local ? 'Add players (one per line, or separated by commas)' : 'Add players without phones (one per line, or separated by commas)'}</span>
       <textarea data-i="names" rows="2" placeholder="Sam, Priya, Jo">${esc(S.ui.draft.names || '')}</textarea></label>
     <button type="button" class="btn ghost" data-a="addNames">${ui('plus')} Add players</button>
-    ${local && (n || c.roles.length) ? `<button type="button" class="btn ghost danger" data-a="resetLocal">${ui('x')} Start over with no players</button>` : ''}
+    ${local && (n || c.roles.length) ? `<button type="button" class="btn ghost" data-a="resetLocal">${ui('x')} Start over with no players</button>` : ''}
   </section>`;
 
   // Roles: the hand you are building, then the catalogue.
@@ -667,7 +667,7 @@ function day(v) {
   }).join('');
   const vote = `<section class="block vote"><h2 class="block-title">Who does the town condemn?</h2>
       <div class="pick">${alive.map((p) => `<button type="button" class="pk" aria-pressed="${sel === p.id}" data-a="selCondemn" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>
-      <div class="btn-row">${btn('danger', 'condemn', sel ? `${ui('gavel')} Condemn ${esc(pname(v, sel))}` : `${ui('gavel')} Choose who to condemn`, { on: !!sel, why: 'Choose who to condemn' })}
+      <div class="btn-row">${btn('big', 'condemn', sel ? `${ui('gavel')} Condemn ${esc(pname(v, sel))}` : `${ui('gavel')} Choose who to condemn`, { on: !!sel, why: 'Choose who to condemn' })}
         <button type="button" class="btn ghost" data-a="noCondemn">Nobody today</button></div></section>`;
   return {
     body: `${report}${upgradeCard(v)}${pend}${vote}${abilities ? `<section class="block abilities"><h2 class="block-title">Day abilities</h2>${abilities}</section>` : ''}`,

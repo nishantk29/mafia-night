@@ -1,12 +1,13 @@
 /* Mafia Night: "The card room after midnight", restyled in a bold transit-app language (DESIGN.md section 18).
    Spec: DESIGN.md (sections 4-10, 15, 16, 18).
-   Fonts (all SIL OFL 1.1, self-hosted): Rubik, Limelight, Alegreya italic. */
+   Fonts (all SIL OFL 1.1, self-hosted): Limelight for display, Rubik for everything else. */
 
 /* ==================================================================== fonts */
-@font-face{font-family:"Alegreya";font-style:italic;font-weight:400 900;font-display:swap;src:url(/fonts/alegreya-italic-var.woff2) format("woff2")}
 
 /* =================================================================== tokens */
 :root{
+  /* family hooks (family.css) */
+  --f-accent:#E0AE52; --f-display-font:"Limelight","Rubik",system-ui,sans-serif; --f-bg:#0B0B0D; --f-ink:#F1E6D2;
   /* surfaces */
   --room:#1B1410;
   --room-night:#150F0C;
@@ -37,7 +38,7 @@
   /* type */
   --font-display:"Rubik",system-ui,sans-serif;
   --font-ui:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-voice:"Alegreya",Georgia,serif;
+  --font-voice:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
   --fs-xs:.875rem;
   --fs-sm:clamp(.9375rem, .9rem + .15vw, 1rem);
   --fs-md:clamp(1.0625rem, 1rem + .25vw, 1.125rem);
