@@ -512,6 +512,8 @@ section.cue::before{display:none}
 .pk[aria-pressed="true"]{background:var(--card);color:var(--card-ink);border-color:var(--card);font-weight:700;box-shadow:var(--lift-1)}
 @media (hover:hover){.pk:not([aria-pressed="true"]):hover{border-color:var(--brass)}}
 .pk:active{transform:translateY(1px)}
+.pk.is-none{border-style:dashed;background:transparent;color:var(--muted,inherit)}
+.cue-body .pk.is-none{background:transparent}
 
 /* ===================================================================== day */
 .events{list-style:none;display:grid;gap:var(--s4);margin-bottom:var(--section);max-width:var(--measure)}

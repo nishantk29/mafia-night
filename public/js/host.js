@@ -6,6 +6,7 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
+import { nightNav } from './night-nav.js';
 import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, roleMax, MAX_PLAYERS, DEFAULT_RULES, cardInfo, LATEST_NIGHT_VERSION } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
@@ -463,23 +464,20 @@ function night(v) {
   if (n.n !== v.night) { n.n = v.night; n.actions = {}; n.picks = {}; }
   const steps = v.script;
   syncCheck(v, steps.filter((s) => s.kind === 'action' && (s.type === 'investigate' || (v.nightVersion >= 7 && LIVE.includes(s.type)))));
-  const idSteps = steps.filter((s) => s.kind === 'identify');
-  const actSteps = steps.filter((s) => s.kind === 'action');
-  const pendingAct = actSteps.filter((s) => !n.actions[s.key]);
-  const firstOpen = steps.find((s) => s.kind === 'identify' || (s.kind === 'action' && !n.actions[s.key]) || (s.kind === 'info' && !n.actions[s.key]));
-  const current = steps.find((s) => s.key === n.focus) || firstOpen;
-  const canResolve = !idSteps.length && !pendingAct.length;
+  const nav = nightNav(v, n);
+  const current = nav.current;
   const alive = v.players.filter((p) => p.alive);
   const blind1 = v.night === 1 && v.config.mode === 'cards' && v.config.cardFlow === 'blind';
   const body = `<header class="phase-head"><h2 class="phase-title">Night ${v.night}</h2>
       <p class="muted">${blind1 ? 'Read each line aloud. When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
+      ${steps.length ? `<p class="meta night-progress">${steps.length - nav.open.length} of ${steps.length} done</p>` : ''}
       ${v.shield ? `<p class="note is-warn">${ui('shield')} Virgin shield: nobody can be killed tonight.</p>` : ''}</header>
     ${upgradeCard(v)}
     ${v.story?.prep?.length ? `<section class="story-prep"><h3 class="story-just">${ui('ear')} Before night ${v.night}: just for you</h3><ul>${v.story.prep.map((p) => `<li>${esc(p.text)}</li>`).join('')}</ul></section>` : ''}
     ${steps.length ? `${v.story ? storySay(v.story.open) : sayLine(START_CUE)}<ol class="cues" data-night="${v.night}" style="--steps:${steps.length}">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
       : empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.')}`;
-  const label = canResolve ? 'Wake everyone up' : idSteps.length ? 'Find every role first' : `${plural(pendingAct.length, 'step')} left`;
-  return { body: body + (steps.length ? (v.story ? storySay(v.story.close) : sayLine(END_CUE)) : '') + checkOverlay(v), dock: btn('big', 'resolve', canResolve ? `${ui('sun')} ${label}` : label, { on: canResolve, why: label }) };
+  const left = nav.open.length;
+  return { body: body + (steps.length ? (v.story ? storySay(v.story.close) : sayLine(END_CUE)) : '') + checkOverlay(v), dock: btn('big', 'nextStep', nav.action === 'resolve' ? `${ui('sun')} ${nav.label}` : nav.label, { on: nav.enabled, why: nav.label, attrs: `data-left="${left}"` }) };
 }
 
 // v4: one big read-aloud block, with the Host-only notes below it.
@@ -517,7 +515,10 @@ function syncCheck(v, steps) {
 // A line the host reads aloud, in the same ear-icon style as the live answers.
 function sayLine(text) { return `<div class="tell-now"><p class="tell-say"><span class="tell-tag">Say:</span> <b>${esc(text)}</b></p></div>`; }
 function gestureLine(text) { return `<div class="tell-now"><p class="tell-say is-gesture"><span class="tell-tag">Gesture:</span> <b>${esc(text)}</b></p></div>`; }
+const plain = (t) => String(t || '').replace(/[\s"“”'‘’]+/g, ' ').trim().toLowerCase();
+// The story step already shows its close-eyes line ("Then say"), so the same line is not shown twice.
 const doneLines = (v, s, set) => doneStepLines(s, liveResult(v, s, set))
+  .filter((l) => !(l.type === 'say' && v.story?.steps?.[s.key]?.then && plain(l.text) === plain(v.story.steps[s.key].then)))
   .map((l) => (l.type === 'gesture' ? gestureLine(l.text) : sayLine(l.text))).join('');
 
 // Live result for an investigator; null when there is none yet (not live, no target, or a coin flip pending).
@@ -572,9 +573,11 @@ function cue(v, s, num, current, alive) {
       result = s.type === 'execCheck' ? 'Done' : s.targets === 0
         ? (set.on ? (s.type === 'alert' ? 'On alert' : 'Yes') : (s.type === 'alert' ? 'Staying in' : 'No'))
         : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
+      if (s.type === 'execCheck' && !set.on) result = set.targets?.length || set.skipped ? 'Skipped' : 'Done';
     }
+    const skipped = result === 'Skipped';
     return `<li class="cue is-done" data-ck="${s.key}"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
-      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div><div class="cue-after">${checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button>` : ''}${v.story?.steps?.[s.key]?.then ? storySay(v.story.steps[s.key].say, v.story.steps[s.key].then, v.story.steps[s.key].notes) : ''}${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}</div></li>`;
+      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">${skipped ? 'Undo' : 'Change'}</button>` : ''}</div><div class="cue-after">${checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button>` : ''}${v.story?.steps?.[s.key]?.then ? storySay(v.story.steps[s.key].say, v.story.steps[s.key].then, v.story.steps[s.key].notes) : ''}${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}</div></li>`;
   }
   if (!current) {
     const what = s.kind === 'identify' ? 'Find who it is' : s.kind === 'info' ? 'Wake them up' : 'Record their choice';
@@ -590,6 +593,7 @@ function cue(v, s, num, current, alive) {
     const done = picks.length === s.count;
     inner = `${roleEl}${say}
       <div class="pick">${s.candidates.map((id) => `<button type="button" class="pk" aria-pressed="${picks.includes(id)}" data-a="pick" data-key="${s.key}" data-id="${id}">${esc(pname(v, id))}</button>`).join('')}</div>
+      <div class="pick"><button type="button" class="pk is-none" data-a="skipIdentify" data-key="${s.key}" data-role="${s.roleId}">No one has this card</button></div>
       <p class="meta">${picks.length ? `${picks.length} of ${s.count} picked` : `Pick ${plural(s.count, 'player')}`}</p>
       ${btn('', 'confirmId', `${ui('check')} Confirm ${esc(r?.name || '')}`, { on: done, why: `Pick ${plural(s.count - picks.length, 'more player')} first`, attrs: `data-key="${s.key}" data-role="${s.roleId}"` })}`;
   } else if (s.kind === 'info') {
@@ -605,7 +609,7 @@ function cue(v, s, num, current, alive) {
     const usesLeft = Number.isFinite(s.uses) ? s.uses - (v.usage[s.actors[0]] || 0) : null;
     const head = `${roleEl}<span class="meta">${who}</span>${usesLeft != null ? `<span class="meta">${plural(usesLeft, 'use')} left</span>` : ''}${say}`;
     if (s.type === 'execCheck') {
-      inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">Show card</button></div>`;
+      inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">Show card</button><button type="button" class="pk is-none" data-a="skip" data-key="${s.key}">Skip</button></div>`;
     } else if (s.targets === 0) {
       const [yes, no] = s.type === 'alert' ? ['Go on alert', 'Not tonight'] : ['Yes', 'No'];
       inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">${yes}</button><button type="button" class="btn ghost" data-a="alert" data-key="${s.key}" data-v="0">${no}</button></div>`;
@@ -613,11 +617,11 @@ function cue(v, s, num, current, alive) {
       const list = s.dead ? v.players.filter((p) => !p.alive && !s.actors.includes(p.id)) : alive.filter((p) => (s.type === 'protect' && v.config.rules?.selfProtect !== false) || !s.actors.includes(p.id));
       const picks = n.picks[s.key] || [];
       const need = s.targets || 1;
+      const none = `<button type="button" class="pk is-none" data-a="skip" data-key="${s.key}">No one</button>`;
       inner = `${head}${list.length
-        ? `<div class="pick">${list.map((p) => `<button type="button" class="pk" aria-pressed="${picks.includes(p.id)}" data-a="pick" data-key="${s.key}" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>
+        ? `<div class="pick">${list.map((p) => `<button type="button" class="pk" aria-pressed="${picks.includes(p.id)}" data-a="pick" data-key="${s.key}" data-id="${p.id}">${esc(p.name)}</button>`).join('')}${none}</div>
           <p class="meta">${need > 1 ? `Pick ${need} players${picks.length ? ` (${picks.length} of ${need} picked)` : ''}` : s.dead ? 'Pick 1 dead player' : 'Pick 1 player'}</p>`
-        : '<p class="muted">Nobody can be chosen right now.</p>'}
-        <button type="button" class="link" data-a="skip" data-key="${s.key}">Skip, nobody tonight</button>`;
+        : `<p class="muted">Nobody can be chosen right now.</p><div class="pick">${none}</div>`}`;
     }
   }
   return `<li class="cue is-current" data-ck="${s.key}" aria-current="step"><span class="cue-n">${num}</span><div class="cue-body">${inner}</div></li>`;

@@ -120,7 +120,7 @@ export const isBlind = (room) => room.config?.mode === 'cards' && room.config?.c
 export function unidentifiedSlots(room) {
   if (!room.deck) return [];
   const want = {};
-  for (const m of room.deck.map) want[m.roleId] = (want[m.roleId] || 0) + 1;
+  for (const m of room.deck.map) if (!m.unused) want[m.roleId] = (want[m.roleId] || 0) + 1; // unused: the Host said nobody holds that card
   for (const p of room.players) if (p.roleId && want[p.roleId]) want[p.roleId]--;
   return Object.entries(want).filter(([, n]) => n > 0).map(([roleId, remaining]) => ({ roleId, remaining }));
 }
@@ -224,8 +224,8 @@ function scriptSteps(room) {
       const base = r.action?.order ?? (r.meeting === 'mafia' ? 50 : r.meeting === 'cult' ? 31 : 80);
       // Call people by the role they THINK they have; never say a disguised role's real name aloud.
       const shown = ROLE_BY_ID[r.seesAs] || r;
-      const twins = room.deck.map.filter((m) => m.roleId !== roleId && (ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) === shown.id);
-      const cards = room.deck.map.filter((m) => m.roleId === roleId).map((m) => m.card);
+      const twins = room.deck.map.filter((m) => !m.unused && m.roleId !== roleId && (ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) === shown.id);
+      const cards = room.deck.map.filter((m) => !m.unused && m.roleId === roleId).map((m) => m.card);
       steps.push({ key: `id:${roleId}`, kind: 'identify', roleId, count: remaining, candidates: open, order: base - 0.5,
         prompt: `${shown.name}${remaining > 1 ? 's' : ''}, open your eyes. Tap who ${remaining > 1 ? 'they are' : 'it is'}.`,
         hint: r.seesAs || twins.length
@@ -478,9 +478,10 @@ export function setupWarnings(roleIds, playerCount) {
 export function finalizeBlind(room) {
   const slots = unidentifiedSlots(room);
   const open = room.players.filter((p) => !p.roleId);
-  if (slots.length && slots.every((s) => s.roleId === 'villager') && slots[0].remaining === open.length) {
-    for (const p of open) p.roleId = 'villager';
-  }
+  const rest = slots.filter((s) => s.roleId !== 'villager');
+  // Cards the Host left out of play (unused) make the counts differ, so then whoever is still unmatched is a Villager.
+  const villagersOnly = !rest.length && (room.deck?.map.some((m) => m.unused) || (slots.length && slots[0].remaining === open.length));
+  if (open.length && villagersOnly) for (const p of open) p.roleId = 'villager';
   assignCallNumbers(room);
 }
 
