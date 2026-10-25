@@ -4,13 +4,13 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   nightScript, previewNight, checkCard, resolveNight, stepScript, stepCues, nightVersion, hasGraveyard, morningAnnouncement,
-  callNumbers, assignCallNumbers, NEUTRAL_ANSWER, LATEST_NIGHT_VERSION,
+  callNumbers, assignCallNumbers, NEUTRAL_ANSWER, LATEST_NIGHT_VERSION, hasV8Rules, killPlayer,
 } from '../public/js/engine.js';
 import { ROLES, ROLE_BY_ID } from '../public/js/roles.js';
 import { newRoom, reduce, viewForPlayer, viewForHost, messagesFor, migrateRoleIds } from '../public/js/room.js';
 
 const HOST = { host: true }, ANON = { anon: true };
-const VERSIONS = [1, 2, 3, 4, 5, 6, 7];
+const VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 function mk(spec, { version = LATEST_NIGHT_VERSION, phase = 'night', night = 2, salt = 0.5 } = {}) {
   const room = newRoom('RG', 'hostkey');
@@ -275,7 +275,7 @@ describe('house rule: nothing leaks to a player phone', () => {
     const room = newRoom('LK', 'HOSTSECRET-key');
     room.config.mode = 'app'; room.config.roles = [...ROLE_IDS]; room.config.rules.revealOnDeath = reveal;
     ROLE_IDS.forEach((_, i) => assert.ok(reduce(room, ANON, { type: 'join', name: `P${i}` }).ok));
-    if (version !== 7) room.nightVersion = version;
+    if (version !== LATEST_NIGHT_VERSION) room.nightVersion = version;
     return room;
   }
   const phases = (room) => {
@@ -291,7 +291,7 @@ describe('house rule: nothing leaks to a player phone', () => {
     room.phase = 'over'; room.winner = { side: 'town', reason: 'x' }; out.over = JSON.parse(JSON.stringify(room));
     return out;
   };
-  for (const v of [4, 5, 6, 7]) {
+  for (const v of [4, 5, 6, 7, 8]) {
     for (const reveal of [false, true]) {
       test(`v${v} reveal ${reveal}: no other role, token, key, call number or variant id on any phone, in any phase`, () => {
         for (const [phase, room] of Object.entries(phases(game(v, reveal)))) {
@@ -340,9 +340,9 @@ describe('house rule: a room keeps the night version it was created with', () =>
   };
   test('new rooms get the latest version', () => {
     assert.equal(newRoom('A', 'k').nightVersion, LATEST_NIGHT_VERSION);
-    assert.equal(LATEST_NIGHT_VERSION, 7);
+    assert.equal(LATEST_NIGHT_VERSION, 8);
   });
-  for (const v of [2, 3, 4, 5, 6]) {
+  for (const v of [2, 3, 4, 5, 6, 7]) {
     test(`v${v}: kept through deal, night, day, condemn, kill, revive and another night`, () => {
       const room = tinyRoom(v);
       for (const a of [{ type: 'deal' }, { type: 'startNight' }, { type: 'submitNight', actions: {} }]) { const r = reduce(room, HOST, a); assert.ok(r.ok, JSON.stringify(r)); assert.equal(room.nightVersion, v); }
@@ -357,18 +357,18 @@ describe('house rule: a room keeps the night version it was created with', () =>
       const room = tinyRoom(v);
       assert.ok(reduce(room, HOST, { type: 'deal' }).ok);
       assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok);
-      assert.equal(room.nightVersion, v); assert.equal(room.upgradeNext, 7);
+      assert.equal(room.nightVersion, v); assert.equal(room.upgradeNext, 8);
       assert.ok(reduce(room, HOST, { type: 'setNote', playerId: room.players[0].id, note: 'n' }).ok);
       assert.equal(room.nightVersion, v);
       assert.ok(reduce(room, HOST, { type: 'startNight' }).ok);
-      assert.equal(room.nightVersion, 7); assert.equal(room.upgradeNext, undefined);
+      assert.equal(room.nightVersion, 8); assert.equal(room.upgradeNext, undefined);
     });
     test(`v${v}: Restart and newGame move the room to the latest`, () => {
       for (const type of ['restart', 'newGame']) {
         const room = tinyRoom(v);
         assert.ok(reduce(room, HOST, { type: 'deal' }).ok);
         assert.ok(reduce(room, HOST, { type }).ok);
-        assert.equal(room.nightVersion, 7, type);
+        assert.equal(room.nightVersion, 8, type);
       }
     });
   }
@@ -384,7 +384,234 @@ describe('house rule: a room keeps the night version it was created with', () =>
   test('in the lobby the upgrade applies at once; a room already at latest refuses it', () => {
     const room = tinyRoom(5);
     assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok);
-    assert.equal(room.nightVersion, 7);
+    assert.equal(room.nightVersion, 8);
     assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).error);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// v8 rules. Each one is checked three ways: it does what it says, it looks the same to the table whether or not it
+// happened (Say lines, steps, cues, morning announcement, other players' phones), and v7 rooms are unchanged.
+const run = (room, actions) => { const c = structuredClone(room); const rep = resolveNight(c, actions); return { room: c, rep, morning: morningAnnouncement(c, rep) }; };
+const others = (room, except) => Object.fromEntries(room.players.filter((p) => !except.includes(p.name)).map((p) => [p.name, norm(room, viewForPlayer(room, p.id))]));
+const table = (room) => ({ steps: norm(room, project(room)), keys: nightScript(room).map((s) => s.key.replace(/^act:p/, '')), cues: norm(room, nightScript(room).map((s) => stepCues(s))) });
+const byName = (room, n) => room.players.find((p) => p.name === n);
+
+describe('house rule: v8 a Doctor and a Bodyguard on the same target: nobody dies', () => {
+  const spec = () => [['Mob', 'mafia'], ['Doc', 'doctor'], ['BG', 'bodyguard'], ['Vic', 'villager'], ...fillers()];
+  const acts = { 'meeting:mafia': { targets: ['pVic'] }, 'act:pDoc': { targets: ['pVic'] }, 'act:pBG': { targets: ['pVic'] } };
+  const docOnly = { 'meeting:mafia': { targets: ['pVic'] }, 'act:pDoc': { targets: ['pVic'] } };
+  test('v8: the Bodyguard is healed, nobody dies, the attacker lives', () => {
+    const room = mk(spec(), { version: 8 });
+    const { room: after, rep, morning } = run(room, acts);
+    assert.deepEqual(rep.deaths, []);
+    assert.ok(after.players.every((p) => p.alive || p.name === 'Ghost'));
+    assert.equal(morning.say, 'Everyone, open your eyes. Nobody died last night.');
+  });
+  test('v8: the table cannot tell it from a plain Doctor save (Say lines, steps, saves, morning, phones)', () => {
+    const room = mk(spec(), { version: 8 }), plain = mk(spec().filter(([n]) => n !== 'BG'), { version: 8 });
+    const a = run(room, acts), b = run(plain, docOnly);
+    assert.deepEqual(a.rep.saves, b.rep.saves);
+    assert.equal(a.morning.say, b.morning.say);
+    assert.deepEqual(a.morning.notes, b.morning.notes);
+    assert.deepEqual(a.room.lastReport.deaths, b.room.lastReport.deaths);
+    assert.deepEqual(norm(a.room, a.room.log.map((l) => l.text)), norm(b.room, b.room.log.map((l) => l.text)));
+  });
+  test('v8: a Bodyguard with no Doctor on the target still takes the hit', () => {
+    const { rep } = run(mk(spec(), { version: 8 }), { 'meeting:mafia': { targets: ['pVic'] }, 'act:pBG': { targets: ['pVic'] } });
+    assert.deepEqual(rep.deaths.map((d) => d.id), ['pBG']);
+  });
+  test('v7 unchanged: the Bodyguard dies even with a Doctor on the same target', () => {
+    const { rep } = run(mk(spec(), { version: 7 }), acts);
+    assert.deepEqual(rep.deaths.map((d) => d.id), ['pBG']);
+  });
+});
+
+describe('house rule: v8 used-up roles are still called every night, and the call does nothing', () => {
+  const limited = ROLES.filter((r) => r.action && !r.action.group && Number.isFinite(r.action.uses));
+  const spec = (r) => [['X', r.id], ...(r.meeting === 'mafia' ? [['Mob2', 'mafia']] : [['Mob', 'mafia']]), ...fillers()];
+  const withUsage = (room, n) => { room.usage = n ? { pX: n } : {}; return room; };
+  test('every limited-use role is covered', () => assert.ok(limited.length >= 8, String(limited.length)));
+  for (const r of limited) {
+    test(`${r.id}: spent and unspent look the same to the table at v8; the old versions still skip it`, () => {
+      for (const night of [2, 3]) {
+        const fresh = withUsage(mk(spec(r), { version: 8, night }), 0), spent = withUsage(mk(spec(r), { version: 8, night }), r.action.uses);
+        assert.deepEqual(table(spent), table(fresh), `${r.id} night ${night}`);
+        assert.deepEqual(others(spent, ['X']), others(fresh, ['X']));
+        assert.equal(run(spent, {}).morning.say, run(fresh, {}).morning.say);
+      }
+      const old = withUsage(mk(spec(r), { version: 7 }), r.action.uses);
+      assert.equal(actStep(old, 'X'), undefined, `${r.id}: v7 skips a used-up role`);
+    });
+  }
+  test('v8: a spent Vigilante\'s recorded shot kills nobody, spends nothing and leaves no report line', () => {
+    const room = withUsage(mk([['Vig', 'vigilante'], ['Mob', 'mafia'], ['Vic', 'villager'], ...fillers()], { version: 8 }), 0);
+    room.usage = { pVig: 1 };
+    const step = nightScript(room).find((s) => s.key === 'act:pVig');
+    assert.ok(step.spent);
+    assert.ok(stepScript(step, room).notes.includes('Used up: tap Skip.'));
+    const { room: after, rep } = run(room, { 'act:pVig': { targets: ['pVic'] } });
+    assert.deepEqual(rep.deaths, []);
+    assert.equal(after.usage.pVig, 1);
+    assert.deepEqual(rep.saves, []); assert.deepEqual(rep.notes, []);
+  });
+  test('v8: a spent Janitor does not clean', () => {
+    const room = mk([['Jan', 'janitor'], ['Mob', 'mafia'], ['Vic', 'villager'], ...fillers()], { version: 8 });
+    room.usage = { pJan: 1 };
+    const { room: after } = run(room, { 'meeting:mafia': { targets: ['pVic'] }, 'act:pJan': { on: true } });
+    assert.equal(byName(after, 'Vic').alive, false); assert.ok(!byName(after, 'Vic').roleHidden);
+  });
+});
+
+describe('house rule: v8 a blocked or jailed limited-use role still loses the use (unchanged, locked at v7 and v8)', () => {
+  const cases = [
+    ['Vigilante', 'vigilante', { targets: ['pVic'] }], ['Veteran', 'veteran', { on: true }], ['Hitman', 'hitman', { targets: ['pVic'] }],
+  ];
+  for (const version of [7, 8]) for (const by of ['jailer', 'drunk']) for (const [name, id, act] of cases) {
+    test(`v${version}: ${name} ${by === 'jailer' ? 'jailed' : 'blocked'} still uses up a use`, () => {
+      const room = mk([['X', id], ['Blocker', by], ['Mob', 'mafia'], ['Vic', 'villager'], ...fillers()], { version });
+      const { room: after } = run(room, { 'act:pBlocker': { targets: ['pX'] }, 'act:pX': act });
+      assert.equal(after.usage.pX, 1);
+      assert.equal(byName(after, 'Vic').alive, true, 'and the blocked act did nothing');
+    });
+  }
+});
+
+describe('house rule: v8 the Coroner learns "cleaned, role unknown" from a cleaned body', () => {
+  const spec = () => [['Cor', 'coroner'], ['Vul', 'vulture'], ['Mob', 'mafia'], ['V0', 'villager'], ['Body', 'cop', false], ['Other', 'doctor', false]];
+  const cleaned = (v) => { const r = mk(spec(), { version: v }); byName(r, 'Body').roleHidden = true; return r; };
+  test('v8: Coroner text and card; an uncleaned body still reads the true role', () => {
+    const r = cleaned(8), c = ask(r, 'Cor', 'Body');
+    assert.equal(c.pv.text, 'Body: cleaned, role unknown.');
+    assert.deepEqual(c.card, { kind: 'role', text: 'CLEANED, ROLE UNKNOWN' });
+    assert.equal(ask(r, 'Cor', 'Other').card.text, 'DOCTOR');
+  });
+  test('v8: the Vulture still learns the true role of a cleaned body', () => {
+    assert.equal(ask(cleaned(8), 'Vul', 'Body').card.text, 'COP');
+  });
+  test('v8: cleaned and uncleaned look the same to the table', () => {
+    const a = cleaned(8), b = mk(spec(), { version: 8 });
+    assert.deepEqual(table(a), table(b));
+    assert.equal(run(a, {}).morning.say, run(b, {}).morning.say);
+  });
+  test('v8: the Amnesiac still copies the true role of a cleaned body', () => {
+    const r = mk([['Amn', 'amnesiac'], ['Mob', 'mafia'], ['Body', 'cop', false], ...fillers()], { version: 8 }); byName(r, 'Body').roleHidden = true;
+    const { room } = run(r, { 'act:pAmn': { targets: ['pBody'] } });
+    assert.equal(byName(room, 'Amn').roleId, 'cop');
+  });
+  test('v7 unchanged: the Coroner still reads the true role of a cleaned body', () => {
+    assert.equal(ask(cleaned(7), 'Cor', 'Body').card.text, 'COP');
+  });
+});
+
+describe('house rule: v8 the Psychic gets no vision when anybody visited them', () => {
+  const spec = () => [['Psy', 'psychic'], ['Doc', 'doctor'], ['Mob', 'mafia'], ['Trk', 'tracker'], ['V0', 'villager'], ['V1', 'villager'], ['Ghost', 'villager', false]];
+  const visited = { 'act:pDoc': { targets: ['pPsy'] } }, notVisited = { 'act:pDoc': { targets: ['pV0'] } };
+  const psy = (room, acts) => { const st = actStep(room, 'Psy'); const ans = { ...acts, [st.key]: { targets: ['pMob'], on: true } }; const pv = previewNight(room, ans, st.key); return { pv, card: checkCard(room, st, pv), ans }; };
+  test('v8: visited gives NO VISION TONIGHT, otherwise the true side', () => {
+    const room = mk(spec(), { version: 8 });
+    const a = psy(room, visited), b = psy(room, notVisited);
+    assert.equal(a.pv.text, 'No vision tonight.');
+    assert.deepEqual(a.card, { kind: 'none', text: 'NO VISION TONIGHT' });
+    assert.equal(b.card.text, 'MAFIA');
+  });
+  test('v8: only roles that woke before the Psychic count (the live card and the final result agree)', () => {
+    const room = mk(spec(), { version: 8 });
+    const late = { 'act:pTrk': { targets: ['pPsy'] } }; // the Tracker wakes after the Psychic
+    assert.equal(psy(room, late).card.text, 'MAFIA');
+    const mafiaHits = { 'meeting:mafia': { targets: ['pPsy'] } }; // the Mafia wake first: a visit
+    assert.equal(psy(room, mafiaHits).card.text, 'NO VISION TONIGHT');
+    const a = psy(room, visited), c = structuredClone(room);
+    const rep = resolveNight(c, a.ans, { preview: true });
+    assert.equal(rep.info.find((i) => i.key === 'act:pPsy').text, a.pv.text);
+  });
+  test('v8: visited and not visited look the same to the table (only the private card differs)', () => {
+    const a = mk(spec(), { version: 8 }), b = mk(spec(), { version: 8 });
+    assert.deepEqual(table(a), table(b));
+    const ra = run(a, { ...visited, 'act:pPsy': { targets: ['pMob'] } }), rb = run(b, { ...notVisited, 'act:pPsy': { targets: ['pMob'] } });
+    assert.equal(ra.morning.say, rb.morning.say);
+    assert.deepEqual(ra.rep.saves, rb.rep.saves);
+    assert.deepEqual(ra.rep.info, rb.rep.info); // night-only: neither is in the report
+    assert.deepEqual(others(ra.room, ['Psy', 'Doc']), others(rb.room, ['Psy', 'Doc']));
+  });
+  test('v7 unchanged: a visited Psychic still reads the true side', () => {
+    assert.equal(psy(mk(spec(), { version: 7 }), visited).card.text, 'MAFIA');
+  });
+});
+
+describe('house rule: v8 an Executioner whose target dies any way but a vote becomes a Jester', () => {
+  const spec = () => [['Ex', 'executioner'], ['Mob', 'mafia'], ['Tgt', 'villager'], ['V0', 'villager'], ['V1', 'villager'], ['Ghost', 'villager', false]];
+  const mkx = (version, night = 2) => { const r = mk(spec(), { version, night }); byName(r, 'Ex').target = 'pTgt'; return r; };
+  const exCard = (room) => { const st = actStep(room, 'Ex'); const pv = previewNight(room, { [st.key]: { on: true } }, st.key); return checkCard(room, st, pv); };
+  test('every living Executioner gets a call every night, with a card: NO CHANGE until it happens', () => {
+    const room = mkx(8);
+    const st = actStep(room, 'Ex');
+    assert.equal(stepCues(st).open, 'Executioner, open your eyes.'); assert.equal(stepCues(st).close, 'Executioner, close your eyes.');
+    assert.deepEqual(exCard(room), { kind: 'none', text: 'NO CHANGE' });
+  });
+  test('target killed at night: that night says NO CHANGE, the next night says YOU ARE NOW THE JESTER once, then NO CHANGE', () => {
+    const room = mkx(8);
+    const first = run(room, { 'meeting:mafia': { targets: ['pTgt'] } }).room;
+    assert.equal(byName(first, 'Ex').becameJester, true);
+    first.phase = 'night'; first.night = 3;
+    assert.deepEqual(exCard(first), { kind: 'role', text: 'YOU ARE NOW THE JESTER' });
+    const second = run(first, {}).room; second.phase = 'night'; second.night = 4;
+    assert.deepEqual(exCard(second), { kind: 'none', text: 'NO CHANGE' });
+  });
+  test('the Jester wins if condemned; the phone card turns into the Jester only after the night that told them', () => {
+    const room = mkx(8);
+    killPlayer(room, 'pTgt', 'shot by the Hunter');
+    assert.equal(viewForPlayer(room, 'pEx').me.role.id, 'executioner');
+    room.phase = 'night'; room.night = 3;
+    const told = run(room, {}).room;
+    assert.equal(viewForPlayer(told, 'pEx').me.role.id, 'jester');
+    assert.equal(viewForPlayer(told, 'pEx').me.target, null);
+    told.phase = 'day'; told.day = 3;
+    assert.ok(reduce(told, HOST, { type: 'condemn', playerId: 'pEx' }).ok);
+    assert.ok(told.sideWins.some((w) => w.id === 'pEx'));
+  });
+  test('a day vote on the target is still an Executioner win and no conversion', () => {
+    const room = mkx(8); room.phase = 'day'; room.day = 2;
+    assert.ok(reduce(room, HOST, { type: 'condemn', playerId: 'pTgt' }).ok);
+    assert.equal(byName(room, 'Ex').becameJester, undefined);
+    assert.ok(room.sideWins.some((w) => w.id === 'pEx'));
+  });
+  test('Hunter shot and Host kill also convert; reviving before they were told undoes it', () => {
+    for (const cause of ['taken down by the Hunter', 'eliminated']) { const r = mkx(8); killPlayer(r, 'pTgt', cause); assert.equal(byName(r, 'Ex').becameJester, true, cause); }
+    const r = mkx(8); r.phase = 'day'; killPlayer(r, 'pTgt', 'eliminated');
+    assert.ok(reduce(r, HOST, { type: 'revive', playerId: 'pTgt' }).ok);
+    assert.equal(byName(r, 'Ex').becameJester, undefined);
+  });
+  test('a dead Executioner is still called, with NO ANSWER', () => {
+    const room = mk([['Ex', 'executioner', false], ['Mob', 'mafia'], ...fillers()], { version: 8 });
+    byName(room, 'Ex').target = 'pV0';
+    assert.deepEqual(exCard(room), { kind: 'none', text: 'NO ANSWER' });
+  });
+  test('converted vs not looks the same to the table: steps, Say lines, cues, morning and every other phone', () => {
+    const done = mkx(8); killPlayer(done, 'pTgt', 'killed by the Mafia'); done.phase = 'night'; done.night = 3;
+    const cleared = structuredClone(done); delete byName(cleared, 'Ex').becameJester;
+    assert.deepEqual(table(done), table(cleared));
+    assert.deepEqual(others(done, ['Ex']), others(cleared, ['Ex']));
+    assert.equal(run(done, {}).morning.say, run(cleared, {}).morning.say);
+    assert.deepEqual(norm(done, run(done, {}).rep.info), norm(cleared, run(cleared, {}).rep.info));
+    // and against the same room where the target was voted out instead
+    const voted = mkx(8); voted.phase = 'day'; voted.day = 2; reduce(voted, HOST, { type: 'condemn', playerId: 'pTgt' }); voted.phase = 'night'; voted.night = 3; voted.winner = null; voted.sideWins = [];
+    assert.deepEqual(table(done), table(voted));
+  });
+  test('v7 unchanged: no Executioner call, no conversion', () => {
+    const room = mkx(7);
+    assert.equal(actStep(room, 'Ex'), undefined);
+    killPlayer(room, 'pTgt', 'killed by the Mafia');
+    assert.equal(byName(room, 'Ex').becameJester, undefined);
+  });
+});
+
+describe('house rule: v8 version plumbing', () => {
+  test('latest is 8, v7 rooms are offered the upgrade, v8 rooms are not', () => {
+    assert.equal(LATEST_NIGHT_VERSION, 8);
+    assert.equal(hasV8Rules({ nightVersion: 7 }), false); assert.equal(hasV8Rules({ nightVersion: 8 }), true);
+    const room = mk([['A', 'villager'], ['B', 'villager'], ['C', 'villager'], ['D', 'villager'], ['E', 'mafia']], { version: 7, phase: 'day', night: 1 });
+    assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok); assert.equal(room.upgradeNext, 8);
+    assert.ok(reduce(mk([['A', 'villager']], { version: 8, phase: 'day' }), HOST, { type: 'upgradeNight' }).error);
   });
 });

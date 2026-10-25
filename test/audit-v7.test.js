@@ -444,7 +444,7 @@ describe('numbered calls: upgrades and cards claims', () => {
     const room = mk([['Mob', 'mafia'], ['C1', 'cop'], ['C2', 'cop', false], ['C3', 'insane_cop'], ...town(3)], { v: 1, phase: 'day' });
     assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok);
     assert.ok(reduce(room, HOST, { type: 'startNight' }).ok);
-    assert.equal(room.nightVersion, 7);
+    assert.equal(room.nightVersion, 8);
     const calls = nightScript(room).filter((s) => s.key.startsWith('act:'));
     assert.deepEqual(calls.map((s) => s.label).sort(), ['Cop 1', 'Cop 2', 'Cop 3']);
     assert.ok(calls.some((s) => s.actors[0] === 'pC2'));

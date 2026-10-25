@@ -103,7 +103,7 @@ function leaks(room, rec, tag) {
 }
 
 // Every role with a night action gets exactly one call per night, and team calls list their members once each.
-// Mirrors scriptSteps: a spent role or a first-night kill (with first-night kills off) is not called. Team calls list
+// Mirrors scriptSteps: a spent role (before v8) or a first-night kill (with first-night kills off) is not called. Team calls list
 // all members in v3+, the living members in v2 (all of them when none is left), and the living in v1.
 function callProblems(view) {
   const v = view.nightVersion, first = view.night === 1;
@@ -112,9 +112,10 @@ function callProblems(view) {
   const want = new Map(pool.map((p) => [p.id, []]));
   for (const p of pool) {
     const r = ROLE_BY_ID[p.roleId];
+    if (v >= 8 && p.roleId === 'executioner') want.get(p.id).push(`act:${p.id}`); // v8: every Executioner is called every night
     if (!r.action || r.action.group) continue;
     if (first && !killFirst && r.action.type === 'kill') continue;
-    if ((view.usage?.[p.id] || 0) >= r.action.uses) continue;
+    if (v < 8 && (view.usage?.[p.id] || 0) >= r.action.uses) continue; // v8 still calls a used-up role (the call does nothing)
     want.get(p.id).push(`act:${p.id}`);
   }
   for (const team of ['mafia', 'cult']) {

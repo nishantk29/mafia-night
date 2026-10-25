@@ -22,7 +22,7 @@ export function buildExtra2(R, A) {
       { day: 'At dawn, give the Dreamer either three names with at least one Mafia, or one name that is surely innocent. No dream if they were visited.' }),
     R('journalist', 'Journalist', '📰', 'town', 'Each night you shadow one player and get a copy of any private information they received.',
       { day: 'Journalist names a player; at dawn, repeat to the Journalist whatever private info that player was given.' }),
-    R('psychic', 'Psychic', '🧠', 'town', 'Each night you read one mind and learn the true side of a player, past any disguise.',
+    R('psychic', 'Psychic', '🧠', 'town', 'Each night you read one mind and learn the true side of a player, past any disguise. If anyone visited you that night, you see nothing.',
       { night1: 'Psychic results ignore frames, Godfathers and Millers: say the TRUE side of the player. They learn nothing if somebody visited them.',
         action: A('investigate', 60, 'Psychic, wake up. Whose mind do you read?', { check: 'alignment' }) }),
     R('invisible_man', 'Invisible Man', '🫥', 'town', 'Pick one player to trail. If they sit in a night meeting, you eavesdrop but hear no names.',

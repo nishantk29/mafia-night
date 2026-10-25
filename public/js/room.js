@@ -42,7 +42,7 @@ function addPlayer(room, name, offline) {
 }
 
 function resetDeal(room) {
-  for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; delete p.note; }
+  for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; delete p.note; delete p.becameJester; delete p.jesterSeen; }
   delete room.callNo; // fresh random Cop 1/2/... numbers each game
   room.copSalt = Math.random(); // seeds the neutral "Cop 1/2/..." numbering for this game
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.condemnedDay = null; room.usage = {}; room.dayUsed = {};
@@ -322,6 +322,7 @@ export function reduce(room, actor, a) {
       if (p.alive) return err('Already alive.');
       const wasCondemned = p.deathCause === 'condemned', condemnedToday = p.deathDay === room.day;
       p.alive = true; p.deathCause = null; p.roleHidden = false; p.deathDay = null; p.deathNight = null;
+      if (nightVersion(room) >= 8) for (const q of room.players) if (q.roleId === 'executioner' && q.target === p.id && !q.jesterSeen) delete q.becameJester; // not told yet: nothing changed
       room.pending = room.pending.filter((x) => x.playerId !== p.id); // no dead-player prompt for someone back in play
       if (nightVersion(room) >= 7 && wasCondemned) { // undoing a condemnation also undoes what it set off
         room.sideWins = (room.sideWins || []).filter((s) => s.by !== p.id);
@@ -442,7 +443,7 @@ export function viewForHost(room, connected = new Set()) {
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
-      deathCause: p.deathCause || null, roleHidden: !!p.roleHidden, convertedFrom: p.convertedFrom || null,
+      deathCause: p.deathCause || null, roleHidden: !!p.roleHidden, convertedFrom: p.convertedFrom || null, becameJester: !!p.becameJester, jesterSeen: !!p.jesterSeen,
     })),
     deck: room.deck, copSalt: room.copSalt, callNo: room.callNo, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
     report: room.lastReport, log: room.log.slice(-60), winner: room.winner, winners: over ? finalWinners(room) : [],
@@ -487,7 +488,8 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
   if (!me) return { kind: 'gone' };
   const over = room.phase === 'over';
   const real = me.roleId && ROLE_BY_ID[me.roleId];
-  const shownId = real ? shownRoleId(real.id, room) : null;
+  const jester = !!me.becameJester && !!me.jesterSeen && real?.id === 'executioner'; // v8: told at night, so the phone card follows
+  const shownId = jester ? 'jester' : real ? shownRoleId(real.id, room) : null;
   const callNo = callNumbers(room)[me.id];
   const team = [];
   if (real?.meeting) {
@@ -510,7 +512,7 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
       callName: callNo && room.phase !== 'lobby' && (room.config.mode === 'app' || room.phase !== 'dealt') ? `${callNo.family} ${callNo.n}` : null,
       role: shownId ? roleCard(shownId) : null, guide: shownId ? roleGuide(shownId, rulesOf(room)) : null,
       results: hasNightOnlyChecks(room) ? [] : (room.results || []).filter((r) => r.ids.includes(me.id)).map((r) => ({ night: r.night, text: r.text })), team, knows,
-      target: real?.needsTarget && me.target ? playerById(room, me.target)?.name : null,
+      target: !jester && real?.needsTarget && me.target ? playerById(room, me.target)?.name : null,
       claimsLeft: Math.max(0, MAX_WRONG_CLAIMS - me.wrongClaims),
       won: over ? finalWinners(room).some((w) => w.id === me.id) : null,
     },
