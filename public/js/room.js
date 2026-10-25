@@ -42,7 +42,7 @@ function addPlayer(room, name, offline) {
 }
 
 function resetDeal(room) {
-  for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; }
+  for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; delete p.note; }
   delete room.callNo; // fresh random Cop 1/2/... numbers each game
   room.copSalt = Math.random(); // seeds the neutral "Cop 1/2/..." numbering for this game
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.condemnedDay = null; room.usage = {}; room.dayUsed = {};
@@ -301,7 +301,11 @@ export function reduce(room, actor, a) {
       if (r.ok) room.condemnedDay = room.day;
       return r;
     }
-    case 'noCondemn': { if (!['day', 'night'].includes(room.phase)) return err('Not in play.'); log(room, 'Nobody was condemned.'); return { ok: true }; }
+    case 'noCondemn': {
+      if (!['day', 'night'].includes(room.phase)) return err('Not in play.');
+      if (nightVersion(room) >= 7 && room.phase !== 'day') return err('It is not day.');
+      if (nightVersion(room) >= 7 && room.condemnedDay === room.day) return err('Someone was already condemned today.');
+      log(room, 'Nobody was condemned.'); return { ok: true }; }
     case 'resolvePending': return resolvePending(room, a.pendingId, a.targetId);
     case 'kill': {
       const p = playerById(room, a.playerId);
@@ -316,8 +320,14 @@ export function reduce(room, actor, a) {
       const p = playerById(room, a.playerId); if (!p) return err('Bad player.');
       if (!['day', 'night'].includes(room.phase)) return err('The game is not in play.');
       if (p.alive) return err('Already alive.');
+      const wasCondemned = p.deathCause === 'condemned', condemnedToday = p.deathDay === room.day;
       p.alive = true; p.deathCause = null; p.roleHidden = false; p.deathDay = null; p.deathNight = null;
       room.pending = room.pending.filter((x) => x.playerId !== p.id); // no dead-player prompt for someone back in play
+      if (nightVersion(room) >= 7 && wasCondemned) { // undoing a condemnation also undoes what it set off
+        room.sideWins = (room.sideWins || []).filter((s) => s.by !== p.id);
+        if (ROLE_BY_ID[p.roleId]?.shield) room.shield = false;
+        if (condemnedToday && room.phase === 'day') room.condemnedDay = null;
+      }
       applyWinChecks(room);
       return { ok: true };
     }

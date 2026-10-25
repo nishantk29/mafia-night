@@ -262,12 +262,18 @@ function scriptSteps(room) {
   }
   if (hasNumberedCalls(room)) {
     const nums = callNumbers(room);
+    // A disguised role is called with the exact words (and wake order) of the role it believes it is, numbered or not,
+    // so neither the wording nor an out-of-sequence number points at the Confused Cop.
+    for (const st of steps) {
+      const shown = st.kind === 'action' && st.key.startsWith('act:') && st.roleId !== shownRoleId(st.roleId, room) ? ROLE_BY_ID[shownRoleId(st.roleId, room)] : null;
+      if (shown?.action) st.prompt = shown.action.prompt;
+    }
     for (const st of steps) {
       const num = st.kind === 'action' && st.key.startsWith('act:') && nums[st.actors[0]];
       if (!num) continue;
       const label = `${num.family} ${num.n}`;
       st.prompt = /^[^,]+,/.test(st.prompt) ? st.prompt.replace(/^[^,]+,/, `${label},`) : `${label}, ${st.prompt}`;
-      st.order += num.n * 0.001;
+      st.order = (ROLE_BY_ID[shownRoleId(st.roleId, room)]?.action?.order ?? st.order) + num.n * 0.001;
       st.label = label;
       st.realRole = ROLE_BY_ID[st.roleId]?.name;
       if (st.check === 'random') st.silentFlip = true;
@@ -518,7 +524,8 @@ export function resolveNight(room, actions, opts = {}) {
   const jailed = new Set(acts.filter((a) => a.s.type === 'jail').map((a) => a.targets[0]));
   let blockedPlayers = new Set(jailed);
   let blockedActs = new Set();
-  const isBlocked = (a) => blockedActs.has(a) || a.s.actors.every((id) => blockedPlayers.has(id));
+  // v7: a team call (the Mafia kill) is stopped when every LIVING member is blocked; dead teammates are only there so the call looks the same.
+  const isBlocked = (a) => blockedActs.has(a) || (hasNumberedCalls(room) ? a.s.actors.filter((id) => playerById(room, id)?.alive || a.s.key === opts.ghost) : a.s.actors).every((id) => blockedPlayers.has(id));
   for (let i = 0; i < 4; i++) {
     const active = acts.filter((a) => !isBlocked(a));
     const nbp = new Set(jailed);
@@ -618,7 +625,7 @@ export function resolveNight(room, actions, opts = {}) {
     let text; let note = ''; let coinInfo = null; let card = null;
     if (a.s.type === 'investigate') {
       const chk = a.s.check;
-      if (chk === 'alignment') text = `${t.name} is ${sideName(appearsAs(room, t))}.`;
+      if (chk === 'alignment') text = `${t.name} is ${sideName(a.s.roleId === 'psychic' && hasNumberedCalls(room) ? (factionOf(t.roleId) === 'mafia' ? 'mafia' : 'innocent') : appearsAs(room, t))}.`; // v7: the Psychic reads the TRUE side, past frames and disguises
       else if (chk === 'inverted') { text = `${t.name} is ${sideName(appearsAs(room, t) === 'mafia' ? 'innocent' : 'mafia')}.`; note = 'Insane Cop: this is the flipped result. Say it as if it were true.'; }
       else if (chk === 'random') {
         // Open role: heads = the true Cop result, tails = the opposite. The flip is decided when the target is entered.
@@ -693,8 +700,9 @@ export function morningAnnouncement(room, report) {
   if (!rep.deaths?.length) say.push('Nobody died last night.');
   for (const d of rep.deaths || []) {
     say.push(`${nameOf(room, d.id)} was killed in the night.`);
+    if (!reveal) continue; // roles are never announced under this rule, so a cleaned victim must not stand out
     if (d.hidden) say.push('Their role stays a mystery.');
-    else if (reveal) say.push(`They were the ${ROLE_BY_ID[playerById(room, d.id)?.roleId]?.name || 'Villager'}.`);
+    else say.push(`They were the ${ROLE_BY_ID[playerById(room, d.id)?.roleId]?.name || 'Villager'}.`);
   }
   const notes = [];
   for (const sv of rep.saves || []) notes.push(sv.text);
@@ -735,10 +743,10 @@ export function condemn(room, id) {
   if (r.shield) room.shield = true;
   // side wins
   room.sideWins ||= [];
-  if (r.sideWin === 'condemned') room.sideWins.push({ id: p.id, reason: `${p.name} (Jester) got condemned.` });
+  if (r.sideWin === 'condemned') room.sideWins.push({ id: p.id, by: p.id, reason: `${p.name} (Jester) got condemned.` });
   for (const q of room.players) {
     if (q.alive && ROLE_BY_ID[q.roleId]?.sideWin === 'target' && q.target === id) {
-      room.sideWins.push({ id: q.id, reason: `${q.name} (Executioner): target ${p.name} was condemned.` });
+      room.sideWins.push({ id: q.id, by: p.id, reason: `${q.name} (Executioner): target ${p.name} was condemned.` });
     }
   }
   applyWinChecks(room);
