@@ -125,10 +125,21 @@ export function unidentifiedSlots(room) {
 export const DEFAULT_RULES = { revealOnDeath: true, selfProtect: true, firstNightKill: true, dayStart: false };
 export const rulesOf = (room) => ({ ...DEFAULT_RULES, ...(room?.config?.rules || {}) });
 
+// Night-script rules version, stored on the room when it is created. 1 (or no field: a legacy room) skips dead
+// roles at night; 2 calls them exactly like living ones (their action then does nothing, see resolveNight).
+export const nightVersion = (room) => room?.nightVersion || 1;
+
 export function nightScript(room) {
   const rules = rulesOf(room);
   const steps = [];
-  const alive = room.players.filter((p) => p.alive && p.roleId);
+  const v2 = nightVersion(room) >= 2;
+  const alive = room.players.filter((p) => (v2 || p.alive) && p.roleId);
+  // Who answers a shared call: the living members, or all of them when none is left (v2 only), so the call still happens.
+  const answering = (pred) => {
+    const all = alive.filter(pred);
+    const live = all.filter((q) => q.alive);
+    return (live.length ? live : all).map((q) => q.id);
+  };
   const firstNight = room.night === 1;
   const blindNow = isBlind(room) && firstNight;
   if (blindNow) {
@@ -154,14 +165,14 @@ export function nightScript(room) {
     const r = ROLE_BY_ID[p.roleId];
     if (firstNight && r.night1 && !seenInfo.has(r.id)) {
       seenInfo.add(r.id);
-      const actors = alive.filter((q) => q.roleId === r.id).map((q) => q.id);
+      const actors = answering((q) => q.roleId === r.id);
       // Lines that call players awake are read aloud; everything else is a private note for the Host.
       const spoken = !r.seesAs && /open your eyes/i.test(r.night1);
       steps.push({ key: `n1:${r.id}`, kind: 'info', roleId: r.id, actors, prompt: r.night1, spoken, order: blindNow ? 105 : 5 });
     }
     if (r.meeting && !seenMeeting.has(r.meeting)) {
       seenMeeting.add(r.meeting);
-      const actors = alive.filter((q) => ROLE_BY_ID[q.roleId].meeting === r.meeting).map((q) => q.id);
+      const actors = answering((q) => ROLE_BY_ID[q.roleId].meeting === r.meeting);
       if (r.meeting === 'mafia' && firstNight && !rules.firstNightKill) {
         // No kill tonight, but the Mafia still need to see who their teammates are.
         steps.push({ key: 'meeting:mafia', kind: 'info', roleId: 'mafia', actors, spoken: true, order: 50,
@@ -273,7 +284,7 @@ export function previewNight(room, actions, stepKey) {
   for (const st of steps.slice(0, steps.indexOf(me) + 1)) if (actions?.[st.key]) sofar[st.key] = actions[st.key];
   const copy = structuredClone(room);
   copy.log = []; copy.pending = [];
-  resolveNight(copy, sofar);
+  resolveNight(copy, sofar, { ghost: stepKey }); // a dead investigator's call looks like any other to the Host
   return copy.lastReport.info.find((i) => i.key === stepKey) || { text: '', note: 'No result: they were blocked or stayed home.', blocked: true };
 }
 
@@ -356,7 +367,7 @@ export function log(room, text, opts = {}) {
 
 // ---------- night resolution ----------
 // actions: { [stepKey]: { targets: [playerId...], on?: boolean } }
-export function resolveNight(room, actions) {
+export function resolveNight(room, actions, opts = {}) {
   const steps = nightScript(room).filter((s) => s.kind === 'action');
   const rep = { night: room.night, deaths: [], saves: [], info: [], conversions: [], notes: [] };
   const alivePlayer = (id) => playerById(room, id);
@@ -371,7 +382,9 @@ export function resolveNight(room, actions) {
     const need = s.targets ?? 1;
     const on = need === 0 ? !!raw.on : targets.length >= need;
     return { s, idx, targets, on, coin: raw.coin === 'mafia' || raw.coin === 'innocent' ? raw.coin : null, flip: raw.flip === 'heads' || raw.flip === 'tails' ? raw.flip : null };
-  }).filter((a) => a.on);
+  }).filter((a) => a.on)
+    // v2: a dead role is still called, but what the Host records for it does nothing. (`ghost` is previewNight only.)
+    .filter((a) => nightVersion(room) < 2 || a.s.key === opts.ghost || a.s.actors.some((id) => playerById(room, id)?.alive));
 
   // usage
   room.usage ||= {};

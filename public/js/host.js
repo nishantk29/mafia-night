@@ -547,7 +547,7 @@ function cue(v, s, num, current, alive) {
       const [yes, no] = s.type === 'alert' ? ['Go on alert', 'Not tonight'] : ['Yes', 'No'];
       inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">${yes}</button><button type="button" class="btn ghost" data-a="alert" data-key="${s.key}" data-v="0">${no}</button></div>`;
     } else {
-      const list = s.dead ? v.players.filter((p) => !p.alive) : alive.filter((p) => (s.type === 'protect' && v.config.rules?.selfProtect !== false) || !s.actors.includes(p.id));
+      const list = s.dead ? v.players.filter((p) => !p.alive && !s.actors.includes(p.id)) : alive.filter((p) => (s.type === 'protect' && v.config.rules?.selfProtect !== false) || !s.actors.includes(p.id));
       const picks = n.picks[s.key] || [];
       const need = s.targets || 1;
       inner = `${head}${list.length

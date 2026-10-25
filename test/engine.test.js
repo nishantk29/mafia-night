@@ -116,6 +116,7 @@ describe('buildDeckMap', () => {
 describe('nightScript', () => {
   test('only alive players contribute steps', () => {
     const room = mk([['Doc', 'doctor'], ['Cop', 'cop'], ['Mob', 'mafia'], ...filler(3)]);
+    room.nightVersion = 1; // legacy rules; v2 rooms still call dead roles
     P(room, 'Doc').alive = false;
     const keys = nightScript(room).map((s) => s.key);
     assert.ok(!keys.includes(key(room, 'Doc')));
@@ -142,6 +143,7 @@ describe('nightScript', () => {
 
   test('no mafia step when every meeting mafia is dead', () => {
     const room = mk([['Mob', 'mafia'], ['Cop', 'cop'], ...filler(3)]);
+    room.nightVersion = 1; // legacy rules; v2 rooms still call dead roles
     P(room, 'Mob').alive = false;
     assert.ok(!nightScript(room).some((s) => s.key === 'meeting:mafia'));
   });

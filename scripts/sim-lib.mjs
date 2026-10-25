@@ -62,7 +62,7 @@ export const COIN = ['fake'];
 // Who a step may pick, exactly as the console offers it: the living, minus the actors themselves (protectors
 // may pick themselves unless the "Doctors can protect themselves" house rule is off), or the dead for steps on the dead.
 export function candidates(view, step) {
-  if (step.dead) return view.players.filter((p) => !p.alive);
+  if (step.dead) return view.players.filter((p) => !p.alive && !step.actors.includes(p.id));
   const selfOk = step.type === 'protect' && view.config.rules?.selfProtect !== false;
   return view.players.filter((p) => p.alive && (selfOk || !step.actors.includes(p.id)));
 }
@@ -115,9 +115,14 @@ export function nightProblems(before, actions, after, previews) {
   const chosen = (s) => { const set = actions[s.key]; return set?.targets?.length >= (s.targets ?? 1) ? set.targets : null; };
   const label = (s) => `${ROLE_BY_ID[s.roleId]?.name || s.roleId} (${s.actors.map(name).join(', ')})`;
 
+  // v2 rooms still call dead roles; what the storyteller records for them does nothing, so no result may reach the report.
+  const inert = (s) => (before.nightVersion || 1) >= 2 && s.actors.every((id) => !before.players.find((p) => p.id === id)?.alive);
+  for (const s of steps.filter(inert)) if (info.has(s.key)) problems.push(`ORACLE: dead ${label(s)} got a result`);
+
   // 1) The live preview the storyteller read out must be what the morning report and the phone say.
   for (const [key, prev] of Object.entries(previews)) {
     const s = steps.find((x) => x.key === key);
+    if (inert(s)) continue;
     const got = info.get(key);
     if (prev.blocked && got) problems.push(`ORACLE: ${label(s)} was told nothing live, but the report says "${got.text}"`);
     else if (!prev.blocked && !got) problems.push(`ORACLE: ${label(s)} was told "${prev.text}" live, but the report has no result`);
@@ -128,7 +133,7 @@ export function nightProblems(before, actions, after, previews) {
   const touched = (types, ids) => steps.some((x) => types.includes(x.type) && chosen(x)?.some((t) => ids.includes(t)));
   for (const s of steps) {
     const t = chosen(s);
-    if (!t || !LIVE.includes(s.type)) continue;
+    if (!t || !LIVE.includes(s.type) || inert(s)) continue;
     const mayBeBlocked = touched(['jail', 'block'], s.actors)
       || steps.some((g) => g.type === 'blockVisitors' && t.includes(chosen(g)?.[0]) && g.key !== s.key);
     if (mayBeBlocked) continue;
