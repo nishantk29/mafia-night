@@ -728,7 +728,7 @@ function day(v) {
         <button type="button" class="btn ghost" data-a="noCondemn">Nobody today</button></div></section>`;
   return {
     body: `${report}${upgradeCard(v)}${pend}${vote}${abilities ? `<section class="block abilities"><h2 class="block-title">Day abilities</h2>${abilities}</section>` : ''}`,
-    dock: btn('big', 'startNight', v.pending.length ? 'Answer the questions above first' : `Start night ${v.night + 1}`, { on: !v.pending.length, why: 'Answer the questions above first' }),
+    dock: btn(sel ? 'big secondary' : 'big', 'startNight', v.pending.length ? 'Answer the questions above first' : `Start night ${v.night + 1}`, { on: !v.pending.length, why: 'Answer the questions above first' }),
   };
 }
 

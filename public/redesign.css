@@ -281,12 +281,14 @@ h3,h4,.group-title,.sheet-title,.balance-title,.guide-title,.appbar-title,.faq-q
 .btn.danger:not(#v2),.btn.ghost.danger:not(#v2),.btn.big.danger:not(#v2){background:transparent;border:2px solid var(--mafia);color:var(--mafia);min-height:var(--f-btn-h-sm)}
 .btn.disabled:not(#v2),.btn[aria-disabled="true"]:not(#v2),.action-dock .btn.big.disabled:not(#v2),.action-dock .btn.big[aria-disabled="true"]:not(#v2){
   background:transparent;border:2px solid var(--rule-strong);color:var(--candle);opacity:.5;box-shadow:none;cursor:not-allowed}
+.btn.secondary:not(#v2),.action-dock .btn.big.secondary:not(#v2){background:transparent;border:2px solid var(--rule-strong);color:var(--candle)}
 .fx-victory .btn.big:not(#v2){background:var(--brass);border-color:var(--brass);color:var(--on-brass);box-shadow:none}
 .join-row .btn:not(#v2){height:var(--f-btn-h);background:var(--brass);border-color:var(--brass);color:var(--on-brass)}
 .modal-foot .btn:not(.ghost):not(.danger):not(#v2){background:var(--brass);border-color:var(--brass);color:var(--on-brass)}
 @media (hover:hover){
   .btn:not(#v2):hover{background:var(--brass-hi);border-color:var(--brass-hi);filter:none}
   .btn.ghost:not(#v2):hover,.block .btn:not(.big):not(.danger):not(#v2):hover,.whisper .btn:not(.big):not(#v2):hover,.guide .btn:not(.big):not(#v2):hover,.cue-body .btn:not(.danger):not(#v2):hover{background:transparent;border-color:var(--brass);color:var(--candle)}
+  .btn.secondary:not(#v2):hover,.action-dock .btn.big.secondary:not(#v2):hover{background:transparent;border-color:var(--brass);color:var(--candle)}
   .btn.danger:not(#v2):hover,.btn.ghost.danger:not(#v2):hover{background:var(--mafia-dim);border-color:var(--mafia);color:var(--mafia)}
   .btn.disabled:not(#v2):hover,.btn[aria-disabled="true"]:not(#v2):hover{background:transparent;border-color:var(--rule-strong);color:var(--candle)}
 }

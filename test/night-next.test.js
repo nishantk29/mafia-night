@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { viewForHost } from '../public/js/room.js';
-import { nightNav, pressNext } from '../public/js/night-nav.js';
+import { nightNav, pressNext, SHORT_MAX } from '../public/js/night-nav.js';
 import { dealt, hostScreen, S, ok, freshUi } from './night-drive-lib.mjs';
 
 const CASES = (mode) => [
@@ -32,6 +32,9 @@ for (const [mname, local, flow] of modes) {
       const nav = nightNav(view, ui);
       assert.equal(nav.enabled, false);
       assert.equal(nav.label, label);
+      const short = { 'target action': 'Pick a player or No one', 'yes/no': 'Alert or Not tonight', execCheck: 'Show the card or Skip' }[name];
+      assert.equal(nav.short, short);
+      assert.ok(nav.short.length <= SHORT_MAX);
       assert.equal(nav.canSkip, true);
       assert.doesNotMatch(nav.label, /find every role first/i);
       const page = html(view, local, ui);
@@ -134,6 +137,7 @@ test('blind identify: label names the role, count and Mafia; "No one has this ca
       const nav = nightNav(view, ui);
       const want = s.roleId === 'mafia' ? 'Mark who is Mafia' : s.count > 1 ? `Mark the ${s.count} ${s.roleId === 'cop' ? 'Cop' : s.roleId}s` : /^Mark who is the \w/;
       if (want instanceof RegExp) assert.match(nav.label, want); else assert.equal(nav.label, want);
+      assert.match(nav.short, /^Mark .* or Skip$/); assert.ok(nav.short.length <= SHORT_MAX, nav.short);
       assert.equal(nav.enabled, false); assert.equal(nav.canSkip, true);
       const page = html(view, local, ui);
       assert.match(page, new RegExp(`class="pk is-none"[^>]*data-a="skipIdentify"[^>]*data-role="${s.roleId}">No one has this card<`));

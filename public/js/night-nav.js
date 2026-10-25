@@ -31,13 +31,14 @@ export function missingLabel(kind, s) {
 export const SHORT_MAX = 26;
 export function shortLabel(kind, s) {
   const name = (t, max = 14) => (t.length > max ? `${t.slice(0, max - 1)}…` : t);
+  const fit = (t, fallback) => (t.length <= SHORT_MAX ? t : fallback);
   if (kind === 'identify') {
-    if (isMafiaCall(s)) return 'Mark the Mafia';
-    return s.count > 1 ? `Mark the ${s.count} ${name(roleName(s))}s` : `Mark the ${name(roleName(s))}`;
+    const who = isMafiaCall(s) ? 'Mafia' : s.count > 1 ? `${s.count} ${name(roleName(s))}s` : name(roleName(s));
+    return fit(`Mark the ${who} or Skip`, 'Mark players or Skip');
   }
-  if (kind === 'target') return `Pick for ${name(s.label || roleName(s))}`;
-  if (kind === 'answer') return `${name(roleName(s))}: yes or no`;
-  return `Show ${name(roleName(s), 12)} the card`;
+  if (kind === 'target') return 'Pick a player or No one';
+  if (kind === 'answer') return s.type === 'alert' ? 'Alert or Not tonight' : 'Tap Yes or No';
+  return 'Show the card or Skip';
 }
 
 export function nightNav(view, uiNight = {}) {
