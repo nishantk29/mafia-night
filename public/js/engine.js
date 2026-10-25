@@ -128,6 +128,10 @@ export const rulesOf = (room) => ({ ...DEFAULT_RULES, ...(room?.config?.rules ||
 // Night-script rules version, stored on the room when it is created. 1 (or no field: a legacy room) skips dead
 // roles at night; 2 calls them exactly like living ones (their action then does nothing, see resolveNight).
 export const nightVersion = (room) => room?.nightVersion || 1;
+// 3 adds the graveyard rules: shared calls list every holder (dead ones too), so the Host's step looks the same
+// alive or dead, and a dead investigator gets a neutral non-answer instead of the real result (previewNight).
+export const hasGraveyard = (room) => nightVersion(room) >= 3;
+export const NEUTRAL_ANSWER = 'No answer tonight.';
 
 export function nightScript(room) {
   const rules = rulesOf(room);
@@ -138,6 +142,7 @@ export function nightScript(room) {
   const answering = (pred) => {
     const all = alive.filter(pred);
     const live = all.filter((q) => q.alive);
+    if (hasGraveyard(room)) return all.map((q) => q.id);
     return (live.length ? live : all).map((q) => q.id);
   };
   const firstNight = room.night === 1;
@@ -253,6 +258,7 @@ export function stepGesture(step, result) {
   if (!stepCues(step) || step.kind !== 'action') return null;
   if (['investigate', 'track', 'watch', 'autopsy'].includes(step.type)) {
     if (!result || result.blocked) return null;
+    if (result.neutral && step.type === 'investigate') return { kind: 'yesno', text: 'Give no sign: keep your hand flat and still' };
     const m = /^(.+) is (MAFIA|NOT Mafia)\.$/.exec(result.text || '');
     if (step.type === 'investigate' && m) {
       return m[2] === 'MAFIA'
@@ -280,6 +286,10 @@ export function previewNight(room, actions, stepKey) {
   const steps = nightScript(room);
   const me = steps.find((st) => st.key === stepKey);
   if (!me) return null;
+  // v3: a dead investigator's screen has the same shape as a real result, but says the same neutral thing for any target.
+  if (hasGraveyard(room) && ['investigate', 'track', 'watch', 'autopsy'].includes(me.type) && !me.actors.some((id) => playerById(room, id)?.alive)) {
+    return { text: NEUTRAL_ANSWER, note: '', neutral: true };
+  }
   const sofar = {};
   for (const st of steps.slice(0, steps.indexOf(me) + 1)) if (actions?.[st.key]) sofar[st.key] = actions[st.key];
   const copy = structuredClone(room);
@@ -415,7 +425,7 @@ export function resolveNight(room, actions, opts = {}) {
   // 2) who visited whom (non-blocked acts). A team kill is carried out by ONE free member: a plain killer if
   // possible, otherwise whoever is free. Blocked members stay home, so they are not seen and not shot.
   for (const a of active) {
-    const free = a.s.actors.filter((id) => !blockedPlayers.has(id));
+    const free = a.s.actors.filter((id) => !blockedPlayers.has(id) && (!hasGraveyard(room) || playerById(room, id)?.alive));
     const plain = free.find((id) => !ROLE_BY_ID[playerById(room, id)?.roleId]?.action || ROLE_BY_ID[playerById(room, id)?.roleId]?.action?.type === 'kill');
     a.visitors = a.s.actors.length > 1 ? [plain || free[0]].filter(Boolean) : a.s.actors;
     if (a.s.actors.length > 1 && a.s.type === 'kill' && a.visitors[0]) rep.notes.push(`${nameOf(room, a.visitors[0])} carried out the ${ROLE_BY_ID[a.s.roleId]?.name || 'team'} kill.`);

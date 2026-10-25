@@ -21,7 +21,7 @@ const rid = (n = 6) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) =>
 export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
-    nightVersion: 2, // dead roles are still called at night; rooms stored without this field are version 1 (see engine nightVersion)
+    nightVersion: 3, // dead roles are still called at night (2) and the Host's steps look the same alive or dead (3); rooms stored without this field are version 1 (see engine nightVersion)
     config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
     players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
