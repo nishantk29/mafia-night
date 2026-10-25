@@ -19,6 +19,7 @@ import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSim
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
 import { siteFooter } from './footer.js';
+import { HOST_HELP_ACTIONS, hostHelpOpen } from './host_help.js';
 import { errorBody, errorButtons, crashHtml, FATAL, ENDED } from './error-screen.js';
 import { wordmark, knifeSvg, suggestions } from './flair.js';
 
@@ -495,6 +496,7 @@ const A = {
     send({ type: 'setConfig', roles: simpleRoleIds(counts) });
   },
   simpleCards() { const on = S.view.config.mode !== 'cards'; send({ type: 'setConfig', mode: on ? 'cards' : 'app', deckStyle: on ? 'simple' : 'random' }); },
+  ...HOST_HELP_ACTIONS,
   openRoles() { S.ui.roles = true; S.ui.anim = 'sheet'; S.render(); },
   closeRoles() { S.ui.roles = false; S.render(); },
   openSettings() { S.ui.settings = true; S.ui.anim = 'modal'; S.render(); },
@@ -620,6 +622,7 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
     if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if (hostHelpOpen()) { S.ui.hhWalk ? A.hhSkip() : A.closeHostHelp(); return; }
     if (S.ui.roles) { A.closeRoles(); return; }
     if (S.ui.gy) { A.closeGy(); return; }
     if (S.ui.showKey) { A.hideKey(); return; }
