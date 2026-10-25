@@ -523,14 +523,14 @@ function coinEl(set) {
     <p class="coin-label${live ? ' is-waiting' : ''}"${live ? ` style="animation-delay:${FLIP_MS - Math.round(age)}ms"` : ''} role="status">${heads ? 'Heads: TRUE answer' : 'Tails: FLIPPED answer'}</p></div>`;
 }
 function afterCoin(s, set, html) {
-  if (s.check !== 'random' || !html) return html;
+  if (s.check !== 'random' || s.silentFlip || !html) return html;
   const age = coinAge(set); const wait = age < FLIP_MS;
   return `<div class="coin-after${wait ? ' is-waiting' : ''}"${wait ? ` style="animation-delay:${FLIP_MS - Math.round(age)}ms"` : ''}>${html}</div>`;
 }
 function tellNow(v, s, set) {
   if (s.kind !== 'action' || !LIVE.includes(s.type) || !set?.targets?.length) return '';
   const nightOnly = v.nightVersion >= 5 && s.type === 'investigate'; // the check card is the only place the answer appears
-  if (s.check === 'random' && set.flip) {
+  if (s.check === 'random' && set.flip && !s.silentFlip) {
     const res = liveResult(v, s, set);
     return coinEl(set) + (res && !nightOnly ? afterCoin(s, set, `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p></div>`) : '');
   }
@@ -547,7 +547,7 @@ function tellNow(v, s, set) {
 function cue(v, s, num, current, alive) {
   const n = S.ui.night;
   const r = ROLE_BY_ID[s.roleId];
-  const roleEl = r ? roleChip(r) : '';
+  const roleEl = s.label ? `<b class="call-label">${esc(s.label)}</b>` : r ? roleChip(r) : '';
   const isDone = (s.kind === 'info' || s.kind === 'action') && !!n.actions[s.key];
   if (isDone && !current) {
     const set = n.actions[s.key];
@@ -565,7 +565,7 @@ function cue(v, s, num, current, alive) {
     return `<li class="cue" data-ck="${s.key}"><span class="cue-n">${num}</span><button type="button" class="cue-line" data-a="focusStep" data-key="${s.key}">${roleEl}<span class="meta">${what}</span></button></li>`;
   }
   const cues = stepCues(s);
-  const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>` : '';
+  const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>${s.realRole ? `<p class="note is-private">Real role: ${esc(s.realRole)}</p>` : ''}` : '';
   const st = v.story?.steps?.[s.key];
   const say = st ? `${storySay(st.say, n.actions[s.key] ? st.then : null, st.notes)}${hint}` : cues ? `${sayLine(cues.open)}${hint}` : `<p class="note is-private">${ui('ear')} Just for you: ${esc(s.prompt)}</p>`;
   let inner;

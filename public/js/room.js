@@ -3,7 +3,7 @@ import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
   setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
-  hasStoryScript, hasNightOnlyChecks, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
+  hasStoryScript, hasNightOnlyChecks, assignCallNumbers, callNumbers, hasNumberedCalls, shownRoleId, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
@@ -105,7 +105,7 @@ export function reduce(room, actor, a) {
     const slot = room.deck?.map.find((m) => m.card === card);
     if (!isCard(card) || !slot) { me.wrongClaims++; return err('That card is not in this game.'); }
     if (room.deck.claimed[card] && room.deck.claimed[card] !== me.id) { me.wrongClaims++; return err('Someone already has that card.'); }
-    room.deck.claimed[card] = me.id; me.card = card; me.roleId = slot.roleId;
+    room.deck.claimed[card] = me.id; me.card = card; me.roleId = slot.roleId; assignCallNumbers(room);
     return { ok: true };
   }
 
@@ -191,6 +191,7 @@ export function reduce(room, actor, a) {
       if (room.config.mode === 'app') {
         const map = dealRoles(room.config.roles, room.players.map((p) => p.id));
         for (const p of room.players) p.roleId = map[p.id];
+        assignCallNumbers(room);
       } else {
         room.deck = { map: buildDeckMap(room.config.roles, room.config.deckStyle), claimed: {} };
       }
@@ -210,7 +211,7 @@ export function reduce(room, actor, a) {
       const owner = room.deck.claimed[a.card];
       if (owner && owner !== p.id) return err(`${playerById(room, owner)?.name || 'Someone'} already has that card.`);
       if (p.card) delete room.deck.claimed[p.card];
-      room.deck.claimed[a.card] = p.id; p.card = a.card; p.roleId = slot.roleId; p.wrongClaims = 0;
+      room.deck.claimed[a.card] = p.id; p.card = a.card; p.roleId = slot.roleId; p.wrongClaims = 0; assignCallNumbers(room);
       return { ok: true };
     }
     case 'clearCard': {
@@ -222,7 +223,7 @@ export function reduce(room, actor, a) {
     case 'setRole': { // manual correction by the host
       const p = playerById(room, a.playerId);
       if (!p || !ROLE_BY_ID[resolveRoleId(a.roleId)]) return err('Bad role.');
-      p.roleId = resolveRoleId(a.roleId); return { ok: true };
+      p.roleId = resolveRoleId(a.roleId); assignCallNumbers(room); return { ok: true };
     }
     case 'upgradeNight': { // host opt-in for legacy rooms; always applied when the next night starts, never mid-step
       if (nightVersion(room) >= LATEST_NIGHT_VERSION) return err('Already using the new night script.');
@@ -237,7 +238,7 @@ export function reduce(room, actor, a) {
       const blindFirst = isBlind(room) && room.night === 0;
       if (!blindFirst && room.players.some((p) => !p.roleId)) return err('Every player needs a role first.');
       if (room.upgradeNext) { room.nightVersion = Math.max(nightVersion(room), room.upgradeNext); delete room.upgradeNext; }
-      room.night += 1; room.phase = 'night'; room.condemnedDay = null;
+      room.night += 1; room.phase = 'night'; room.condemnedDay = null; assignCallNumbers(room);
       if (room.night === 1) {
         finalizeBlind(room);
         assignTargets(room);
@@ -403,7 +404,7 @@ export function viewForHost(room, connected = new Set()) {
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
       deathCause: p.deathCause || null, roleHidden: !!p.roleHidden, convertedFrom: p.convertedFrom || null,
     })),
-    deck: room.deck, copSalt: room.copSalt, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
+    deck: room.deck, copSalt: room.copSalt, callNo: room.callNo, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
     report: room.lastReport, log: room.log.slice(-60), winner: room.winner, winners: over ? finalWinners(room) : [],
     sideWins: room.sideWins, usage: room.usage, dayUsed: room.dayUsed, shield: room.shield,
     stalemate: stalemateOf(room),
@@ -425,7 +426,7 @@ export function migrateRoleIds(room) {
 export function roomFromView(v) {
   migrateRoleIds(v);
   return {
-    code: v.code, nightVersion: v.nightVersion, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, winner: null,
+    code: v.code, nightVersion: v.nightVersion, phase: v.phase, night: v.night, day: v.day, config: v.config, deck: v.deck, copSalt: v.copSalt, callNo: v.callNo, winner: null,
     players: v.players.map((p) => ({ ...p, tags: [...(p.tags || [])] })), usage: { ...(v.usage || {}) },
     shield: v.shield, dayUsed: { ...(v.dayUsed || {}) }, sideWins: [...(v.sideWins || [])], pending: [], log: [], framed: [],
   };
@@ -437,7 +438,8 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
   if (!me) return { kind: 'gone' };
   const over = room.phase === 'over';
   const real = me.roleId && ROLE_BY_ID[me.roleId];
-  const shownId = real ? (real.seesAs || real.id) : null;
+  const shownId = real ? shownRoleId(real.id, room) : null;
+  const callNo = callNumbers(room)[me.id];
   const team = [];
   if (real?.meeting) {
     for (const q of room.players) {
@@ -456,6 +458,7 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
     kind: 'player', code: room.code, phase: room.phase, day: room.day, night: room.night, mode: room.config.mode, theme: room.config.theme || 'city',
     me: {
       id: me.id, name: me.name, alive: me.alive, card: me.card,
+      callName: callNo && room.phase !== 'lobby' && (room.config.mode === 'app' || room.phase !== 'dealt') ? `${callNo.family} ${callNo.n}` : null,
       role: shownId ? roleCard(shownId) : null, guide: shownId ? roleGuide(shownId, rulesOf(room)) : null,
       results: hasNightOnlyChecks(room) ? [] : (room.results || []).filter((r) => r.ids.includes(me.id)).map((r) => ({ night: r.night, text: r.text })), team, knows,
       target: real?.needsTarget && me.target ? playerById(room, me.target)?.name : null,
@@ -469,7 +472,7 @@ export function viewForPlayer(room, playerId, connected = new Set()) {
     sharedBoard: room.config.sharedBoard,
     deckCards: room.config.mode === 'cards' && room.phase === 'dealt' ? room.deck?.map.length : null,
     deckKey: room.config.mode === 'cards' && room.config.cardFlow === 'blind' && room.deck
-      ? [...room.deck.map].sort((x, y) => FULL_DECK.indexOf(x.card) - FULL_DECK.indexOf(y.card)).map((m) => ({ card: m.card, role: roleCard(ROLE_BY_ID[m.roleId]?.seesAs || m.roleId) })) : null, // disguised roles show what they think they are
+      ? [...room.deck.map].sort((x, y) => FULL_DECK.indexOf(x.card) - FULL_DECK.indexOf(y.card)).map((m) => ({ card: m.card, role: roleCard(shownRoleId(m.roleId, room)) })) : null, // disguised roles show what they think they are
     winner: over ? room.winner : null,
     winners: over ? finalWinners(room) : [],
     publicLog: room.log.filter((l) => !l.private && /died|condemned|Game over|taken down|eliminated|nobody/i.test(l.text)).slice(-20).map((l) => ({ night: l.night, day: l.day, text: l.text.replace(/\s*\(.*?\)\s*$/, '') })),
