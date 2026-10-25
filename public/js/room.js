@@ -3,7 +3,7 @@ import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
   setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
-  hasStoryScript, hasNightOnlyChecks, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
+  hasStoryScript, hasNightOnlyChecks, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
@@ -22,7 +22,7 @@ const rid = (n = 6) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) =>
 export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
-    nightVersion: 5, // investigator results only at night (5), dead roles are still called at night (2), the Host's steps look the same alive or dead (3), the Host script (4); rooms stored without this field are version 1 (see engine nightVersion)
+    nightVersion: LATEST_NIGHT_VERSION, // the Godfather shows as a Villager to the Detective (6), investigator results only at night (5), dead roles are still called at night (2), the Host's steps look the same alive or dead (3), the Host script (4); rooms stored without this field are version 1 (see engine nightVersion)
     config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
     players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
@@ -225,10 +225,10 @@ export function reduce(room, actor, a) {
       p.roleId = resolveRoleId(a.roleId); return { ok: true };
     }
     case 'upgradeNight': { // host opt-in for legacy rooms; always applied when the next night starts, never mid-step
-      if (nightVersion(room) >= 5) return err('Already using the new night script.');
+      if (nightVersion(room) >= LATEST_NIGHT_VERSION) return err('Already using the new night script.');
       if (a.off) delete room.upgradeNext;
-      else if (room.phase === 'lobby') room.nightVersion = 5;
-      else room.upgradeNext = 5;
+      else if (room.phase === 'lobby') room.nightVersion = LATEST_NIGHT_VERSION;
+      else room.upgradeNext = LATEST_NIGHT_VERSION;
       return { ok: true };
     }
     case 'startNight': {

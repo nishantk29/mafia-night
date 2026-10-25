@@ -81,6 +81,7 @@ export function roleGuide(roleId, rules = {}) {
 
   if (r.appearsAs === 'innocent' && r.alignment !== 'town') know.push('To a Cop’s check you look innocent.');
   if (r.appearsAs === 'mafia' && r.alignment === 'town') know.push('To a Cop’s check you look like Mafia, even though you are town.');
+  if (r.id === 'godfather') know.push('To the Detective you look like a Villager.');
   if (r.meeting === 'mafia') know.push('Your phone lists your Mafia teammates.');
   if (r.showMafia) know.push('Your phone lists who the Mafia are. Don’t make it obvious that you know.');
 
