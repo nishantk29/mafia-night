@@ -1569,3 +1569,23 @@ html,body{overflow-x:clip}
   .appbar-title{font-size:var(--fs-sm)}
   .appbar-sub{font-size:11px;overflow:visible;text-overflow:clip;white-space:nowrap}
 }
+
+/* ---------- Graveyard chat (v3 rooms): the dead and the Host only ---------- */
+.gy{display:grid;gap:var(--s2);padding:var(--s3);background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--rule);border-radius:var(--r-panel);box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.gy-title{display:flex;align-items:center;gap:var(--s2);margin:0;font-size:var(--fs-lg,1.25rem);color:var(--brass-hi)}
+.gy-title svg{width:1.1em;height:1.1em}
+.gy-sub{margin:0;color:var(--smoke);font-size:var(--fs-sm,.875rem)}
+.gy-list{list-style:none;margin:0;padding:0;display:grid;align-content:start;gap:var(--s2);max-height:min(46vh,360px);min-height:96px;overflow-y:auto;overscroll-behavior:contain}
+.gy-msg{display:grid;gap:2px;max-width:88%;justify-self:start;padding:var(--s2) var(--s3);background:var(--room-night);border:1px solid var(--rule);border-radius:var(--r-row);overflow-wrap:break-word;hyphens:none}
+.gy-msg.is-mine{justify-self:end;background:var(--lacquer);border-color:var(--rule-strong)}
+.gy-name{font-family:"Limelight",var(--font-display);font-weight:400;font-size:var(--fs-sm,.875rem);color:var(--brass)}
+.gy-msg.is-host .gy-name{color:var(--candle)}
+.gy-text{color:var(--candle);line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;hyphens:none}
+.gy-empty{color:var(--faint);text-align:center;padding:var(--s3)}
+.gy-form{display:flex;gap:var(--s2)}
+.gy-input{flex:1;min-width:0;font-size:16px;color:var(--candle);background:var(--room-night);border:1px solid var(--rule-strong);border-radius:var(--r-control);padding:var(--s2) var(--s3)}
+.gy-input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.gy-in{animation:gy-in 220ms cubic-bezier(.2,.8,.2,1) both}
+@keyframes gy-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.gy-in{animation:none}}
+html[data-fx="off"] .gy-in{animation:none}

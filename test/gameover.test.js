@@ -35,10 +35,10 @@ describe('game-over event', () => {
 
   test('not sent for ordinary updates or after the game was already over', () => {
     const { room, ids } = game();
-    assert.equal(messagesFor(room, { who: 'host' }, new Set(), justEnded(room.phase, room)).length, 1);
+    assert.equal(messagesFor(room, { who: 'host' }, new Set(), justEnded(room.phase, room)).filter((m) => m.type !== 'graveyard').length, 1);
     reduce(room, HOST, { type: 'declareWinner', side: 'town' });
     assert.equal(justEnded('over', room), false);
-    assert.equal(messagesFor(room, { who: 'player', playerId: ids[0] }, new Set(), false).length, 1);
+    assert.equal(messagesFor(room, { who: 'player', playerId: ids[0] }, new Set(), false).filter((m) => m.type !== 'graveyard').length, 1);
   });
 
   test('"You won" / "You lost" is per player and carries no role information', () => {
