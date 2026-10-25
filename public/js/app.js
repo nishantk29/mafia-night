@@ -17,6 +17,7 @@ import { gameOverEvent } from './room.js';
 import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
+import { bloodDrips, knifeSvg, suggestions } from './flair.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -122,18 +123,22 @@ function screen() {
   return '';
 }
 
+let introDone = false;
+// The first home paint rises in section by section (transform + opacity); every later render is plain.
+const introOnce = () => { if (introDone) return ''; introDone = true; return ' home-intro'; };
 function home() {
   const hostCodes = Object.keys(localStorage).filter((k) => k.startsWith('mafia.host.')).map((k) => k.slice(11));
   const playCodes = Object.keys(localStorage).filter((k) => k.startsWith('mafia.player.')).map((k) => k.slice(13));
-  return `<main class="wrap home">
+  const intro = introOnce();
+  return `<main class="wrap home${intro}">
     <a class="hub-link" href="https://gamenight.hatethespurs.com/">${ui('caret-down')}<span>All Games</span></a>
     <div class="home-hero">
       <div class="card-fan" aria-hidden="true"><span class="rcard-back"><span class="rcard-back-mark">${ui('brand')}</span></span></div>
-      <h1 class="wordmark">Mafia<br>Night</h1>
+      <h1 class="wordmark">Mafia<br>Night${bloodDrips()}</h1>
       <p class="lede">Secret roles for Mafia and Werewolf, dealt to everyone’s phone. You get the script for the night.</p>
     </div>
     <div class="home-paths">
-      <section class="path path-host"><h2 class="path-title">Be the Host</h2>
+      <section class="path path-host">${knifeSvg()}<h2 class="path-title">Be the Host</h2>
         <p class="muted">You read the night aloud. Everyone else joins on their phone with a 6‑letter code.</p>
         <button type="button" class="btn big" data-a="hostLive">Host a game</button>
         ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a></p>`).join('')}</section>
@@ -144,6 +149,7 @@ function home() {
       <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
         <p class="muted">Run everything from this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
       <a class="home-rules" href="#/faq"><span><b>Rules &amp; FAQ</b><small>Roles, play modes and tricky calls.</small></span>${ui('caret-down')}</a>
+      ${suggestions()}
       <section class="home-how"><h2 class="home-how-title">How to Play</h2>
         <ol class="how">
           <li><h3>Deal</h3><p>Host a game on this screen. Players join with the room code, and each gets a secret role.</p></li>

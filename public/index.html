@@ -9,12 +9,14 @@
 <meta name="application-name" content="Mafia Night">
 <meta name="format-detection" content="telephone=no">
 <link rel="preload" href="/fonts/rubik-var.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/fonts/limelight-400.woff2" as="font" type="font/woff2" crossorigin>
-<style>html{background:#1B1410;color-scheme:dark}</style>
+<link rel="preload" href="/fonts/big-shoulders-display-var.woff2" as="font" type="font/woff2" crossorigin>
+<style>html{background:#0B0B0D;color-scheme:dark}</style>
 <link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/redesign.css">
+<link rel="modulepreload" href="/js/app.js"><link rel="modulepreload" href="/js/state.js"><link rel="modulepreload" href="/js/room.js"><link rel="modulepreload" href="/js/roles.js"><link rel="modulepreload" href="/js/engine.js"><link rel="modulepreload" href="/js/host.js"><link rel="modulepreload" href="/js/fx.js"><link rel="modulepreload" href="/js/art.js"><link rel="modulepreload" href="/js/icon_data.js"><link rel="modulepreload" href="/js/ui_icons.js"><link rel="modulepreload" href="/js/player.js">
 <!-- pwa:start -->
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#1B1410">
+<meta name="theme-color" content="#0B0B0D">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mafia Night">
@@ -30,7 +32,8 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <radialGradient id="vig" cx=".5" cy=".45" r=".8"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></radialGradient>
 </defs></svg>
-<div id="app"></div>
+<div class="bg-art" aria-hidden="true"><span class="smoke"></span><span class="moon"></span><span class="skyline"></span></div>
+<div id="app"><main class="wrap home splash" aria-busy="true"><a class="hub-link" href="https://gamenight.hatethespurs.com/"><span>All Games</span></a><div class="home-hero"><h1 class="wordmark">Mafia<br>Night</h1></div></main></div>
 <div id="fx" aria-live="off"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <noscript>This game needs JavaScript.</noscript>
