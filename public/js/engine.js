@@ -142,6 +142,49 @@ export const hasGodfatherDisguise = (room) => nightVersion(room) >= 6;
 // 7: Tracker, Lookout and Coroner results (track/watch/autopsy) are night-only too, through the check card, like the Cop.
 export const hasNightOnlyInfo = (room) => nightVersion(room) >= 7;
 export const LATEST_NIGHT_VERSION = 7;
+// 7: every look-alike call family is numbered 1..N (Cop 1, Cop 2...), the player's phone shows their number, and the Confused Cop is a disguised Cop
+export const hasNumberedCalls = (room) => nightVersion(room) >= 7;
+
+// The role id a player believes they hold. v7 treats the Confused Cop as a disguised Cop (older rooms keep it open).
+export const shownRoleId = (roleId, room) => (hasNumberedCalls(room) && roleId === 'confused_cop' ? 'cop' : ROLE_BY_ID[roleId]?.seesAs || roleId);
+const callHash = (room, id) => [...`${room.copSalt}:${id}`].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
+// Holders of each family that has its own individual wake-up call (alive and dead, so numbers never move on a death).
+function callFamilies(room) {
+  const fams = {};
+  for (const p of room.players || []) {
+    const r = ROLE_BY_ID[p.roleId];
+    if (!r?.action || r.action.group || r.meeting) continue;
+    const fam = ROLE_BY_ID[shownRoleId(p.roleId, room)] || r;
+    (fams[fam.id] ||= { fam, ids: [] }).ids.push(p.id);
+  }
+  return Object.values(fams).filter((f) => f.ids.length > 1);
+}
+// { playerId: { family, n, of } } for every holder of a family with 2+ players. Uses the stored room.callNo shuffle
+// when it still covers the family exactly, otherwise a deterministic shuffle seeded by copSalt.
+export function callNumbers(room) {
+  const out = {};
+  if (!room || !hasNumberedCalls(room)) return out;
+  for (const { fam, ids } of callFamilies(room)) {
+    const stored = ids.map((id) => room.callNo?.[id]);
+    const ok = [...stored].sort((a, b) => a - b).every((n, i) => n === i + 1);
+    const order = [...ids].sort((a, b) => (ok ? room.callNo[a] - room.callNo[b] : callHash(room, a) - callHash(room, b) || (a < b ? -1 : 1)));
+    order.forEach((id, i) => { out[id] = { family: fam.name, n: i + 1, of: ids.length }; });
+  }
+  return out;
+}
+// Stores a fresh random numbering on the room (deal time, role changes, night start). Keeps families that are already valid.
+export function assignCallNumbers(room) {
+  if (!hasNumberedCalls(room)) return;
+  const callNo = {};
+  for (const { ids } of callFamilies(room)) {
+    const keep = room.callNo && ids.every((id) => room.callNo[id]) && [...ids].map((id) => room.callNo[id]).sort((a, b) => a - b).every((n, i) => n === i + 1);
+    if (keep) { for (const id of ids) callNo[id] = room.callNo[id]; continue; }
+    const pool = [...ids];
+    for (let i = pool.length - 1; i > 0; i--) { const j = randInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    pool.forEach((id, i) => { callNo[id] = i + 1; });
+  }
+  room.callNo = callNo;
+}
 
 const isQuiet = (st) => st.kind === 'info' && !st.spoken;
 export function nightScript(room) {
@@ -213,10 +256,24 @@ function scriptSteps(room) {
       steps.push({ key: `act:${p.id}`, kind: 'action', roleId: r.id, actors: [p.id], ...r.action });
     }
   }
+  if (hasNumberedCalls(room)) {
+    const nums = callNumbers(room);
+    for (const st of steps) {
+      const num = st.kind === 'action' && st.key.startsWith('act:') && nums[st.actors[0]];
+      if (!num) continue;
+      const label = `${num.family} ${num.n}`;
+      st.prompt = /^[^,]+,/.test(st.prompt) ? st.prompt.replace(/^[^,]+,/, `${label},`) : `${label}, ${st.prompt}`;
+      st.order += num.n * 0.001;
+      st.label = label;
+      st.realRole = ROLE_BY_ID[st.roleId]?.name;
+      if (st.check === 'random') st.silentFlip = true;
+      st.hint = `${label} is ${nameOf(room, st.actors[0])}. Tap them on the shoulder so only they wake.`;
+    }
+  }
   // Several players who look like "Cop" (real, disguised, or the same type twice) each get their own neutral
   // numbered call. Numbers follow a per-game shuffled rank stored on the room, so they never hint at the real role.
   const looksCop = (st) => st.kind === 'action' && (ROLE_BY_ID[ROLE_BY_ID[st.roleId]?.seesAs] || ROLE_BY_ID[st.roleId])?.id === 'cop';
-  const copSteps = steps.filter(looksCop);
+  const copSteps = hasNumberedCalls(room) ? [] : steps.filter(looksCop);
   if (copSteps.length > 1) {
     const rank = (st) => [...`${room.copSalt}:${st.actors[0]}`].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
     copSteps.sort((a, b) => rank(a) - rank(b));
@@ -228,7 +285,7 @@ function scriptSteps(room) {
     });
   }
   // Confused Cops are an open role: own calls, numbered only when there are several.
-  const confSteps = steps.filter((st) => st.kind === 'action' && st.roleId === 'confused_cop');
+  const confSteps = hasNumberedCalls(room) ? [] : steps.filter((st) => st.kind === 'action' && st.roleId === 'confused_cop');
   if (confSteps.length > 1) confSteps.forEach((st, i) => {
     st.prompt = st.prompt.replace(/^Confused Cop,/, `Confused Cop ${i + 1},`);
     st.order += i * 0.001;
@@ -401,6 +458,7 @@ export function finalizeBlind(room) {
   if (slots.length && slots.every((s) => s.roleId === 'villager') && slots[0].remaining === open.length) {
     for (const p of open) p.roleId = 'villager';
   }
+  assignCallNumbers(room);
 }
 
 // ---------- killing ----------

@@ -72,6 +72,7 @@ function roleCard(v) {
           <div class="rcard-body">
             <span class="team-tag a-${r.alignment}"><i class="team-mark a-${r.alignment}"></i>${teamName(r.alignment)}</span>
             <h2 class="rcard-name">${esc(r.name)}</h2>
+            ${me.callName ? `<p class="rcard-call">You are <b>${esc(me.callName)}</b>. Wake when the Host calls ${esc(me.callName)}.</p>` : ''}
             <p class="rcard-blurb">${esc(r.blurb)}</p>
           </div>
           <span class="rcard-index rcard-index-br" aria-hidden="true">${ico(r)}</span>

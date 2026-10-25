@@ -1619,3 +1619,5 @@ html[data-fx="off"] .gy-in{animation:none}
 @keyframes check-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.check-card{animation:none}}
 html[data-fx="off"] .check-card{animation:none}
+.rcard-call{margin:var(--s1) 0 0;font-size:var(--fs-sm);color:var(--candle);max-width:30ch}
+.call-label{font-weight:700}
