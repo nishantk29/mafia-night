@@ -406,6 +406,7 @@ const A = {
     catch (e) { if (e?.name !== 'AbortError') A.copy(el); }
   },
   clearCard(el) { send({ type: 'clearCard', playerId: el.dataset.id }); },
+  upgradeNight(el) { send({ type: 'upgradeNight', off: el.dataset.off === '1' }); },
   startNight() { S.ui.condemn = null; send({ type: 'startNight' }); },
   startDay() { send({ type: 'startDay' }); },
   rule(el) { if (el.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why); const k = el.dataset.k; const cur = { ...DEFAULT_RULES, ...(S.view?.config?.rules || {}) }; send({ type: 'setConfig', rules: { [k]: !cur[k] } }); },

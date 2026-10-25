@@ -135,6 +135,8 @@ export const NEUTRAL_ANSWER = 'No answer tonight.';
 // 4 adds the Host script (stepScript, prepNotes, morningAnnouncement, checkCard) and keeps every v2/v3 rule.
 // In v4 the night step list holds only calls that wake somebody; silent host notes move to prepNotes.
 export const hasStoryScript = (room) => nightVersion(room) >= 4;
+// 5: investigator results (Cop, Detective...) are given only at night through the check card; never in the morning report, host day screens or the player's phone.
+export const hasNightOnlyChecks = (room) => nightVersion(room) >= 5;
 
 const isQuiet = (st) => st.kind === 'info' && !st.spoken;
 export function nightScript(room) {
@@ -339,7 +341,7 @@ export function previewNight(room, actions, stepKey) {
   for (const st of steps.slice(0, steps.indexOf(me) + 1)) if (actions?.[st.key]) sofar[st.key] = actions[st.key];
   const copy = structuredClone(room);
   copy.log = []; copy.pending = [];
-  resolveNight(copy, sofar, { ghost: stepKey }); // a dead investigator's call looks like any other to the Host
+  resolveNight(copy, sofar, { ghost: stepKey, preview: true }); // a dead investigator's call looks like any other to the Host
   return copy.lastReport.info.find((i) => i.key === stepKey) || { text: '', note: 'No result: they were blocked or stayed home.', blocked: true };
 }
 
@@ -578,7 +580,7 @@ export function resolveNight(room, actions, opts = {}) {
     } else if (a.s.type === 'autopsy') {
       text = `${t.name} was the ${ROLE_BY_ID[t.roleId].name}.`;
     }
-    rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(coinInfo ? { flip: coinInfo.flip } : {}) });
+    if (!(hasNightOnlyChecks(room) && a.s.type === 'investigate' && !opts.preview)) rep.info.push({ actorIds, roleId: a.s.roleId, key: a.s.key, text, note, ...(coinInfo ? { flip: coinInfo.flip } : {}) });
     if (coinInfo) { (rep.coins ||= []).push({ key: a.s.key, flip: coinInfo.flip, text: coinInfo.text }); log(room, `Night ${room.night}: ${coinInfo.text}`, { private: true }); }
   }
 

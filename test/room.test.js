@@ -11,7 +11,7 @@ const ANON = { anon: true };
 const H = (room, a) => reduce(room, HOST, a);
 
 function lobby(names) {
-  const room = newRoom('ROOM', 'hostkey-SECRET-123');
+  const room = newRoom('ROOM', 'hostkey-SECRET-123'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
   const tokens = {};
   for (const n of names) {
     const r = reduce(room, ANON, { type: 'join', name: n });
@@ -41,7 +41,7 @@ describe('join', () => {
     assert.equal(room.players[0].token, tokens.Amy.token);
   });
   test('rejects empty / whitespace / markup-only names', () => {
-    const room = newRoom('R', 'k');
+    const room = newRoom('R', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
     for (const n of ['', '   ', '<>', null, undefined, '\u0001\u0002']) assert.ok(reduce(room, ANON, { type: 'join', name: n }).error, String(n));
     assert.equal(room.players.length, 0);
   });
@@ -52,13 +52,13 @@ describe('join', () => {
     assert.equal(room.players.length, 1);
   });
   test('over-long names are clamped to 20 chars (or rejected)', () => {
-    const room = newRoom('R', 'k');
+    const room = newRoom('R', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
     const r = reduce(room, ANON, { type: 'join', name: 'x'.repeat(100) });
     if (r.ok) assert.ok(room.players[0].name.length <= 20);
     else assert.ok(r.error);
   });
   test('strips < and > from names', () => {
-    const room = newRoom('R', 'k');
+    const room = newRoom('R', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
     reduce(room, ANON, { type: 'join', name: '<b>Bob</b>' });
     assert.ok(!/[<>]/.test(room.players[0].name));
   });
@@ -889,7 +889,7 @@ describe('custom roles', () => {
     assert.equal(ROLE_BY_ID.cop, before);
     assert.equal(ROLE_BY_ID.cop.name, 'Cop');
     assert.equal(ROLE_BY_ID.mafia.name, 'Mafia');
-    const room = newRoom('R', 'k');
+    const room = newRoom('R', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
     reduce(room, HOST, { type: 'setCustomRoles', roles: [{ id: 'cop', name: 'Evil' }] });
     assert.deepEqual(room.config.customRoles, []);
     assert.equal(ROLE_BY_ID.cop.name, 'Cop');

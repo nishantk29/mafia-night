@@ -6,7 +6,7 @@ import { ROLES } from '../public/js/roles.js';
 import { newRoom, reduce } from '../public/js/room.js';
 
 function mk(spec, night, version = 4) {
-  const room = newRoom('V4', 'hostkey');
+  const room = newRoom('V4', 'hostkey'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
   for (const [name, roleId, alive = true] of spec) {
     assert.ok(reduce(room, { anon: true }, { type: 'join', name }).ok);
     const p = room.players.find((q) => q.name === name);
@@ -21,7 +21,7 @@ const nightRoles = ROLES.filter((r) => r.action || r.night1 || r.meeting);
 
 describe('v4 gating', () => {
   test('new rooms are v4 and keep the v2/v3 rules', () => {
-    const room = newRoom('A', 'k');
+    const room = newRoom('A', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
     assert.equal(nightVersion(room), 4);
     assert.ok(hasStoryScript(room) && hasGraveyard(room));
     assert.ok(!hasStoryScript({ nightVersion: 3 }) && !hasStoryScript({}));
