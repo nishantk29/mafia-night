@@ -75,7 +75,9 @@ function paint() {
   $html.dataset.phase = phase;
   $html.dataset.shell = shell;
   const opened = S.ui.anim;
+  const keepMark = $app.querySelector('.splash .wordmark'); // the static splash logo stays (its drips and hub handoff keep playing)
   $app.innerHTML = screen();
+  if (keepMark) $app.querySelector('.home-hero .wordmark')?.replaceWith(keepMark);
   themeDom($app, themeOf(S.view), seatNames());
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
   applyRoleSearch();
