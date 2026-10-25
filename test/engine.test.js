@@ -128,6 +128,7 @@ describe('nightScript', () => {
       ['Mob', 'mafia'], ['God', 'godfather'], ['Don', 'don'], ['Hook', 'hooker'], ['Jan', 'janitor'], ['Dead', 'mafia'],
       ['Slow', 'slowpoke'], ['Ass', 'assassin'], ['Vil', 'villager'], ['Cop', 'cop'],
     ]);
+    room.nightVersion = 2; // v3 lists dead holders too (night-v3.test.js)
     P(room, 'Dead').alive = false;
     const steps = nightScript(room);
     const meeting = steps.filter((s) => s.key === 'meeting:mafia');

@@ -10,6 +10,7 @@ import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
 import { hostScreen } from './host.js';
+import { patchGraveyard, scrollGraveyard } from './graveyard.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
 import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn } from './fx.js';
@@ -62,7 +63,7 @@ const endHold = (all) => { if (all) hold.cancel(); else hold.release(); if (pend
 S.render = function render() {
   if (drag || hold.pressed || hold.shown) { pendingRender = true; return; } // a seat is being dragged or the role card is held: the end renders
   const a = document.activeElement;
-  if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; return; }
+  if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; if (a.dataset.i === 'gyText') patchGraveyard(); return; }
   pendingRender = false;
   syncSimple();
   step(paint);
@@ -204,12 +205,13 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; S.view = m.view; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
+        const prev = S.view; S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
+      else if (m.type === 'graveyard') { S.graveyard = m.entries; S.render(); }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
       else if (m.type === 'error') S.toast(m.error);
       else if (m.type === 'joined') store.set(`mafia.player.${code}`, JSON.stringify({ playerId: m.playerId, token: m.token }));
-      else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); S.ui.endConfirm = false; S.ui.settings = false; S.view = null; S.ended = m.reason === 'ended' ? (S.mode === 'host' ? 'host' : 'ended') : 'expired'; S.render(); }
+      else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); S.ui.endConfirm = false; S.ui.settings = false; S.view = null; S.graveyard = null; S.ended = m.reason === 'ended' ? (S.mode === 'host' ? 'host' : 'ended') : 'expired'; S.render(); }
       else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = m.error; S.render(); } }
     };
     ws.onclose = () => { if (closed) return; S.conn = false; S.render(); timer = setTimeout(open, Math.min(8000, 400 * 2 ** tries++)); };
@@ -255,7 +257,8 @@ async function route() {
   closeTransport();
   closeVictory();
   hold.cancel();
-  Object.assign(S.ui, { tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
+  S.graveyard = null; S.gyShown = 0;
+  Object.assign(S.ui, { gy: false, tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
   const h = location.hash.replace(/^#\/?/, '');
   const [kind, arg] = h.split('/');
   S.code = null;
@@ -341,6 +344,15 @@ const suitOf = (card) => (card === 'RJ' || card === 'BJ' ? 'J' : card ? card.sli
 const leaveField = () => { const a = document.activeElement; if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur(); };
 
 const A = {
+  openGy() { S.ui.gy = true; S.ui.anim = 'sheet'; S.render(); setTimeout(scrollGraveyard, 0); },
+  closeGy() { S.ui.gy = false; S.render(); },
+  gySend() {
+    const el = $app.querySelector('[data-i="gyText"]'); const text = (el?.value || '').trim();
+    if (!text) return;
+    send({ type: 'chat', channel: 'graveyard', text });
+    if (el) el.value = ''; S.ui.draft.gyText = '';
+    setTimeout(scrollGraveyard, 0);
+  },
   async hostLive() {
     leaveField();
     const res = await fetch('/api/create', { method: 'POST' }).then((r) => r.json()).catch(() => null);
@@ -578,7 +590,8 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
-    if ((S.ui.tools || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if ((S.ui.tools || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if (S.ui.gy) { A.closeGy(); return; }
     if (S.ui.showKey) { A.hideKey(); return; }
     if (S.ui.tools) { A.closeTools(); return; }
     if (S.ui.showCode) { A.hideCode(); return; }
@@ -590,6 +603,7 @@ document.addEventListener('keydown', (ev) => {
     return;
   }
   // Enter in the home code field and the join name field submits.
+  if (ev.key === 'Enter' && ev.target.dataset?.i === 'gyText' && !ev.isComposing) { ev.preventDefault(); A.gySend(); return; }
   if (ev.key === 'Enter' && ev.target.dataset?.i === 'joinCode') { ev.preventDefault(); A.goJoin(); return; }
   if (ev.key === 'Enter' && ev.target.dataset?.i === 'joinName') { ev.preventDefault(); A.join(); return; }
   // Arrow keys move through radiogroups and tablists (roving tabindex); the newly focused option is chosen.
@@ -617,6 +631,7 @@ wireFaqSearch(document);
 document.addEventListener('input', (ev) => {
   const el = ev.target; const i = el.dataset.i; if (!i) return;
   if (i === 'names') S.ui.draft.names = el.value;
+  else if (i === 'gyText') S.ui.draft.gyText = el.value;
   else if (i === 'joinName') S.ui.draft.joinName = el.value;
   else if (i === 'joinCode') S.ui.draft.joinCode = el.value.toUpperCase();
   else if (i === 'search') { S.ui.search = el.value; applyRoleSearch(); }
@@ -642,6 +657,9 @@ document.addEventListener('change', (ev) => {
     if (k === 'alignment' || k === 'action.type') { pendingRender = false; S.render(); }
   }
 });
+
+// Sending to the Graveyard keeps the keyboard up: the button must not take focus from the input.
+document.addEventListener('pointerdown', (ev) => { if (ev.target.closest?.('[data-a="gySend"]')) ev.preventDefault(); });
 
 // ---------------- private role card: hold to reveal ----------------
 document.addEventListener('pointerdown', (ev) => {

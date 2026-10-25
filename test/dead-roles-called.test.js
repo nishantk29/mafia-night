@@ -15,6 +15,7 @@ function mk(spec, night) {
     const p = room.players.find((q) => q.name === name);
     p.id = `p${name}`; p.roleId = roleId; p.alive = alive; // fixed ids: the Cop numbering is ranked by id
   }
+  room.nightVersion = 2; // these tests describe v2 (v3: night-v3.test.js)
   room.phase = 'night'; room.night = night;
   return room;
 }
@@ -37,7 +38,7 @@ const norm = (room, steps) => {
 const normScene = (...a) => { const room = scene(...a); return norm(room, nightScript(room)); };
 
 describe('v2 rooms call dead roles like living ones', () => {
-  test('new rooms are version 2', () => assert.equal(nightVersion(newRoom('A', 'k')), 2));
+  test('a room pinned to 2 reads as version 2', () => assert.equal(nightVersion(mk([], 1)), 2));
 
   for (const night of [1, 2, 3]) for (const r of nightRoles) {
     test(`${r.id}: night ${night} script identical dead or alive`, () => {

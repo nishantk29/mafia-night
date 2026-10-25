@@ -2,7 +2,7 @@
 import {
   FULL_DECK, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
-  setupWarnings, DEFAULT_RULES, rulesOf,
+  setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
 } from './engine.js';
 import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
@@ -21,7 +21,7 @@ const rid = (n = 6) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) =>
 export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
-    nightVersion: 2, // dead roles are still called at night; rooms stored without this field are version 1 (see engine nightVersion)
+    nightVersion: 3, // dead roles are still called at night (2) and the Host's steps look the same alive or dead (3); rooms stored without this field are version 1 (see engine nightVersion)
     config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
     players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
@@ -45,6 +45,33 @@ function resetDeal(room) {
   room.copSalt = Math.random(); // seeds the neutral "Cop 1/2/..." numbering for this game
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.condemnedDay = null; room.usage = {}; room.dayUsed = {};
   room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.results = []; room.shield = false; room.framed = [];
+  delete room.graveyard;
+}
+
+// ---------- Graveyard chat (v3 rooms) ----------
+// Only the dead and the Host may post, and only the dead and the Host are ever sent it (see messagesFor).
+// Any other channel is rejected, so a future living chat inherits "the dead can't speak to the living".
+const GY_MAX = 150, GY_LEN = 280, GY_RATE = 5, GY_WINDOW = 10000;
+const gyRate = new WeakMap(); // room -> sender -> recent post times (runtime only, never stored or sent)
+export const canSeeGraveyard = (room, att) => hasGraveyard(room) && room.hostKey !== 'local' && (att?.who === 'host' || (att?.who === 'player' && playerById(room, att.playerId)?.alive === false));
+function postChat(room, actor, a) {
+  const err = (e) => ({ error: e });
+  const me = actor.playerId && playerById(room, actor.playerId);
+  if (a.channel !== 'graveyard') return err(me && !me.alive ? 'The dead can’t speak to the living.' : 'Chat is not available.');
+  if (!hasGraveyard(room) || room.hostKey === 'local') return err('Chat is not available.');
+  if (!actor.host && !(me && me.alive === false)) return err('Only the dead can use the Graveyard.');
+  const text = String(a.text ?? '').replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/ {2,}/g, ' ').trim().slice(0, GY_LEN).trim();
+  if (!text) return err('Write something first.');
+  const from = actor.host ? 'host' : me.id, now = Date.now();
+  let m = gyRate.get(room); if (!m) gyRate.set(room, m = new Map());
+  const recent = (m.get(from) || []).filter((x) => now - x < GY_WINDOW);
+  if (recent.length >= GY_RATE) { m.set(from, recent); return err('Slow down a little.'); }
+  recent.push(now); m.set(from, recent);
+  const list = room.graveyard ||= [];
+  const id = (list.at(-1)?.id || 0) + 1;
+  list.push({ id, from, name: actor.host ? 'Host' : me.name, text, at: now });
+  if (list.length > GY_MAX) list.splice(0, list.length - GY_MAX);
+  return { ok: true };
 }
 
 // actor: { host: true } | { playerId } | { anon: true }
@@ -62,6 +89,9 @@ export function reduce(room, actor, a) {
     const r = addPlayer(room, a.name, false);
     return r.error ? r : { ok: true, data: { playerId: r.player.id, token: r.player.token } };
   }
+
+  // ---- chat (Graveyard only: dead players and the Host) ----
+  if (t === 'chat') return postChat(room, actor, a);
 
   // ---- players ----
   if (t === 'claimCard') {
@@ -333,6 +363,7 @@ export function messagesFor(room, att, connected = new Set(), announce = false) 
   const host = att.who === 'host';
   const out = [{ type: 'view', view: host ? viewForHost(room, connected) : viewForPlayer(room, att.playerId, connected) }];
   if (announce && room.phase === 'over') out.push(gameOverEvent(room, host ? null : att.playerId));
+  if (canSeeGraveyard(room, att)) out.push({ type: 'graveyard', entries: room.graveyard || [] });
   return out;
 }
 

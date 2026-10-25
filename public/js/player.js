@@ -7,6 +7,7 @@ import { SUITS, RANKS } from './engine.js';
 import { board, pc, cardName, teamName } from './board.js';
 import { ico, cardArt } from './art.js';
 import { ui } from './ui_icons.js';
+import { graveyardPanel } from './graveyard.js';
 import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
 
 const PHASE = { lobby: ['cards', 'Setting up'], dealt: ['cards', 'Roles dealt'], over: ['crown', 'Game over'] };
@@ -37,6 +38,7 @@ export function playerScreen(v) {
   return `${appbar(esc(me.name), `${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${toolsButton()}`)}
   <main class="wrap seat-view">
     <section class="hand" aria-label="Your role">${hand}</section>
+    ${!me.alive && S.graveyard ? graveyardPanel(me.id) : ''}
     <section class="table-side" aria-label="The table">${tableSide(v)}</section>
     <p class="leave-row"><button type="button" class="linkish" data-a="leaveGame">${ui('back')} Leave this game</button></p>
   </main>${S.ui.tools ? toolsPanel(v, false) : ''}`;
@@ -82,7 +84,7 @@ function roleCard(v) {
       ${me.target ? `<p class="note">Your target: <b>${esc(me.target)}</b></p>` : ''}${team}
       ${me.knows.length ? `<p class="note">The Mafia are: ${me.knows.map((t) => `<b>${esc(t.name)}</b>`).join(', ')}</p>` : ''}</div>` : ''}
     ${results(me.results)}${guide(me.guide)}</div></div>
-    ${me.alive ? '' : `<p class="note is-out">${ui('skull')} You’re out of the game. Stay quiet and enjoy the show.</p>`}`;
+    ${me.alive || S.graveyard ? '' : `<p class="note is-out">${ui('skull')} You’re out of the game. Stay quiet and enjoy the show.</p>`}`;
 }
 
 // What the Host told this player at night, newest first. Only readable while the card is held.

@@ -9,6 +9,7 @@ import { ui } from './ui_icons.js';
 import { previewNight, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES, cardInfo } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
+import { graveyardPanel } from './graveyard.js';
 import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
 import { animOn } from './fx.js';
 import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
@@ -40,7 +41,7 @@ export function hostScreen(v, local) {
   return `<header class="appbar">
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
-    ${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${v.phase === 'lobby' ? '' : toolsButton()}
+    ${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${v.phase === 'lobby' ? '' : toolsButton()}${S.mode === 'host' && v.nightVersion >= 3 && v.phase !== 'lobby' ? `<button type="button" class="icon-btn gy-open" data-a="openGy" aria-label="Open the Graveyard">${ui('skull')}</button>` : ''}
     <button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
@@ -57,7 +58,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.settings ? settingsSheet() : ''}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
@@ -72,6 +73,13 @@ function declareSheet(v) {
     <p class="muted">${st ? esc(st.reason) : 'End the game now and choose who wins.'}</p>
     <div class="btn-row declare-sides">${sides.map((k) => `<button type="button" class="btn ${k === 'draw' ? 'ghost' : ''}" data-a="declareSide" data-v="${k}">${k === 'draw' ? 'Draw' : `${DECLARE_SIDES[k]} wins`}</button>`).join('')}</div>
   </div></div>`;
+}
+
+function graveyardSheet() {
+  return `<div class="sheet-bg" data-a="closeGy"><div class="sheet is-entering" role="dialog" aria-modal="true" aria-label="Graveyard" data-stop>
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><span></span><button type="button" class="icon-btn x-btn" data-a="closeGy" aria-label="Close">${ui('x')}</button></div>
+    ${graveyardPanel('host', true)}</div></div>`;
 }
 
 // Settings sheet: one labelled switch for now. Same storage as before (fx.js setAnim).
