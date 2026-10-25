@@ -75,7 +75,7 @@ for (const [mname, local, flow] of modes) {
     nav = nightNav(view, ui);
     assert.equal(nav.current.key, steps[0].key);
     assert.equal(nav.enabled, true);
-    assert.match(html(view, local, ui), new RegExp(`class="cue is-current"[^>]*data-ck="${steps[0].key.replace(':', ':')}"`));
+    assert.match(html(view, local, ui), new RegExp(`class="cue is-current( is-ack)?"[^>]*data-ck="${steps[0].key.replace(':', ':')}"`));
   });
 }
 
@@ -155,6 +155,7 @@ test('the close-eyes line is shown once in a done story step', () => {
   const then = view.story?.steps?.[doc.key]?.then;
   assert.ok(then, 'the story has a closing line');
   const ui = freshUi(g.room); ui.actions[doc.key] = { targets: [g.room.players[0].id] };
+  ui.focus = doc.key; // a step with lines to read after the answer stays up until Next
   const page = html(view, true, ui);
   const norm = (t) => t.replace(/&#39;|&quot;|[\s"“”'‘’]+/g, ' ').trim().toLowerCase();
   const count = page.split(/<q>/).filter((x) => norm(x.split('</q>')[0]) === norm(then)).length - 0;

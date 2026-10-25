@@ -12,11 +12,13 @@ import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, s
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { graveyardPanel } from './graveyard.js';
-import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
+import { toolsButton, toolsPanel, phaseBadge, timerRunning, turnRunning } from './tools.js';
 import { animOn, dur } from './fx.js';
 import { setupRoleList, rolesSheet, rolesButton } from './roles_sheet.js';
 import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
 
+import { PRESETS } from './presets.js';
+import { callNum, checkCaption, balanceSplit, declareSides, SIDE_GROUPS } from './host_v2.js';
 import { qrSvg, joinUrl } from './qr.js';
 import { hostHelpButton, hostHelpOverlay, hostHelpSettingsRow } from './host_help.js';
 
@@ -38,16 +40,16 @@ export function hostScreen(v, local) {
   registerRoles(v.config.customRoles);
   const tab = S.ui.tab;
   const side = S.ui.sideTab;
-  const title = local ? 'On this device<span class="appbar-sub">Private to this device</span>' :`<button type="button" class="appbar-code" data-a="showCode" aria-label="Show room code ${esc(v.code)} full screen">Room <b class="code">${esc(v.code)}</b>${ui('expand')}</button>`;
+  const title = local ? 'On this device<span class="appbar-sub">Private to this device</span>' : `<button type="button" class="appbar-code" data-a="showCode" aria-label="Room code ${esc(v.code.split('').join(' '))}. Tap to show the code full screen">${ui('expand')}<b class="code">${esc(v.code)}</b></button>`;
   const [picon, plabel] = v.phase === 'night' ? ['moon', `Night ${v.night}`] : v.phase === 'day' ? ['sun', `Day ${v.day}`] : PHASE[v.phase];
   if (v.phase !== 'lobby') S.ui.deckShown = [];
-  const { body, dock } = ({ lobby, dealt, night, day, over })[v.phase](v, local);
+  const { body, dock, bar = '' } = ({ lobby, dealt, night, day, over })[v.phase](v, local);
   const tabs = [['game', 'Game'], ['table', 'Table'], ['log', 'Log']];
   return `<header class="appbar">
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
-    ${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${v.phase === 'lobby' ? '' : toolsButton()}${S.mode === 'host' && v.nightVersion >= 3 && v.phase !== 'lobby' ? `<button type="button" class="icon-btn gy-open" data-a="openGy" aria-label="Open the Graveyard">${ui('skull')}</button>` : ''}
-    ${hostHelpButton()}${rolesButton()}<button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
+    ${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${v.phase !== 'lobby' && (timerRunning() || turnRunning()) ? toolsButton() : ''}
+    ${hostHelpButton()}<button type="button" class="icon-btn" data-a="openSettings" aria-label="Menu" title="Menu">${ui('gear')}</button>${bar}
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
     <section class="pane pane-game" aria-label="Game">${v.stalemate ? `<section class="block stalemate"><p class="note">${ui('crown')} ${esc(v.stalemate.reason)}</p><div class="btn-row"><button type="button" class="btn" data-a="declare">Declare a winner</button></div></section>` : ''}${body}
@@ -63,7 +65,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.roles ? rolesSheet(setupRoleList(v.config.roles)) : ''}${S.ui.settings ? settingsSheet() : ''}${hostHelpOverlay(v)}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.roles ? rolesSheet(setupRoleList(v.config.roles)) : ''}${S.ui.addRole && v.phase === 'lobby' ? addRoleSheet(v) : ''}${S.ui.settings ? settingsSheet() : ''}${hostHelpOverlay(v)}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
@@ -71,12 +73,12 @@ export function hostScreen(v, local) {
 const DECLARE_SIDES = { town: 'Town', mafia: 'Mafia', killer: 'Serial Killer', cult: 'Cult', draw: 'Draw' };
 function declareSheet(v) {
   const st = v.stalemate;
-  const sides = st ? st.sides : Object.keys(DECLARE_SIDES);
+  const sides = st ? st.sides : declareSides(v.config.roles);
   return `<div class="sheet-bg" data-a="closeDeclare"><div class="sheet is-entering" role="dialog" aria-modal="true" aria-labelledby="declare-title" data-stop>
     <div class="sheet-grab"></div>
     <div class="sheet-head"><h2 class="sheet-title" id="declare-title">Declare a winner</h2><button type="button" class="icon-btn x-btn" data-a="closeDeclare" aria-label="Close">${ui('x')}</button></div>
     <p class="muted">${st ? esc(st.reason) : 'End the game now and choose who wins.'}</p>
-    <div class="btn-row declare-sides">${sides.map((k) => `<button type="button" class="btn ${k === 'draw' ? 'ghost' : ''}" data-a="declareSide" data-v="${k}">${k === 'draw' ? 'Draw' : `${DECLARE_SIDES[k]} wins`}</button>`).join('')}</div>
+    <div class="declare-sides">${sides.map((k) => `<button type="button" class="btn ${k === 'draw' ? 'ghost' : ''}" data-a="declareSide" data-v="${k}">${k === 'draw' ? 'Draw' : `${DECLARE_SIDES[k]} wins`}</button>`).join('')}</div>
   </div></div>`;
 }
 
@@ -93,6 +95,11 @@ function settingsSheet() {
   return `<div class="sheet-bg" data-a="closeSettings"><div class="sheet is-entering" role="dialog" aria-modal="true" aria-labelledby="settings-title" data-stop>
     <div class="sheet-grab"></div>
     <div class="sheet-head"><h2 class="sheet-title" id="settings-title">Settings</h2><button type="button" class="icon-btn x-btn" data-a="closeSettings" aria-label="Close">${ui('x')}</button></div>
+    <div class="menu-list">
+      ${S.view?.phase && S.view.phase !== 'lobby' ? `<button type="button" class="btn ghost" data-a="menuOpen" data-v="tools">${ui('tools')} Table tools</button>` : ''}
+      ${S.mode === 'host' && S.view?.nightVersion >= 3 && S.view?.phase !== 'lobby' ? `<button type="button" class="btn ghost" data-a="menuOpen" data-v="gy">${ui('skull')} Graveyard</button>` : ''}
+      <button type="button" class="btn ghost" data-a="menuOpen" data-v="roles">${ui('rules')} Roles in this game</button>
+    </div>
     <div class="rules"><button type="button" class="rule" role="switch" aria-checked="${on}" data-a="toggleAnim">
       <span class="rule-text"><span class="rule-title">Animations</span><span class="rule-desc">Night and day scenes, card flips and the win screen. Off keeps everything still.</span></span>
       <span class="switch" aria-hidden="true"><i></i></span></button></div>
@@ -132,14 +139,12 @@ function lobby(v, local) {
   const link = joinUrl(location.origin, v.code);
   const counts = {};
   for (const id of c.roles) counts[id] = (counts[id] || 0) + 1;
-  const lib = loadLibrary();
 
   const joinCode = local ? `<p class="note local-note">${ui('phone')} <span>This game is saved only in this browser on this device. Nobody else can see it, and nothing is sent online. Opening the site somewhere else starts fresh.</span></p>` : `<section class="block join-code">
     <p class="muted">Players go to <b>${esc(joinSite())}</b> and enter</p>
     <div class="room-code code" aria-label="Room code ${esc(v.code.split('').join(' '))}">${esc(v.code)}</div>
     <button type="button" class="join-qr" data-a="showQr" aria-label="Join QR code for room ${esc(v.code)}. Tap to enlarge.">${qrFor(link)}</button>
     <div class="join-actions">
-      <button type="button" class="btn" data-a="showCode">${ui('expand')} Show code full screen</button>
       <button type="button" class="btn ghost" data-a="copy" data-v="${esc(link)}">${ui('copy')} Copy join link</button>
       ${typeof navigator.share === 'function' ? `<button type="button" class="btn ghost" data-a="share" data-v="${esc(link)}">Share link</button>` : ''}
       <button type="button" class="btn ghost" data-a="showQr">${ui('expand')} Show QR full screen</button>
@@ -173,11 +178,41 @@ function lobby(v, local) {
       return `<li class="deck-item">${roleChip(r)}<span class="stepper">
         <button type="button" class="icon-btn" data-a="subRole" data-id="${id}" aria-label="One fewer ${esc(r.name)}" ${counts[id] ? '' : 'disabled'}>${ui('minus')}</button><b class="stepper-n">${counts[id] || 0}</b>
         <button type="button" class="icon-btn" data-a="addRole" data-id="${id}" aria-label="One more ${esc(r.name)}" ${(counts[id] || 0) >= roleMax(id) || have >= MAX_PLAYERS ? 'disabled' : ''}>${ui('plus')}</button></span></li>`; }).join('')}</ul>`
-    : '<p class="muted deck-empty">Tap roles below to add them, or let the app suggest a balanced set.</p>';
-  const team = S.ui.roleTeam;
-  const custom = lib.map((x) => ROLE_BY_ID[x.id] || x);
-  const filters = [['all', 'All'], ['town', 'Town'], ['mafia', 'Mafia'], ['third', 'Third party']].concat(custom.length ? [['custom', 'Yours']] : []);
-  const list = team === 'custom' ? custom : team === 'all' ? [...ROLES, ...custom] : ROLES.filter((r) => r.alignment === team);
+    : '<p class="muted deck-empty">Pick a preset above, or add roles one at a time.</p>';
+  const roles = `<section class="block roles setup-roles">
+    <header class="block-head"><h2 class="block-title">Roles</h2>
+      <span class="tally" data-state="${tallyState}" aria-live="polite">${ui(tallyState === 'ok' ? 'check' : 'warning')} ${have} of ${need} roles</span></header>
+    <div class="presets" role="group" aria-label="Start from a preset">
+      ${PRESETS.map((p) => `<button type="button" class="btn ghost preset" data-a="preset" data-id="${p.id}" title="${esc(p.note)}">${esc(p.name)}</button>`).join('')}
+      <button type="button" class="btn ghost preset" data-a="suggest">${ui('sparkle')} Suggest for ${need}</button>
+    </div>
+    <div class="in-game-head"><h3 class="in-game-title">In this game</h3>${have ? '<button type="button" class="link" data-a="clearRoles">Clear</button>' : ''}</div>
+    ${deckList}${advice(c.roles, n, true)}
+    <div class="btn-row add-row">
+      <button type="button" class="btn ghost" data-a="openAddRole">${ui('plus')} Add role</button>
+      <button type="button" class="btn ghost" data-a="newRole">${ui('plus')} New role</button>
+    </div>
+  </section>`;
+
+  const simple = S.ui.setupMode === 'simple';
+  const fitMsg = simple && c.mode === 'cards' ? deckFitText(c.roles) : '';
+  const short = min - n;
+  const blocked = have === n && (setupWarnings(c.roles, n).some((w) => w.level === 'error') || !!fitMsg);
+  const label = n < min ? `Add ${plural(short, 'more player')}` : have < n ? `Pick ${plural(n - have, 'more role')}` : have > n ? `Remove ${plural(have - n, 'role')}` : blocked ? (fitMsg ? 'Lower a count first' : 'Fix the setup above first') : 'Deal roles';
+  const ready = n >= min && have === n && !blocked;
+  return {
+    body: simple
+      ? `${joinCode}${players}${setupChoice()}${simplePanel(v, local, need, fitMsg)}`
+      : `${joinCode}${players}${setupChoice()}${roles}${dealSetup(c, local)}${gameStyle(c, local)}`,
+    dock: btn('big', 'deal', label, { on: ready }),
+  };
+}
+
+// The role library: a searchable bottom sheet grouped by side. Tiles keep the addRole / subRole / info hooks.
+function addRoleSheet(v) {
+  const counts = {};
+  for (const id of v.config.roles) counts[id] = (counts[id] || 0) + 1;
+  const custom = loadLibrary().map((x) => ROLE_BY_ID[x.id] || x);
   const vname = (r) => r.variant || r.name;
   const tile = (r, inGroup = false) => `<div class="role-tile a-${r.alignment} ${counts[r.id] ? 'is-picked' : ''}" data-name="${esc((r.name + ' ' + (r.variant || '') + ' ' + (r.group ? GROUP_BY_ID[r.group].name : '')).toLowerCase())}" data-team="${r.alignment}">
       <button type="button" class="role-add" data-a="addRole" data-id="${r.id}" aria-label="Add ${esc(vname(r))}${counts[r.id] ? ` (${counts[r.id]} in the game)` : ''}"><span class="role-glyph">${ico(r)}</span><span class="role-name">${esc(vname(r))}${inGroup ? `<small class="variant-team a-${r.alignment}">${esc(teamName(r.alignment))}</small>` : ''}</span></button>
@@ -193,39 +228,22 @@ function lobby(v, local) {
   // A group is one picker entry; any number of its roles can be added, each counted on its own.
   const entry = (e) => {
     if (e.role) return tile(e.role);
-    if (e.variants.length === 1) return tile(e.variants[0]); // a team filter can leave one role of a group: show it plainly
-    const total = e.variants.reduce((n, v) => n + (counts[v.id] || 0), 0);
+    if (e.variants.length === 1) return tile(e.variants[0]);
+    const total = e.variants.reduce((n, r) => n + (counts[r.id] || 0), 0);
     return `<details class="role-group ${total ? 'is-picked' : ''}" data-group="${e.group.id}" ${total ? 'open' : ''}>
       <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="role-also">${aliasLine(e)}</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
-      <div class="role-variants">${e.variants.map((v) => tile(v, true)).join('')}</div></details>`;
+      <div class="role-variants">${e.variants.map((r) => tile(r, true)).join('')}</div></details>`;
   };
-  const roles = `<section class="block roles">
-    <header class="block-head"><h2 class="block-title">Roles</h2>
-      <span class="tally" data-state="${tallyState}" aria-live="polite">${ui(tallyState === 'ok' ? 'check' : 'warning')} ${have} of ${need} roles</span></header>
-    <div class="btn-row">
-      <button type="button" class="btn ${have ? 'ghost' : ''}" data-a="suggest">${ui('sparkle')} Suggest roles for ${need} players</button>
-      ${have ? '<button type="button" class="btn ghost" data-a="clearRoles">Clear</button>' : ''}
-      <button type="button" class="btn ghost" data-a="newRole">${ui('plus')} New role</button>
-    </div>
-    ${deckList}${advice(c.roles, n)}
-    <div class="role-filter" role="tablist" aria-label="Show roles from">${filters.map(([k, l]) => `<button type="button" role="tab" aria-selected="${team === k}" tabindex="${team === k ? 0 : -1}" class="${k === 'all' || k === 'custom' ? '' : `a-${k}`}" data-a="roleTeam" data-v="${k}">${l}</button>`).join('')}</div>
+  const groups = SIDE_GROUPS.map(([k, label]) => [k, label, ROLES.filter((r) => r.alignment === k)]).concat(custom.length ? [['custom', 'Yours', custom]] : []);
+  return `<div class="sheet-bg" data-a="closeAddRole"><div class="sheet add-role-sheet is-entering" role="dialog" aria-modal="true" aria-labelledby="addrole-title" data-stop>
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><h2 class="sheet-title" id="addrole-title">Add role</h2><button type="button" class="icon-btn x-btn" data-a="closeAddRole" aria-label="Close">${ui('x')}</button></div>
     <label class="search-field">${ui('search')}<input class="search" data-i="search" placeholder="Search roles" aria-label="Search roles" value="${esc(S.ui.search)}"></label>
-    <div class="role-grid">${pickerEntries(list).map(entry).join('')}</div>
-    <p class="muted search-empty" hidden>No roles match that search.</p>
-  </section>`;
-
-  const simple = S.ui.setupMode === 'simple';
-  const fitMsg = simple && c.mode === 'cards' ? deckFitText(c.roles) : '';
-  const short = min - n;
-  const blocked = have === n && (setupWarnings(c.roles, n).some((w) => w.level === 'error') || !!fitMsg);
-  const label = n < min ? `Add ${plural(short, 'more player')}` : have < n ? `Pick ${plural(n - have, 'more role')}` : have > n ? `Remove ${plural(have - n, 'role')}` : blocked ? (fitMsg ? 'Lower a count first' : 'Fix the setup above first') : 'Deal roles';
-  const ready = n >= min && have === n && !blocked;
-  return {
-    body: simple
-      ? `${joinCode}${players}${setupChoice()}${simplePanel(v, local, need, fitMsg)}`
-      : `${joinCode}${players}${setupChoice()}${dealSetup(c, local)}${gameStyle(c, local)}${roles}`,
-    dock: btn('big', 'deal', label, { on: ready }),
-  };
+    <div class="add-role-list">${groups.map(([k, label, list]) => `<section class="side-group" data-side="${k}"><h3 class="side-title ${k === 'custom' ? '' : `a-${k}`}">${label}</h3>
+      <div class="role-grid">${pickerEntries(list).map(entry).join('')}</div></section>`).join('')}
+      <p class="muted search-empty" hidden>No roles match that search.</p></div>
+    <button type="button" class="btn big add-role-done" data-a="closeAddRole">Done</button>
+  </div></div>`;
 }
 
 // Simple or Complex, the first question of setup.
@@ -355,13 +373,21 @@ function gameStyle(c, local) {
 }
 
 // Warnings about the role mix, shown under the hand being built.
-function advice(roleIds, n) {
+function advice(roleIds, n, split = false) {
   if (!roleIds.length) return '';
   const ws = setupWarnings(roleIds, n);
   const b = balanceOf(roleIds);
   // The meter runs from -15 (Mafia) to +15 (Town); the marker sits at the setup's score.
   const pos = Math.max(0, Math.min(100, 50 + (b.score / 15) * 50));
-  const meter = `<div class="balance" data-strength="${b.strength}" data-verdict="${b.verdict}">
+  const sp = balanceSplit(roleIds);
+  const seg = (k, l) => (sp[k] ? `<i class="split-seg is-${k}" style="flex-grow:${sp[k]}" aria-hidden="true"></i>` : '');
+  const splitMeter = `<div class="balance balance-split" data-strength="${b.strength}" data-verdict="${b.verdict}">
+    <div class="split-bar" role="img" aria-label="Town ${sp.town}, Mafia ${sp.mafia}, Neutral ${sp.neutral}">${seg('town')}${seg('mafia')}${seg('neutral')}</div>
+    <p class="split-legend"><span class="is-town">Town ${sp.town}</span><span class="is-mafia">Mafia ${sp.mafia}</span><span class="is-neutral">Neutral ${sp.neutral}</span></p>
+    <p class="balance-text">${esc(b.text)}</p>
+    ${b.strength === 'even' ? '' : `<button type="button" class="btn ghost" data-a="rebalance">${ui('shuffle')} Balance it for me</button>`}
+  </div>`;
+  const meter = split ? splitMeter : `<div class="balance" data-strength="${b.strength}" data-verdict="${b.verdict}">
     <div class="balance-head"><span class="balance-title">Balance</span><span class="balance-text">${esc(b.text)}</span></div>
     <div class="balance-bar" role="meter" aria-valuemin="-15" aria-valuemax="15" aria-valuenow="${b.score}" aria-label="Balance: ${esc(b.text)}">
       <span class="balance-end">Mafia</span><span class="balance-track"><i class="balance-mid"></i><i class="balance-dot" style="--p:${pos.toFixed(1)}"></i></span><span class="balance-end">Town</span></div>
@@ -384,7 +410,8 @@ function firstStart(v) {
 function dealt(v, local) {
   const cards = v.config.mode === 'cards';
   const blind = cards && v.config.cardFlow === 'blind';
-  const back = `<button type="button" class="btn ghost" data-a="undeal">${ui('back')} Back to setup</button>`;
+  const back = `<button type="button" class="btn ghost back-setup" data-a="undeal">${ui('back')} Back to setup</button>`;
+  const stack = (main) => `<div class="dock-stack">${back}${main}</div>`;
   if (!cards) {
     const noPhone = v.players.filter((p) => p.offline && p.roleId);
     return {
@@ -392,7 +419,7 @@ function dealt(v, local) {
         <p class="muted">Ask everyone to check their role in private, then start the first night.</p></header>
         ${noPhone.length ? `<section class="whisper"><h3 class="whisper-title">${ui('ear')} Tell these players their role in private</h3>
           ${noPhone.map((p) => `<div class="whisper-item"><b>${esc(p.name)}</b> ${roleChip(ROLE_BY_ID[p.roleId])}</div>`).join('')}</section>` : ''}`,
-      dock: `${back}${firstStart(v)}`,
+      dock: stack(firstStart(v)),
     };
   }
   const left = v.players.filter((p) => !p.roleId).length;
@@ -410,7 +437,7 @@ function dealt(v, local) {
         : `<p class="muted">${claimed} of ${v.players.length} cards entered.</p>${assignList(v)}`}
     </section>`;
   const ok = blind || !left;
-  return { body, dock: `${back}${ok ? firstStart(v) : btn('big', 'startNight', `${plural(left, 'player')} still need${left === 1 ? 's' : ''} a card`, { on: false })}` };
+  return { body, dock: stack(`${ok ? firstStart(v) : btn('big', 'startNight', `${plural(left, 'player')} still need${left === 1 ? 's' : ''} a card`, { on: false })}`) };
 }
 
 // big = the key shown to the whole table: disguised roles appear as what they think they are.
@@ -435,6 +462,7 @@ function codeOverlay(v) {
     <p class="code-show-site" id="code-title">Go to <b>${esc(joinSite())}</b> and enter</p>
     <div class="code-show-code code" aria-label="Room code ${esc(v.code.split('').join(' '))}">${esc(v.code)}</div>
     <p class="code-show-count">${joined ? `${plural(joined, 'player')} joined` : 'Waiting for players'}</p>
+    <button type="button" class="btn ghost" data-a="showQr">${ui('expand')} Show QR code</button>
   </div></div>`;
 }
 // Full-screen join QR: players point their camera at it.
@@ -464,43 +492,72 @@ function assignList(v) {
 // ---------------- night ----------------
 function night(v) {
   const n = S.ui.night;
-  if (n.n !== v.night) { n.n = v.night; n.actions = {}; n.picks = {}; }
+  if (n.n !== v.night) { n.n = v.night; n.actions = {}; n.picks = {}; n.acked = {}; }
+  n.acked ||= {};
   const steps = v.script;
   syncCheck(v, steps.filter((s) => s.kind === 'action' && (s.type === 'investigate' || (v.nightVersion >= 7 && LIVE.includes(s.type)))));
   const nav = nightNav(v, n);
   const current = nav.current;
+  const idSteps = steps.filter((s) => s.kind === 'identify');
+  const doneStep = (s) => s.kind !== 'identify' && !!n.actions[s.key];
   const alive = v.players.filter((p) => p.alive);
   const blind1 = v.night === 1 && v.config.mode === 'cards' && v.config.cardFlow === 'blind';
+  const total = steps.length;
+  const finished = steps.filter(doneStep).length;
+  const idx = current ? steps.indexOf(current) : -1;
+  const upcoming = steps.filter((s) => s !== current && !doneStep(s));
+  const next = upcoming.find((s) => steps.indexOf(s) > idx) || upcoming[0];
+  const earlier = steps.filter((s) => s !== current && doneStep(s));
+  const first = !!current && idx === 0 && !doneStep(current);
+  const callName = (s) => esc(s.label || ROLE_BY_ID[s.roleId]?.name || 'the next step');
   const body = `<header class="phase-head"><h2 class="phase-title">Night ${v.night}</h2>
-      <p class="muted">${blind1 ? 'Read each line aloud. When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
-      ${steps.length ? `<p class="meta night-progress">${steps.length - nav.open.length} of ${steps.length} done</p>` : ''}
+      <p class="muted">${total ? `${current ? `Step ${idx + 1} of ${total}` : 'All steps done'}. ` : ''}${blind1 ? 'When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
       ${v.shield ? `<p class="note is-warn">${ui('shield')} Virgin shield: nobody can be killed tonight.</p>` : ''}</header>
-    ${upgradeCard(v)}
-    ${v.story?.prep?.length ? `<section class="story-prep"><h3 class="story-just">${ui('ear')} Before night ${v.night}: just for you</h3><ul>${v.story.prep.map((p) => `<li>${esc(p.text)}</li>`).join('')}</ul></section>` : ''}
-    ${steps.length ? `${v.story ? storySay(v.story.open) : sayLine(START_CUE)}<ol class="cues" data-night="${v.night}" style="--steps:${steps.length}">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
-      : empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.')}`;
-  const left = nav.open.length;
-  return { body: body + (steps.length ? (v.story ? storySay(v.story.close) : sayLine(END_CUE)) : '') + checkOverlay(v), dock: btn('big', 'nextStep', nav.action === 'resolve' ? `${ui('sun')} ${nav.label}` : nav.label, { on: nav.enabled, why: nav.label, attrs: `data-left="${left}"` }) };
+    ${first ? upgradeCard(v) : ''}
+    ${first && v.story?.prep?.length ? `<section class="story-prep"><h3 class="story-just">${ui('ear')} Before night ${v.night}: just for you <span class="private-tag">Private</span></h3><ul>${v.story.prep.map((p) => `<li>${esc(p.text)}</li>`).join('')}</ul></section>` : ''}
+    ${first ? (v.story ? storySay(v.story.open) : sayLine(START_CUE)) : ''}
+    ${current ? `<ol class="cues one" data-night="${v.night}">${cue(v, current, idx + 1, true, alive)}</ol>` : ''}
+    ${!current && total ? (v.story ? storySay(v.story.close) : sayLine(END_CUE)) : ''}
+    ${!current && !total ? empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.') : ''}
+    ${next ? `<button type="button" class="next-line" data-a="focusStep" data-key="${next.key}"><span class="next-tag">Next</span> ${callName(next)}</button>` : ''}
+    ${earlier.length ? `<details class="earlier"><summary>Earlier tonight <span class="earlier-n">${earlier.length}</span></summary><ol class="cues earlier-list">${earlier.map((s) => cue(v, s, steps.indexOf(s) + 1, false, alive)).join('')}</ol></details>` : ''}`;
+  const dock = btn('big', 'nextStep', nav.action === 'resolve' ? `${ui('sun')} ${nav.label}` : nav.label, { on: nav.enabled, why: nav.label, attrs: `data-left="${nav.open.length}"` });
+  const bar = total ? `<div class="night-progress" role="progressbar" aria-label="Night progress" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${finished}"><i style="--p:${(finished / total).toFixed(3)}"></i></div>` : '';
+  return { body: body + checkOverlay(v), dock, bar };
 }
+
+// The lines the Host reads or does after a step is answered (Then say, live answer, coin flip). Empty when there are none.
+const afterBits = (v, s, set) => `${v.story?.steps?.[s.key]?.then ? `<div class="story-say"><p class="story-then"><span class="story-tag">Then say:</span> <q>${esc(v.story.steps[s.key].then)}</q></p></div>` : ''}${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}`;
+// A step with lines to read after the answer stays on screen (focused) until Next; app.js asks this after recording an answer.
+export const staysAfterAnswer = (key) => { const v = S.view; const s = v?.script?.find((x) => x.key === key); return !!s && !!afterBits(v, s, S.ui.night.actions[key]); };
+const resultText = (v, s, set) => {
+  if (s.kind !== 'action') return 'Done';
+  if (s.type === 'execCheck') return 'Done';
+  if (s.targets === 0) return set.on ? (s.type === 'alert' ? 'On alert' : 'Yes') : (s.type === 'alert' ? 'Staying in' : 'No');
+  return set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
+};
 
 // v4: one big read-aloud block, with the Host-only notes below it.
 function storySay(text, then, notes = []) {
   return `<div class="story-say"><p class="story-line"><span class="story-tag">Say:</span> <q>${esc(text)}</q></p>${then ? `<p class="story-then"><span class="story-tag">Then say:</span> <q>${esc(then)}</q></p>` : ''}</div>${storyNotes(notes)}`;
 }
 function storyNotes(notes) {
-  return notes?.length ? `<div class="story-notes"><h4 class="story-just">${ui('ear')} Just for you</h4><ul>${notes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
+  return notes?.length ? `<div class="story-notes"><h4 class="story-just">${ui('ear')} Just for you <span class="private-tag">Private</span></h4><ul>${notes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
 }
 // Full-screen check card for the investigator step that just got its answer (v4). UI state only.
 function checkOverlay(v) {
   const c = S.ui.checkCard;
   if (!v.story || !c) return '';
-  return `<div class="check-card${c.kind === 'alignment' && c.text === 'MAFIA' ? ' is-mafia' : c.kind === 'role' ? ' is-role' : ''}" data-a="closeCheck" role="dialog" aria-modal="true" aria-label="Show this card"><p class="check-text">${esc(c.text)}</p><p class="check-close">Tap to close</p></div>`;
+  return `<div class="check-card${c.kind === 'alignment' && c.text === 'MAFIA' ? ' is-mafia' : c.kind === 'role' ? ' is-role' : ''}" data-a="closeCheck" role="dialog" aria-modal="true" aria-label="Show this card">
+    ${c.caption ? `<p class="check-caption">${c.num ? `<span class="call-badge" data-num="${c.num}" aria-hidden="true">${c.num}</span>` : ''}<span>${esc(c.caption)}</span></p>` : ''}<p class="check-text">${esc(c.text)}</p><p class="check-close">Tap to close</p></div>`;
 }
 // Opens the card once, the first time a step's answer exists; `again` re-opens it.
 function checkFor(v, s, set) {
   if (!v.story) return null;
   const res = liveResult(v, s, set);
-  return res ? checkCard(roomFromView(v), s, res) : null;
+  const card = res ? checkCard(roomFromView(v), s, res) : null;
+  // The caption names the call and who it checked (the investigator knows both); it never holds the answer.
+  return card && { ...card, num: callNum(s.label), caption: checkCaption(s.label || rname(s.roleId), (set.targets || []).map((id) => pname(v, id))) };
 }
 export const checkCardFor = (s) => checkFor(S.view, s, S.ui.night.actions[s.key]);
 function syncCheck(v, steps) {
@@ -567,24 +624,19 @@ function tellNow(v, s, set) {
 function cue(v, s, num, current, alive) {
   const n = S.ui.night;
   const r = ROLE_BY_ID[s.roleId];
-  const roleEl = s.label ? `<b class="call-label">${esc(s.label)}</b>` : r ? roleChip(r) : '';
+  const num0 = callNum(s.label);
+  const roleEl = `${num0 ? `<span class="call-badge" data-num="${num0}" aria-hidden="true">${num0}</span>` : ''}${s.label ? `<b class="call-label">${esc(s.label)}</b>` : r ? roleChip(r) : ''}`;
   const isDone = (s.kind === 'info' || s.kind === 'action') && !!n.actions[s.key];
   if (isDone && !current) {
     const set = n.actions[s.key];
-    let result = 'Done';
-    if (s.kind === 'action') {
-      result = s.type === 'execCheck' ? 'Done' : s.targets === 0
-        ? (set.on ? (s.type === 'alert' ? 'On alert' : 'Yes') : (s.type === 'alert' ? 'Staying in' : 'No'))
-        : set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
-      if (s.type === 'execCheck' && !set.on) result = set.targets?.length || set.skipped ? 'Skipped' : 'Done';
-    }
-    const skipped = result === 'Skipped';
-    return `<li class="cue is-done" data-ck="${s.key}"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${result}</span>
-      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">${skipped ? 'Undo' : 'Change'}</button>` : ''}</div><div class="cue-after">${checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button>` : ''}${v.story?.steps?.[s.key]?.then ? storySay(v.story.steps[s.key].say, v.story.steps[s.key].then, v.story.steps[s.key].notes) : ''}${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}</div></li>`;
+    return `<li class="cue is-done" data-ck="${s.key}"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${resultText(v, s, set)}</span>
+      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">${resultText(v, s, set) === 'Skipped' ? 'Undo' : 'Change'}</button>` : ''}</div>${checkFor(v, s, set) ? `<div class="cue-after"><button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button></div>` : ''}</li>`;
   }
-  if (!current) {
-    const what = s.kind === 'identify' ? 'Find who it is' : s.kind === 'info' ? 'Wake them up' : 'Record their choice';
-    return `<li class="cue" data-ck="${s.key}"><span class="cue-n">${num}</span><button type="button" class="cue-line" data-a="focusStep" data-key="${s.key}">${roleEl}<span class="meta">${what}</span></button></li>`;
+  if (isDone) {
+    const set = n.actions[s.key];
+    return `<li class="cue is-current is-ack" data-ck="${s.key}" aria-current="step"><div class="cue-body"><div class="step-head">${roleEl}<span class="cue-result">${resultText(v, s, set)}</span></div>
+      ${afterBits(v, s, set)}
+      <div class="step-links">${checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button>` : ''}${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div></div></li>`;
   }
   const cues = stepCues(s);
   const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>${s.realRole ? `<p class="note is-private">Real role: ${esc(s.realRole)}</p>` : ''}` : '';
@@ -593,12 +645,10 @@ function cue(v, s, num, current, alive) {
   let inner;
   if (s.kind === 'identify') {
     const picks = n.picks[s.key] || [];
-    const done = picks.length === s.count;
-    inner = `${roleEl}${say}
+    inner = `<div class="step-head">${roleEl}</div>${say}
       <div class="pick">${s.candidates.map((id) => `<button type="button" class="pk" aria-pressed="${picks.includes(id)}" data-a="pick" data-key="${s.key}" data-id="${id}">${esc(pname(v, id))}</button>`).join('')}</div>
       <div class="pick"><button type="button" class="pk is-none" data-a="skipIdentify" data-key="${s.key}" data-role="${s.roleId}">No one has this card</button></div>
-      <p class="meta">${picks.length ? `${picks.length} of ${s.count} picked` : `Pick ${plural(s.count, 'player')}`}</p>
-      ${btn('', 'confirmId', `${ui('check')} Confirm ${esc(r?.name || '')}`, { on: done, why: `Pick ${plural(s.count - picks.length, 'more player')} first`, attrs: `data-key="${s.key}" data-role="${s.roleId}"` })}`;
+      <p class="meta">${picks.length ? `${picks.length} of ${s.count} picked` : `Pick ${plural(s.count, 'player')}`}</p>`;
   } else if (s.kind === 'info') {
     const rr = ROLE_BY_ID[s.roleId];
     let extra;
@@ -606,11 +656,11 @@ function cue(v, s, num, current, alive) {
     else if (rr?.needsTarget) extra = s.actors.map((id) => { const t = v.players.find((p) => p.id === id)?.target; return `<p class="note">${esc(pname(v, id))}’s target: <b>${esc(t ? pname(v, t) : '?')}</b></p>`; }).join('');
     else if (rr?.meeting === 'mason') extra = `<p class="note">Masons: ${names(v, s.actors)}</p>`;
     else extra = `<p class="note">${names(v, s.actors)}</p>`;
-    inner = `${roleEl}${say}${extra}${n.actions[s.key] ? '<p class="cue-result">Done</p>' : `<button type="button" class="btn ghost" data-a="infoDone" data-key="${s.key}">${ui('check')} Done</button>`}`;
+    inner = `<div class="step-head">${roleEl}</div>${say}${extra}`;
   } else {
     const who = s.actors.map((id) => esc(pname(v, id))).join(', ');
     const usesLeft = Number.isFinite(s.uses) ? s.uses - (v.usage[s.actors[0]] || 0) : null;
-    const head = `${roleEl}<span class="meta">${who}</span>${usesLeft != null ? `<span class="meta">${plural(usesLeft, 'use')} left</span>` : ''}${say}`;
+    const head = `<div class="step-head">${roleEl}</div><span class="meta">${who}</span>${usesLeft != null ? `<span class="meta">${plural(usesLeft, 'use')} left</span>` : ''}${say}`;
     if (s.type === 'execCheck') {
       inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">Show card</button><button type="button" class="pk is-none" data-a="skip" data-key="${s.key}">Skip</button></div>`;
     } else if (s.targets === 0) {
@@ -627,7 +677,7 @@ function cue(v, s, num, current, alive) {
         : `<p class="muted">Nobody can be chosen right now.</p><div class="pick">${none}</div>`}`;
     }
   }
-  return `<li class="cue is-current" data-ck="${s.key}" aria-current="step"><span class="cue-n">${num}</span><div class="cue-body">${inner}</div></li>`;
+  return `<li class="cue is-current" data-ck="${s.key}" aria-current="step"><div class="cue-body">${inner}</div></li>`;
 }
 
 // Legacy rooms (night script < latest): host-only opt-in, applied when the next night starts, never mid-step.

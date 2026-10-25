@@ -9,7 +9,7 @@ const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
-import { hostScreen, checkCardFor } from './host.js';
+import { hostScreen, checkCardFor, staysAfterAnswer } from './host.js';
 import { pressNext } from './night-nav.js';
 import { worldOf, applyClosed } from './world.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
@@ -17,6 +17,7 @@ import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
 import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn, restartIn } from './fx.js';
 import { gameOverEvent, isNewGame } from './room.js';
+import { presetById } from './presets.js';
 import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
@@ -286,7 +287,7 @@ async function route() {
   closeVictory();
   hold.cancel();
   S.graveyard = null; S.gyShown = 0;
-  Object.assign(S.ui, { gy: false, tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
+  Object.assign(S.ui, { gy: false, tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, addRole: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
   const h = location.hash.replace(/^#\/?/, '');
   const [kind, arg] = h.split('/');
   S.code = null;
@@ -425,7 +426,7 @@ const A = {
   },
   showCode() { S.ui.showCode = true; S.ui.anim = 'modal'; S.render(); },
   hideCode() { S.ui.showCode = false; S.render(); },
-  showQr() { S.ui.showQr = true; S.ui.anim = 'modal'; S.render(); },
+  showQr() { S.ui.showCode = false; S.ui.showQr = true; S.ui.anim = 'modal'; S.render(); },
   hideQr() { S.ui.showQr = false; S.render(); },
   // The system share sheet where there is one; otherwise (and if it fails) the link is copied.
   async share(el) {
@@ -458,7 +459,7 @@ const A = {
     else {
       const need = step.targets || 1;
       const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-      if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; if (step.check === 'random') Object.assign(n.actions[key], { flip: flipCoin(), flipAt: Date.now() }); delete n.picks[key]; n.focus = null; } else n.picks[key] = next;
+      if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; if (step.check === 'random') Object.assign(n.actions[key], { flip: flipCoin(), flipAt: Date.now() }); delete n.picks[key]; n.focus = staysAfterAnswer(key) ? key : null; } else n.picks[key] = next;
     }
     S.render();
   },
@@ -473,8 +474,8 @@ const A = {
     if (r.send) return send(r.send);
     S.render(); // followCue() scrolls to the next step
   },
-  alert(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { on: el.dataset.v === '1', targets: [] }; S.render(); },
-  infoDone(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { done: true }; S.render(); },
+  alert(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { on: el.dataset.v === '1', targets: [] }; n.focus = staysAfterAnswer(k) ? k : null; S.render(); },
+  infoDone(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { done: true }; n.focus = staysAfterAnswer(k) ? k : null; S.render(); },
   undoStep(el) { delete S.ui.night.actions[el.dataset.key]; S.ui.night.focus = el.dataset.key; S.render(); },
   // A coin flip for results that are random by design; kept with the step so the morning report says the same thing.
   coin(el) {
@@ -516,6 +517,10 @@ const A = {
     send({ type: 'setConfig', roles: simpleRoleIds(counts) });
   },
   simpleCards() { const on = S.view.config.mode !== 'cards'; send({ type: 'setConfig', mode: on ? 'cards' : 'app', deckStyle: on ? 'simple' : 'random' }); },
+  preset(el) { const p = presetById(el.dataset.id); if (!p) return; S.ui.deckShown = []; syncLibrary(); send({ type: 'setConfig', roles: [...p.roles] }); },
+  openAddRole() { S.ui.addRole = true; S.ui.anim = 'sheet'; S.render(); },
+  closeAddRole() { S.ui.addRole = false; S.render(); },
+  menuOpen(el) { S.ui.settings = false; ({ tools: () => A.tools(), gy: () => A.openGy(), roles: () => A.openRoles() })[el.dataset.v]?.(); },
   ...HOST_HELP_ACTIONS,
   openRoles() { S.ui.roles = true; S.ui.anim = 'sheet'; S.render(); },
   closeRoles() { S.ui.roles = false; S.render(); },
@@ -641,12 +646,13 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
-    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.addRole || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
     if (hostHelpOpen()) { S.ui.hhWalk ? A.hhSkip() : A.closeHostHelp(); return; }
     if (S.ui.roles) { A.closeRoles(); return; }
     if (S.ui.gy) { A.closeGy(); return; }
     if (S.ui.showKey) { A.hideKey(); return; }
     if (S.ui.tools) { A.closeTools(); return; }
+    if (S.ui.addRole) { A.closeAddRole(); return; }
     if (S.ui.showCode) { A.hideCode(); return; }
     if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
