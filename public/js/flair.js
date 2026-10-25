@@ -1,10 +1,10 @@
 // Themed flourishes: blood running off the logo letters, the knife strike on the Host card, game suggestions, kill splatter.
 // Markup only; the motion lives in redesign.css (transform and opacity, off with reduced motion).
 import { esc } from './state.js';
-import { WORDMARK_SVG } from './wordmark.js';
+import { WORDMARK_SVG, WORDMARK_DRIPS } from './wordmark.js';
 
 // The wordmark is outlined Limelight with the blood drips running off the letter bottoms (see tools/build-wordmark.py).
-export const wordmark = () => `<span class="sr-only">Mafia Night</span>${WORDMARK_SVG}`;
+export const wordmark = () => `<span class="sr-only">Mafia Night</span>${WORDMARK_SVG}${WORDMARK_DRIPS}`;
 
 // The knife plays its strike once per browser session; later home renders show it already stuck.
 const KNIFE_KEY = 'mafia.knife';
