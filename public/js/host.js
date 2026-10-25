@@ -145,14 +145,18 @@ function lobby(v, local) {
       ${counts[r.id] ? `<span class="role-count" aria-hidden="true">${counts[r.id]}</span>` : ''}
       <button type="button" class="icon-btn role-info rc-i" data-a="info" data-id="${r.id}" aria-label="About ${esc(vname(r))}">${ui('info')}</button>
     </div>`;
+  // Aliases: first name plus a "+N" chip, " · " between names, no "Also:" prefix.
+  const aliasLine = (e) => {
+    const names = groupAlsoText(e).replace(/^Also: /, '').split(', ').filter(Boolean);
+    return names.length > 2 ? `${esc(names[0])}<span class="alias-more" aria-label="and ${names.length - 1} more">+${names.length - 1}</span>` : esc(names.join(' · '));
+  };
   // A group is one picker entry; any number of its roles can be added, each counted on its own.
   const entry = (e) => {
     if (e.role) return tile(e.role);
     if (e.variants.length === 1) return tile(e.variants[0]); // a team filter can leave one role of a group: show it plainly
     const total = e.variants.reduce((n, v) => n + (counts[v.id] || 0), 0);
-    const alts = groupAlsoText(e);
     return `<details class="role-group ${total ? 'is-picked' : ''}" data-group="${e.group.id}" ${total ? 'open' : ''}>
-      <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="muted role-also">${esc(alts)}</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
+      <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="role-also">${aliasLine(e)}</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
       <div class="role-variants">${e.variants.map((v) => tile(v, true)).join('')}</div></details>`;
   };
   const roles = `<section class="block roles">
@@ -622,14 +626,28 @@ function roster(v) {
   }).join('');
   return `<h2 class="block-title">Who is who</h2>${rows ? `<ul class="roster">${rows}</ul>` : empty('table', 'Players appear here as they join.')}`;
 }
+const LOG_KIND = [[/killed|dies|died|shot|eliminated|voted out|lynch|executed|poison/i, 'kill', 'skull'], [/saved|protect|guard|healed|shield|survive/i, 'save', 'shield'],
+  [/investigat|checked|searched|learn|watch|track|autopsy/i, 'look', 'eye'], [/jail|block|silenc|frame|clean|convert|swap/i, 'act', 'hand']];
+const hl = (text, names) => {
+  const t = esc(text);
+  const list = [...new Set(names)].filter((n) => n && n.length > 1).sort((a, b) => b.length - a.length).map((n) => esc(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return list.length ? t.replace(new RegExp(`(^|[^\\w])(${list.join('|')})(?![\\w])`, 'g'), '$1<mark>$2</mark>') : t;
+};
 function logPane(v) {
+  const names = [...(v.players || []).map((p) => p.name), v.me?.name];
+  let last = '';
   const lines = [...v.log].reverse().map((l) => {
-    const icon = l.phase === 'night' ? ui('moon') : l.phase === 'day' ? ui('sun') : ui('cards');
+    const text = l.text.replace(/ \(host\)\./, ' by the Host.');
+    const kind = LOG_KIND.find(([re]) => re.test(text));
+    const icon = ui(kind ? kind[2] : l.phase === 'night' ? 'moon' : l.phase === 'day' ? 'sun' : 'cards');
     const num = l.phase === 'night' ? l.night : l.phase === 'day' ? l.day : '';
-    return `<li class="logl">${icon}<span class="meta">${num || ''}</span> <span class="logl-text">${esc(l.text.replace(/ \(host\)\./, ' by the Host.'))}</span></li>`;
+    const key = `${l.phase}:${num}`;
+    const head = key !== last && num ? `<li class="log-round is-${l.phase}">${ui(l.phase === 'night' ? 'moon' : 'sun')}<span>${l.phase === 'night' ? 'Night' : 'Day'} ${num}</span></li>` : '';
+    if (num) last = key;
+    return `${head}<li class="logl${kind ? ` k-${kind[1]}` : ''}">${icon}<span class="logl-text">${hl(text, names)}</span></li>`;
   }).join('');
   return `<h2 class="block-title">Log</h2>
-    ${lines ? `<ol class="log">${lines}</ol>` : empty('log', 'The log fills up once night 1 starts.')}
+    ${lines ? `<div class="log-head" aria-hidden="true"><span></span><span>Round · What happened</span></div><ol class="log">${lines}</ol>` : empty('log', 'The log fills up once night 1 starts.')}
     ${v.sideWins.length ? `<section class="block"><h2 class="block-title">Side wins</h2>${v.sideWins.map((s) => `<p class="note">${ui('trophy')} ${esc(s.reason)}</p>`).join('')}</section>` : ''}
     ${v.phase !== 'lobby' && v.phase !== 'over' ? `<section class="block tools"><h2 class="block-title">Host tools</h2>
       <div class="btn-row"><button type="button" class="btn ghost" data-a="declare">${ui('crown')} Declare a winner</button><button type="button" class="btn ghost danger" data-a="newGame">Abandon game</button></div></section>` : ''}`;

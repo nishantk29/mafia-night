@@ -5,6 +5,7 @@
 import { S, esc, store, buzz } from './state.js';
 import { ui } from './ui_icons.js';
 import { ROLE_BY_ID } from './roles.js';
+import { bloodSplat } from './flair.js';
 
 const $html = document.documentElement;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -80,7 +81,7 @@ export function popOut(items) {
   const names = items.map((i) => esc(i.name)).join(' and ');
   const role = items.length === 1 && items[0].role ? `<p class="fx-pop-role">${esc(items[0].role)}</p>` : '';
   const node = add(`<div class="fx-scene fx-out ${vote ? 'is-vote' : 'is-night'}" aria-hidden="true">
-    <div class="fx-in"><div class="fx-card glass" data-tilt>
+    <div class="fx-in"><div class="fx-card glass" data-tilt>${vote ? '' : bloodSplat()}
       <span class="fx-stamp">${vote ? 'Voted out' : 'Killed'}</span>
       <span class="fx-pop-ico">${ui('skull')}</span>
       <h2 class="fx-pop-name">${names}</h2>
@@ -210,7 +211,7 @@ addEventListener('pointermove', (e) => e.pointerType !== 'touch' && tilt((e.clie
 
 // ---------------------------------------------------------------- card tilt and lift (hover pointers only)
 // Sets --rx/--ry on the card under the pointer; rAF-throttled, no idle loop. The seating board is never tilted: seats are dragged by coordinates.
-const CARDS = '.block,.whisper,.guide,.path,.faq-group';
+const CARDS = '.block,.whisper,.guide,.path,.faq-group,.role-tile,.role-group,.suggest-card';
 const cardOK = (el) => el && !el.querySelector('.board');
 let cardEl = null; let cx = 0; let cy = 0; let craf = 0;
 const cardFlush = () => {
@@ -228,3 +229,17 @@ addEventListener('pointermove', (e) => {
   if (!craf) craf = requestAnimationFrame(cardFlush);
 }, { passive: true });
 document.addEventListener('pointerleave', () => { cardReset(cardEl); cardEl = null; }, { passive: true });
+
+// Touch: a gentle press tilt toward the finger (about 3deg), released on lift or when a scroll takes over. Never idles.
+addEventListener('pointerdown', (e) => {
+  if (!full() || e.pointerType !== 'touch') return;
+  const el = e.target.closest?.(CARDS);
+  if (!cardOK(el)) return;
+  cardReset(cardEl); cardEl = el; el.dataset.tilting = '';
+  const r = el.getBoundingClientRect();
+  const x = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - .5) * 2)); const y = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - .5) * 2));
+  el.style.setProperty('--rx', (y * -3).toFixed(2) + 'deg'); el.style.setProperty('--ry', (x * 3.5).toFixed(2) + 'deg');
+}, { passive: true });
+const touchEnd = (e) => { if (e.pointerType === 'touch' && cardEl) { cardReset(cardEl); cardEl = null; } };
+addEventListener('pointerup', touchEnd, { passive: true });
+addEventListener('pointercancel', touchEnd, { passive: true });

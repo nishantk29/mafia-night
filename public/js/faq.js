@@ -104,7 +104,7 @@ const GROUPS = [
       <p>It opens full screen like any other app and keeps itself up to date.</p>`],
     ['Who made the icons and fonts?', `
       <p>Role icons from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>). Interface icons from <a href="https://phosphoricons.com" target="_blank" rel="noopener">Phosphor</a> (MIT).</p>
-      <p>Fonts: Rubik, Alegreya and Limelight, all under the SIL Open Font License.</p>`],
+      <p>Fonts: Big Shoulders Display, Rubik, Alegreya and Limelight, all under the SIL Open Font License.</p>`],
   ]],
 ];
 
