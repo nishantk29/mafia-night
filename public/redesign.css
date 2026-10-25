@@ -107,6 +107,9 @@ html[data-shell="host"] .bg-art .moon,html[data-shell="player"] .bg-art .moon{op
 .log-round .ui-ico{width:20px;height:20px;color:var(--brass)}
 .log-round.is-night .ui-ico{color:#8DB6E8}
 .logl{display:grid;grid-template-columns:2rem 1fr;gap:var(--s2);align-items:start;padding:10px var(--s3);border-bottom:1px solid rgba(255,255,255,.12);font-size:.95rem;line-height:1.45}
+.logl.plain{display:flex;flex-wrap:wrap;column-gap:var(--s2);align-items:baseline}
+.logl.plain > .logl-when{flex:none;white-space:nowrap}
+.logl.plain > .logl-text{flex:1 1 12rem;min-width:0;hyphens:none;word-break:normal;overflow-wrap:break-word}
 .logl > .ui-ico{width:22px;height:22px;padding:4px;box-sizing:content-box;border-radius:50%;background:rgba(0,0,0,.28);color:#FFF4E6;align-self:start;margin-top:-2px}
 .logl.k-kill > .ui-ico{background:var(--blood)}
 .logl.k-save > .ui-ico{background:#1F5C3A}
