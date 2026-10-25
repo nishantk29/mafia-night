@@ -1,3 +1,17 @@
+## Nishant's design rules (apply to every build)
+
+- [ ] Film-noir art deco: Limelight display font; blood dripping from the letters of the Mafia wordmark.
+- [ ] Animations 2x slower than default (`--dur-scale: 2`, `calc(<ms> * var(--dur-scale))`, `dur()`), smooth easing (no linear, no bouncy), `prefers-reduced-motion` respected, motion uses transform and opacity only.
+- [ ] No generic AI look: no side-stripe cards (no `border-left` accents), no gradient-blob filler, no emoji confetti decoration, no hyphen breaks.
+- [ ] Phone-first at 390px, tap targets 44px or more (48 preferred), ONE obvious primary action per screen; secondary actions go in a tidy menu.
+- [ ] FAQ answers are short grouped lists, never walls of text; link text is descriptive, never a file name.
+- [ ] Storyteller lines: clear "Say:" lines and big-caps check cards that read at a glance in a dark room.
+- [ ] Nothing on screen leaks deaths or roles; host-private notes are visually marked private.
+- [ ] Same look across all four sites (Mafia Night, Quest Night, The Gilded Chamber, The Odd Card) and the hub.
+- [ ] Every UI change: check it against this list and take 390px screenshots.
+
+## Historical spec (2026-10)
+
 # Mafia Night: design spec
 
 > Update: the display face is Limelight (art deco), restored after PR #32; Big Shoulders was dropped. References below are historical.

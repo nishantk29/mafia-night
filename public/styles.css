@@ -1621,3 +1621,56 @@ html[data-fx="off"] .gy-in{animation:none}
 html[data-fx="off"] .check-card{animation:none}
 .rcard-call{margin:var(--s1) 0 0;font-size:var(--fs-sm);color:var(--candle);max-width:30ch}
 .call-label{font-weight:700}
+
+/* ---------- design pass R3 (phone-first, dark-room readable) ----------
+   One primary action per screen: the big filled dock button. Everything else is ghost or lives in the menu.
+   Only existing tokens; motion untouched. */
+.btn{line-height:1.2;padding-block:var(--s3);text-align:center;text-wrap:balance;overflow-wrap:normal;word-break:normal;hyphens:none}
+.action-dock{gap:var(--s3);align-items:center}
+.action-dock .btn.big{white-space:normal;min-height:64px;padding-inline:var(--s3);font-size:clamp(1.1rem,4.8vw,1.45rem);line-height:1.1}
+.action-dock .btn.dock-back{flex:0 0 56px;width:56px;min-height:64px;padding:0}
+.action-dock .btn.dock-back .ui-ico{width:24px;height:24px;vertical-align:0}
+.appbar{gap:var(--s2)}
+.appbar-tools{width:auto;min-width:44px;height:44px;min-height:44px}
+.icon-btn{width:44px;height:44px}
+.stepper{display:inline-grid;grid-template-columns:48px 2.25em 48px;align-items:center;justify-items:center}
+.stepper .icon-btn{width:48px;height:48px}
+.deck-item{min-height:60px}
+.local-note{font-size:var(--fs-sm);color:var(--smoke)}
+.players .btn.ghost{display:flex;width:100%;margin-top:var(--s3)}
+.end-secondary{margin:var(--s4) 0 0;text-align:center}
+
+/* host menu */
+.menu-list{display:grid;gap:var(--s2);margin-top:var(--s3)}
+.menu-row{display:flex;align-items:center;gap:var(--s3);width:100%;min-height:60px;padding:var(--s3) var(--s4);text-align:left;color:var(--candle);
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:var(--r-row)}
+.menu-row .rule-text{flex:1;min-width:0;display:grid;gap:2px}
+.menu-row .rule-title{font-weight:700;font-size:var(--fs-md)}
+.menu-row .rule-desc{font-size:var(--fs-xs);color:var(--smoke);line-height:1.35}
+.menu-ico .ui-ico{width:24px;height:24px;vertical-align:0;color:var(--brass)}
+.menu-row:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+@media (hover:hover){.menu-row:hover{border-color:var(--brass)}}
+
+/* Say lines: the host reads these aloud in a dark room */
+.story-say{padding:var(--s4) var(--s4) var(--s5)}
+.story-tag,.tell-tag{display:block;font-family:var(--font-ui);font-variant-caps:all-small-caps;font-size:1rem;font-weight:700;letter-spacing:.14em;color:var(--smoke);margin:0 0 var(--s2)}
+.story-then .story-tag{font-size:1rem}
+.story-line q,.story-then q{font-size:clamp(1.375rem,1.2rem + 1vw,1.625rem);line-height:1.5;font-weight:600;color:#FFF4E6}
+.story-then q{font-size:clamp(1.25rem,1.1rem + .8vw,1.5rem)}
+.tell-say{display:block;font-size:clamp(1.25rem,1.1rem + .8vw,1.5rem);line-height:1.5}
+.tell-say b{font-style:normal;font-family:var(--font-ui);font-weight:600;color:#FFF4E6}
+.tell-say.is-gesture b{font-size:1.125rem;color:var(--smoke)}
+
+/* Private host notes: small, boxed, clearly labelled */
+.story-notes,.story-prep,.note.is-private{margin:var(--s3) 0;padding:var(--s3);border:1px dashed var(--rule-strong);border-radius:var(--r-row);background:rgba(255,255,255,.03);font-size:var(--fs-xs);color:var(--smoke)}
+.note.is-private{border-left:1px dashed var(--rule-strong);padding-left:var(--s3)}
+.story-notes::before,.story-prep::before{content:"Private: host only";display:block;margin-bottom:var(--s1);font-variant-caps:all-small-caps;letter-spacing:.14em;font-weight:700;color:var(--brass)}
+.story-notes ul,.story-prep ul{font-size:var(--fs-xs)}
+
+/* Check card: the longest word fills the width; --n is its letter count (set in host.js) */
+.check-text{font-size:min(9rem,calc((100vw - 40px) / (var(--n,6) * .74)));line-height:1.08;color:#fff;overflow-wrap:normal;word-break:keep-all;text-wrap:balance}
+.check-card.is-mafia .check-text{color:#FF6B6F}
+.check-card.is-role .check-text{color:var(--brass-hi)}
+.check-close{color:var(--smoke)}
+.cue-after{position:relative;z-index:1;background:var(--room);padding-top:var(--s2)}
+.cue-after:empty{display:none}

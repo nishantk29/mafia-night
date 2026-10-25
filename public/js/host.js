@@ -44,7 +44,7 @@ export function hostScreen(v, local) {
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
     ${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${v.phase === 'lobby' ? '' : toolsButton()}${S.mode === 'host' && v.nightVersion >= 3 && v.phase !== 'lobby' ? `<button type="button" class="icon-btn gy-open" data-a="openGy" aria-label="Open the Graveyard">${ui('skull')}</button>` : ''}
-    ${rolesButton()}<button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
+    <button type="button" class="icon-btn" data-a="openSettings" aria-label="Settings" title="Settings">${ui('gear')}</button>
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
     <section class="pane pane-game" aria-label="Game">${v.stalemate ? `<section class="block stalemate"><p class="note">${ui('crown')} ${esc(v.stalemate.reason)}</p><div class="btn-row"><button type="button" class="btn" data-a="declare">Declare a winner</button></div></section>` : ''}${body}
@@ -87,14 +87,23 @@ function graveyardSheet() {
 // Settings sheet: one labelled switch for now. Same storage as before (fx.js setAnim).
 function settingsSheet() {
   const on = animOn();
+  const v = S.view;
+  const started = v?.phase && v.phase !== 'lobby';
+  const row = (a, icon, title, desc, extra = '') => `<button type="button" class="menu-row" data-a="${a}" ${extra}><span class="menu-ico" aria-hidden="true">${ui(icon)}</span><span class="rule-text"><span class="rule-title">${title}</span><span class="rule-desc">${desc}</span></span></button>`;
+  const upgrade = v && v.nightVersion < LATEST_NIGHT_VERSION && started
+    ? (v.upgradeNext ? row('upgradeNight', 'moon', 'New night script: switching on', `Starts at the beginning of night ${v.night + 1}. Tap to undo.`, 'data-off="1"')
+      : row('upgradeNight', 'moon', 'Use the new night script', 'Dead roles are still called, so nobody can tell who died. Starts next night.')) : '';
   return `<div class="sheet-bg" data-a="closeSettings"><div class="sheet is-entering" role="dialog" aria-modal="true" aria-labelledby="settings-title" data-stop>
     <div class="sheet-grab"></div>
-    <div class="sheet-head"><h2 class="sheet-title" id="settings-title">Settings</h2><button type="button" class="icon-btn x-btn" data-a="closeSettings" aria-label="Close">${ui('x')}</button></div>
-    <div class="rules"><button type="button" class="rule" role="switch" aria-checked="${on}" data-a="toggleAnim">
-      <span class="rule-text"><span class="rule-title">Animations</span><span class="rule-desc">Night and day scenes, card flips and the win screen. Off keeps everything still.</span></span>
-      <span class="switch" aria-hidden="true"><i></i></span></button></div>
-    ${S.view?.phase && S.view.phase !== 'lobby' ? `<div class="end-game"><button type="button" class="btn ghost" data-a="restartAsk">Restart</button>
-      <p class="muted">Same code and players. New roles, back to the reveal.</p></div>` : ''}
+    <div class="sheet-head"><h2 class="sheet-title" id="settings-title">Menu</h2><button type="button" class="icon-btn x-btn" data-a="closeSettings" aria-label="Close">${ui('x')}</button></div>
+    <div class="menu-list">
+      ${row('openRoles', 'rules', 'Roles in this game', 'Who can be in the deck and what they do.')}
+      ${started ? row('restartAsk', 'back', 'Restart', 'Same code and players. New roles, back to the reveal.') : ''}
+      ${upgrade}
+      <button type="button" class="menu-row rule" role="switch" aria-checked="${on}" data-a="toggleAnim">
+        <span class="rule-text"><span class="rule-title">Animations</span><span class="rule-desc">Night and day scenes, card flips and the win screen.</span></span>
+        <span class="switch" aria-hidden="true"><i></i></span></button>
+    </div>
     ${S.mode === 'host' ? `<div class="end-game"><button type="button" class="btn ghost danger" data-a="endGameAsk">End game</button>
       <p class="muted">Closes the room for everyone and frees the code.</p></div>` : ''}
   </div></div>`;
@@ -380,7 +389,7 @@ function firstStart(v) {
 function dealt(v, local) {
   const cards = v.config.mode === 'cards';
   const blind = cards && v.config.cardFlow === 'blind';
-  const back = `<button type="button" class="btn ghost" data-a="undeal">${ui('back')} Back to setup</button>`;
+  const back = `<button type="button" class="btn ghost dock-back" data-a="undeal" aria-label="Back to setup" title="Back to setup">${ui('back')}</button>`;
   if (!cards) {
     const noPhone = v.players.filter((p) => p.offline && p.roleId);
     return {
@@ -474,7 +483,6 @@ function night(v) {
   const body = `<header class="phase-head"><h2 class="phase-title">Night ${v.night}</h2>
       <p class="muted">${blind1 ? 'Read each line aloud. When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
       ${v.shield ? `<p class="note is-warn">${ui('shield')} Virgin shield: nobody can be killed tonight.</p>` : ''}</header>
-    ${upgradeCard(v)}
     ${v.story?.prep?.length ? `<section class="story-prep"><h3 class="story-just">${ui('ear')} Before night ${v.night}: just for you</h3><ul>${v.story.prep.map((p) => `<li>${esc(p.text)}</li>`).join('')}</ul></section>` : ''}
     ${steps.length ? `${v.story ? storySay(v.story.open) : sayLine(START_CUE)}<ol class="cues" data-night="${v.night}" style="--steps:${steps.length}">${steps.map((s, i) => cue(v, s, i + 1, s === current, alive)).join('')}</ol>`
       : empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.')}`;
@@ -493,7 +501,7 @@ function storyNotes(notes) {
 function checkOverlay(v) {
   const c = S.ui.checkCard;
   if (!v.story || !c) return '';
-  return `<div class="check-card${c.kind === 'alignment' && c.text === 'MAFIA' ? ' is-mafia' : c.kind === 'role' ? ' is-role' : ''}" data-a="closeCheck" role="dialog" aria-modal="true" aria-label="Show this card"><p class="check-text">${esc(c.text)}</p><p class="check-close">Tap to close</p></div>`;
+  return `<div class="check-card${c.kind === 'alignment' && c.text === 'MAFIA' ? ' is-mafia' : c.kind === 'role' ? ' is-role' : ''}" data-a="closeCheck" role="dialog" aria-modal="true" aria-label="Show this card"><p class="check-text" style="--n:${Math.max(4, ...String(c.text).split(/\s+/).map((w) => w.length))}">${esc(c.text)}</p><p class="check-close">Tap to close</p></div>`;
 }
 // Opens the card once, the first time a step's answer exists; `again` re-opens it.
 function checkFor(v, s, set) {
@@ -622,15 +630,6 @@ function cue(v, s, num, current, alive) {
 }
 
 // Legacy rooms (night script < latest): host-only opt-in, applied when the next night starts, never mid-step.
-function upgradeCard(v) {
-  if (v.nightVersion >= LATEST_NIGHT_VERSION || v.phase === 'lobby') return '';
-  const queued = !!v.upgradeNext;
-  return `<section class="block upgrade-night"><h2 class="block-title">Use the new night script from next night</h2>
-    <p class="note">Dead roles are still called at night, so nobody can tell who died. Takes effect when the next night starts; nothing changes mid-step.</p>
-    ${queued ? `<p class="note is-private">Switches on at the start of night ${v.night + 1}.</p><button type="button" class="btn ghost" data-a="upgradeNight" data-off="1">Undo</button>`
-      : `<button type="button" class="btn" data-a="upgradeNight">Use the new night script</button>`}</section>`;
-}
-
 // ---------------- day ----------------
 function day(v) {
   const rep = v.report && v.report.night === v.night ? v.report : null;
@@ -668,7 +667,7 @@ function day(v) {
       <div class="btn-row">${btn('danger', 'condemn', sel ? `${ui('gavel')} Condemn ${esc(pname(v, sel))}` : `${ui('gavel')} Choose who to condemn`, { on: !!sel, why: 'Choose who to condemn' })}
         <button type="button" class="btn ghost" data-a="noCondemn">Nobody today</button></div></section>`;
   return {
-    body: `${report}${upgradeCard(v)}${pend}${vote}${abilities ? `<section class="block abilities"><h2 class="block-title">Day abilities</h2>${abilities}</section>` : ''}`,
+    body: `${report}${pend}${vote}${abilities ? `<section class="block abilities"><h2 class="block-title">Day abilities</h2>${abilities}</section>` : ''}`,
     dock: btn('big', 'startNight', v.pending.length ? 'Answer the questions above first' : `Start night ${v.night + 1}`, { on: !v.pending.length, why: 'Answer the questions above first' }),
   };
 }
@@ -686,8 +685,9 @@ function over(v) {
       ${why ? `<span class="meta">${ui('trophy')} ${/ team wins$/.test(why.reason) ? 'Won' : esc(why.reason)}</span>` : ''}</div>`; }).join('');
   return {
     body: `<section class="win ${ink}"><span class="win-mark">${ui('crown')}</span><h2 class="phase-title">${side}</h2><p class="muted">${esc(w?.reason || '')}</p></section>
-      <section class="block${S.ui.anim === 'roles' ? ' reveal-rows' : ''}"><h2 class="block-title">Final roles</h2>${rows}</section>`,
-    dock: `<button type="button" class="btn big" data-a="restart">Restart</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button>`,
+      <section class="block${S.ui.anim === 'roles' ? ' reveal-rows' : ''}"><h2 class="block-title">Final roles</h2>${rows}</section>
+      <p class="end-secondary"><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button></p>`,
+    dock: `<button type="button" class="btn big" data-a="restart">Restart</button>`,
   };
 }
 

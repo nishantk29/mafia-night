@@ -490,7 +490,7 @@ const A = {
     send({ type: 'setConfig', roles: simpleRoleIds(counts) });
   },
   simpleCards() { const on = S.view.config.mode !== 'cards'; send({ type: 'setConfig', mode: on ? 'cards' : 'app', deckStyle: on ? 'simple' : 'random' }); },
-  openRoles() { S.ui.roles = true; S.ui.anim = 'sheet'; S.render(); },
+  openRoles() { S.ui.settings = false; S.ui.roles = true; S.ui.anim = 'sheet'; S.render(); },
   closeRoles() { S.ui.roles = false; S.render(); },
   openSettings() { S.ui.settings = true; S.ui.anim = 'modal'; S.render(); },
   closeSettings() { S.ui.settings = false; S.render(); },
