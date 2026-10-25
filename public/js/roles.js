@@ -23,7 +23,7 @@ export const ROLES = [
   R('villager', 'Villager', '🧑‍🌾', 'town', 'No powers. Win by reading people and voting well.'),
   R('cop', 'Cop', '👮', 'town', 'Each night, check one player. You learn whether they look like Mafia.',
     { action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'alignment' }) }),
-  R('detective', 'Detective', '🕵️', 'town', 'Each night, check one player and learn their exact role.',
+  R('detective', 'Detective', '🕵️', 'town', 'Each night, check one player and learn their exact role. A Godfather shows as a Villager.',
     { action: A('investigate', 61, 'Detective, wake up. Who do you investigate?', { check: 'role' }) }),
   R('insane_cop', 'Insane Cop', '🥴', 'town', 'You think you are a Cop, but your results are always backwards.',
     { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'inverted' }) }),
@@ -87,7 +87,7 @@ export const ROLES = [
   // ---------- MAFIA ----------
   R('mafia', 'Mafia', '🕴️', 'mafia', 'Choose a victim each night with your team. Blend in by day.',
     { meeting: 'mafia', action: A('kill', 50, 'Mafia, who do you kill?', { source: 'mafia', group: 'mafia' }) }),
-  R('godfather', 'Godfather', '🤵', 'mafia', 'Mafia leader. Investigators see you as innocent.',
+  R('godfather', 'Godfather', '🤵', 'mafia', 'Mafia leader. The Cop sees you as not Mafia, and the Detective sees you as a Villager.',
     { meeting: 'mafia', appearsAs: 'innocent', action: A('kill', 50, 'Mafia, who do you kill?', { source: 'mafia', group: 'mafia' }) }),
   R('don', 'Don', '👑', 'mafia', 'Mafia boss. You count double toward the Mafia\'s majority.',
     { meeting: 'mafia', weight: 2, action: A('kill', 50, 'Mafia, who do you kill?', { source: 'mafia', group: 'mafia' }) }),

@@ -6,7 +6,7 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES, cardInfo } from './engine.js';
+import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, DEFAULT_RULES, cardInfo, LATEST_NIGHT_VERSION } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { graveyardPanel } from './graveyard.js';
@@ -605,9 +605,9 @@ function cue(v, s, num, current, alive) {
   return `<li class="cue is-current" data-ck="${s.key}" aria-current="step"><span class="cue-n">${num}</span><div class="cue-body">${inner}</div></li>`;
 }
 
-// Legacy rooms (night script < 5): host-only opt-in, applied when the next night starts, never mid-step.
+// Legacy rooms (night script < latest): host-only opt-in, applied when the next night starts, never mid-step.
 function upgradeCard(v) {
-  if (v.nightVersion >= 5 || v.phase === 'lobby') return '';
+  if (v.nightVersion >= LATEST_NIGHT_VERSION || v.phase === 'lobby') return '';
   const queued = !!v.upgradeNext;
   return `<section class="block upgrade-night"><h2 class="block-title">Use the new night script from next night</h2>
     <p class="note">Dead roles are still called at night, so nobody can tell who died. Takes effect when the next night starts; nothing changes mid-step.</p>

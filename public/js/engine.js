@@ -137,6 +137,9 @@ export const NEUTRAL_ANSWER = 'No answer tonight.';
 export const hasStoryScript = (room) => nightVersion(room) >= 4;
 // 5: investigator results (Cop, Detective...) are given only at night through the check card; never in the morning report, host day screens or the player's phone.
 export const hasNightOnlyChecks = (room) => nightVersion(room) >= 5;
+// 6: the Godfather shows as a Villager to the Detective's exact-role check (the Cop still sees NOT MAFIA via appearsAs).
+export const hasGodfatherDisguise = (room) => nightVersion(room) >= 6;
+export const LATEST_NIGHT_VERSION = 6;
 
 const isQuiet = (st) => st.kind === 'info' && !st.spoken;
 export function nightScript(room) {
@@ -563,7 +566,10 @@ export function resolveNight(room, actions, opts = {}) {
       }
       else if (chk === 'naive') { text = `${t.name} is ${sideName('innocent')}.`; note = 'Naive Cop: everyone looks innocent to them. Say it as if it were true.'; }
       else if (chk === 'paranoid') { text = `${t.name} is ${sideName('mafia')}.`; note = 'Paranoid Cop: everyone looks guilty to them. Say it as if it were true.'; }
-      else if (chk === 'role') text = `${t.name} is the ${ROLE_BY_ID[t.roleId].name}.`;
+      else if (chk === 'role') {
+        const disguised = hasGodfatherDisguise(room) && t.roleId === 'godfather' && (a.s.roleId === 'detective' || ROLE_BY_ID[a.s.roleId]?.seesAs === 'detective');
+        text = `${t.name} is the ${ROLE_BY_ID[disguised ? 'villager' : t.roleId].name}.`;
+      }
       else if (chk === 'parity') {
         const u = alivePlayer(a.targets[1]);
         const same = appearsAs(room, t) === appearsAs(room, u);
