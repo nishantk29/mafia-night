@@ -34,7 +34,7 @@ export function shortLabel(kind, s) {
   const fit = (t, fallback) => (t.length <= SHORT_MAX ? t : fallback);
   if (kind === 'identify') {
     const who = isMafiaCall(s) ? 'Mafia' : s.count > 1 ? `${s.count} ${name(roleName(s))}s` : name(roleName(s));
-    return fit(`Mark the ${who} or Skip`, 'Mark players or Skip');
+    return fit(`Mark the ${who} or No one`, 'Mark players or No one');
   }
   if (kind === 'target') return 'Pick a player or No one';
   if (kind === 'answer') return s.type === 'alert' ? 'Alert or Not tonight' : 'Tap Yes or No';

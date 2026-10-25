@@ -137,7 +137,7 @@ test('blind identify: label names the role, count and Mafia; "No one has this ca
       const nav = nightNav(view, ui);
       const want = s.roleId === 'mafia' ? 'Mark who is Mafia' : s.count > 1 ? `Mark the ${s.count} ${s.roleId === 'cop' ? 'Cop' : s.roleId}s` : /^Mark who is the \w/;
       if (want instanceof RegExp) assert.match(nav.label, want); else assert.equal(nav.label, want);
-      assert.match(nav.short, /^Mark .* or Skip$/); assert.ok(nav.short.length <= SHORT_MAX, nav.short);
+      assert.match(nav.short, /^Mark .* or No one$/); assert.ok(nav.short.length <= SHORT_MAX, nav.short);
       assert.equal(nav.enabled, false); assert.equal(nav.canSkip, true);
       const page = html(view, local, ui);
       assert.match(page, new RegExp(`class="pk is-none"[^>]*data-a="skipIdentify"[^>]*data-role="${s.roleId}">No one has this card<`));
