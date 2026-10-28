@@ -192,3 +192,17 @@ describe('v9: only the Mafia kill call says "Mafia"; team members with their own
     assert.match(stepScript(st, room).say, /^Mafia, open your eyes\. Pick someone to block\./);
   });
 });
+
+describe('FAQ matches what ships', () => {
+  test('the FAQ wake order and blocker rule match the v9 engine', async () => {
+    const { faqScreen } = await import('../public/js/faq.js');
+    const html = faqScreen();
+    const at = (t) => { const i = html.indexOf(t); assert.ok(i >= 0, t); return i; };
+    assert.ok(at('Blockers and jailers first') < at('The Mafia’s kill') && at('The Mafia’s kill') < at('Protectors (Doctor') && at('Protectors (Doctor') < at('Investigators, such as the Cop'));
+    at('Mafia, then Doctor, then Cop');
+    at('A blocked or jailed player wakes and points like any other night');
+    at('NO RESULT card');
+    at('Cop 1, Cop 2, Hooker 1, Hooker 2');
+    assert.ok(!/skip anyone who has died/i.test(html));
+  });
+});

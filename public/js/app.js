@@ -91,10 +91,16 @@ function followCue() {
   S.ui.lastCue = key;
   requestAnimationFrame(() => cur.scrollIntoView({ behavior: animOn() ? 'smooth' : 'auto', block: 'center' }));
 }
+// The key of what a player's hand shows. When it changes (joined, dealt, card entered, a new phase, a new game, a death)
+// the screen opens at the top, where the face-down card is, instead of keeping the old screen's scroll position.
+const handKey = (mode, v) => (mode === 'play' ? `${v ? `${v.kind}|${v.gameNo}|${v.phase}|${v.me?.role?.id || ''}|${v.me?.card ? 1 : 0}|${v.me?.alive}` : 'join'}` : null);
 function paintScreen() {
   const a = document.activeElement;
   const sel = a && a !== document.body && $app.contains(a) ? focusSelector(a) : null;
-  const y = window.scrollY;
+  const hk = handKey(S.mode, S.view);
+  const toTop = S.ui.toTop || (hk !== null && hk !== S.ui.handKey);
+  S.ui.handKey = hk; S.ui.toTop = false;
+  const y = toTop ? 0 : window.scrollY;
   const { phase, shell } = shellAttrs();
   $html.dataset.phase = phase;
   $html.dataset.shell = shell;
@@ -188,7 +194,7 @@ function home() {
           <li><h3>Deal</h3><p>Host a game on this screen. Players join with the room code, and each gets a secret role.</p></li>
           <li><h3>Night</h3><p>Everyone closes their eyes. The Host wakes each role in turn and taps their pick.</p></li>
           <li><h3>Day</h3><p>At dawn the app shows who died. The table talks, then votes someone out with a majority.</p></li>
-          <li><h3>Win</h3><p>Town wins when every Mafia member is gone. Mafia win when they match the rest of the table.</p></li>
+          <li><h3>Win</h3><p>Town wins when every Mafia member and every other killer is gone. Mafia win when they match or outnumber everyone else.</p></li>
         </ol></section>
     </div>
     ${siteFooter()}
@@ -314,10 +320,13 @@ async function route() {
       fetch(`/api/room/${code}`).then((r) => { if (!r.ok) { store.del(k); if (S.mode === 'home') S.render(); } }).catch(() => {});
     }
   }
-  if (S.mode === 'home' || S.mode === 'faq') window.scrollTo(0, 0);
+  // Every new screen opens at the top (a player's hand shows the face-down card first).
+  window.scrollTo(0, 0); S.ui.toTop = true; S.ui.handKey = null;
   S.render();
 }
 window.addEventListener('hashchange', route);
+// The browser must not put back an old scroll position on reload or Back: the app decides (see paintScreen).
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 
 // ---------------- role tooltip (hover, focus or tap the "i") ----------------
