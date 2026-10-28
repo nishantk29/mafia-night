@@ -76,7 +76,7 @@ describe('upgradeNight', () => {
     assert.ok(up(room, { playerId: 'pV1' }).error);
     assert.equal(room.upgradeNext, undefined);
     assert.ok(up(room).ok);
-    assert.equal(room.upgradeNext, 8);
+    assert.equal(room.upgradeNext, 9);
   });
   test('mid-night queues without changing the current script, applies at next night, dead Doctor is called', () => {
     const room = mk(1, { night: 1 });
@@ -84,13 +84,13 @@ describe('upgradeNight', () => {
     assert.ok(up(room).ok);
     assert.equal(JSON.stringify(nightScript(room)), before);
     assert.equal(nightVersion(room), 1);
-    assert.deepEqual([viewForHost(room).nightVersion, viewForHost(room).upgradeNext], [1, 8]);
+    assert.deepEqual([viewForHost(room).nightVersion, viewForHost(room).upgradeNext], [1, 9]);
     const vig = nightScript(room).find((s) => s.roleId === 'vigilante');
     resolveNight(room, { [vig.key]: { targets: ['pDoc'], on: true } });
     assert.equal(pn(room, 'Doc').alive, false);
     assert.equal(nightVersion(room), 1);
     nextNight(room);
-    assert.equal(nightVersion(room), 8);
+    assert.equal(nightVersion(room), 9);
     assert.equal(room.upgradeNext, undefined);
     assert.ok(docStep(room));
   });
@@ -104,13 +104,13 @@ describe('upgradeNight', () => {
     const room = mk(1, { phase: 'day', night: 1, hostKey: 'local' });
     assert.ok(up(room).ok);
     nextNight(room);
-    assert.equal(nightVersion(room), 8);
+    assert.equal(nightVersion(room), 9);
   });
-  test('v8 room rejects', () => {
-    const room = mk(8, { phase: 'day', night: 1 });
+  test('v9 room rejects', () => {
+    const room = mk(9, { phase: 'day', night: 1 });
     assert.ok(up(room).error);
     assert.equal(room.upgradeNext, undefined);
-    assert.equal(newRoom('X', 'k').nightVersion, 8);
+    assert.equal(newRoom('X', 'k').nightVersion, 9);
   });
 });
 

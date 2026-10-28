@@ -26,7 +26,7 @@ const GROUPS = () => [
       ${H('Each round')}
       ${L([['Night.', 'Everyone closes their eyes. The Host wakes each role and taps who they pick.'], ['Morning.', 'The app tells the Host who died and what each role learned.'], ['Day.', 'The table argues and votes someone out.']])}
       ${H('Who wins')}
-      ${L([['Town', 'wins when every Mafia member is gone.'], ['Mafia', 'win when they match the rest of the table.']])}`],
+      ${L([['Town', 'wins when every Mafia member and every other killer is gone.'], ['Mafia', 'win when they match or outnumber everyone else.']])}`],
     ['What are the ways to deal?', waysToDeal()],
     ['How do players join?', `
       ${L([['Go to', `<b>${SITE}</b> on their phone.`], ['Type', 'the 6-letter room code and a name.'], ['Nothing else:', 'no account, no app to install.']])}
@@ -37,7 +37,7 @@ const GROUPS = () => [
       ${H('On this device')}
       ${L([['Nothing is sent to a server.', 'The game is stored only in that browser.']])}
       ${H('In a room')}
-      ${L([['Each phone', 'only ever receives its own role.'], ['Mafia, Masons and Cult members', 'also see their teammates.'], ['The Host', 'sees everyone.'], ['Once someone dies,', 'their role is shown to the table, unless a Janitor hid it.']])}`],
+      ${L([['Each phone', 'only ever receives its own role.'], ['Mafia, Masons and Cult members', 'also see their teammates.'], ['The Host', 'sees everyone.'], ['Once someone dies,', 'their role is shown to the table if the Host left “Show a player’s role when they die” on. A Janitor can hide it.']])}`],
     ['Someone’s phone died or they closed the tab. What now?', `
       ${L([['Same phone:', 'open the same link and they’re back in their seat with their role.'], ['Different phone, or a closed private tab:', 'the Host removes their seat in the lobby and they join again.'], ['After the deal:', 'play on. The Host still sees their role and can run it for them.']])}`],
     ['How do I end a game?', `
@@ -49,22 +49,28 @@ const GROUPS = () => [
   ['Running the night', [
     ['In what order do roles wake, and why?', `
       <ol>
-        <li>Blockers and jailers, so anyone they stop is stopped before acting.</li>
-        <li>Protectors (Doctor, Bodyguard and friends).</li>
-        <li>Converters, such as the Cult.</li>
-        <li>Framers and cleaners.</li>
-        <li>The Mafia’s kill.</li>
-        <li>Other killers.</li>
-        <li>Investigators, such as the Cop.</li>
-        <li>Trackers and lookouts last, so they see every visit made that night.</li>
+        <li>Blockers and jailers first.</li>
+        <li>Veterans and other roles that go on alert.</li>
+        <li>Converters, such as the Cult, and framers.</li>
+        <li>The Mafia’s kill, then the Janitor.</li>
+        <li>Other killers, such as the Serial Killer and the Vigilante.</li>
+        <li>Protectors (Doctor, Bodyguard and friends), after the killers have picked.</li>
+        <li>Investigators, such as the Cop and the Detective.</li>
+        <li>Trackers and lookouts last.</li>
       </ol>
-      <p>You don’t need to remember this: the night screen lists the order for you.</p>`],
+      <p>So a plain game goes Mafia, then Doctor, then Cop. The night screen lists the order for you.</p>
+      <p>Roles whose player has died are still called, so nobody can tell who is gone.</p>
+      <p>Games started before this order came in keep their old order until a new game or the “Use the new night script” switch.</p>`],
+    ['A blocker picked me. Do I still wake up and choose?', `
+      ${L([['Yes.', 'A blocked or jailed player wakes and points like any other night. The table can’t tell.'], ['The block cancels what they did.', 'A blocked Doctor saves nobody. A blocked Cop or Detective gets a NO RESULT card.'], ['A role with limited uses', 'still spends the use.']])}`],
+    ['Two players have the same role. Who wakes?', `
+      ${L([['Each one gets a number:', 'Cop 1, Cop 2, Hooker 1, Hooker 2.'], ['Their phone shows it:', '“You are Cop 2.”'], ['The Host taps', 'that player on the shoulder, so only they wake.'], ['Each pick and each result', 'belongs to that player alone.']])}`],
     ['Some roles don’t know what they really are. How does that work?', `
-      ${L([['Told something else.', 'The Insane, Naive and Paranoid Cop, the Placebo Doctor and the Miller are told something other than the truth.'], ['Their phone and the card key', 'show what they think they are.'], ['The table', 'may know a fake Cop is in play, but never which player.'], ['The Host', 'is told privately, and the app gives that player the right (wrong) results.']])}`],
+      ${L([['Told something else.', 'The Insane, Naive, Paranoid and Confused Cop, the Placebo Doctor and the Miller are told something other than the truth.'], ['Their phone and the card key', 'show what they think they are.'], ['The table', 'may know a fake Cop is in play, but never which player.'], ['The Host', 'is told privately, and the app gives that player the right (wrong) results.']])}`],
     ['What is the Confused Cop?', `
-      <p>An open role: the player knows they are the Confused Cop. They act right after the Cop.</p>
+      <p>A hidden role. The player thinks they are a Cop. Their phone says Cop, and the Host calls them as a Cop (Cop 1, Cop 2).</p>
       ${H('Each check')}
-      ${L([['Coin flip', 'made by the app.'], ['Heads', 'gives the TRUE result.'], ['Tails', 'gives the OPPOSITE.'], ['The Host sees the coin,', 'then gives the usual nod or shake. The player is never told how it landed.']])}
+      ${L([['Coin flip', 'made by the app when the Host enters the pick.'], ['Heads', 'gives the TRUE result.'], ['Tails', 'gives the OPPOSITE.'], ['Only the Host', 'sees how it landed, in a private note. The player gets the usual card.']])}
       <p>A regular Cop must be in the game too. Without one, the app blocks the deal and asks you to add a Cop.</p>`],
     ['The Hooker blocked one Mafia member. Does the kill still happen?', `
       ${L([['Yes,', 'if any Mafia member is free to carry it out.'], ['It only stops', 'when every Mafia member is blocked.'], ['Trackers and lookouts', 'see one visitor, never the blocked one.']])}`],

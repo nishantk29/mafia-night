@@ -20,7 +20,7 @@ test('Host night script never dead-ends: Next names the missing choice, every ch
   const total = { skipIdentify: 0, noOne: 0, nights: 0 };
   let games = 0;
   for (let i = 0; i < 300; i++) {
-    const version = 1 + (i % 8);
+    const version = 1 + (i % 9);
     const flow = ['app', 'blind', 'claim', 'blind'][Math.floor(i / 8) % 4];
     const roles = i % 3 === 2
       ? ['mafia', ...Array.from({ length: 7 + (i % 5) }, () => R.pick(CATALOGUE))]

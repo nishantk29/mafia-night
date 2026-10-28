@@ -151,7 +151,14 @@ export const hasNightOnlyInfo = (room) => nightVersion(room) >= 7;
 // anybody visited them. (6) An Executioner whose target dies any way but a day vote becomes a Jester; every Executioner is called every
 // night and told privately through the check card.
 export const hasV8Rules = (room) => nightVersion(room) >= 8;
-export const LATEST_NIGHT_VERSION = 8;
+// 9: (1) standard wake order: protectors (Doctor, Bodyguard and their look-alikes) wake AFTER the Mafia and every other killer,
+// so the order the Host reads is Mafia -> Doctor -> Detective. Resolution is unchanged (it never depended on call order for
+// saves). (2) A blocked or jailed role still wakes and picks like anyone else; the block only cancels the effect when the
+// night resolves. A blocked investigator is shown a "NO RESULT" card, so the step plays out the same way with or without a block.
+export const hasV9Order = (room) => nightVersion(room) >= 9;
+export const LATEST_NIGHT_VERSION = 9;
+// v9 wake order: protect 20 -> 54, guard 21 -> 55 (after the last killer at 53, before the Coroner at 58 and the investigators).
+const V9_SHIFT = { protect: 34, guard: 34 };
 // 7: every look-alike call family is numbered 1..N (Cop 1, Cop 2...), the player's phone shows their number, and the Confused Cop is a disguised Cop
 export const hasNumberedCalls = (room) => nightVersion(room) >= 7;
 
@@ -163,7 +170,8 @@ function callFamilies(room) {
   const fams = {};
   for (const p of room.players || []) {
     const r = ROLE_BY_ID[p.roleId];
-    if (!r?.action || r.action.group || r.meeting) continue;
+    // v9: team members with their own action (two Hookers, two Framers...) are numbered too; before v9 they shared one call.
+    if (!r?.action || r.action.group || (r.meeting && !hasV9Order(room))) continue;
     const fam = ROLE_BY_ID[shownRoleId(p.roleId, room)] || r;
     (fams[fam.id] ||= { fam, ids: [] }).ids.push(p.id);
   }
@@ -318,6 +326,15 @@ function scriptSteps(room) {
   for (const group of Object.values(said)) if (group.length > 1) for (const st of group) {
     st.hint = `More than one player answers to this call. Tap ${st.actors.map((id) => nameOf(room, id)).join(' and ')} on the shoulder so only they wake.`;
   }
+  // v9: a team member's own action (Hooker, Framer, Janitor...) is called by that role's name, not "Mafia": only the
+  // team's kill call wakes the whole Mafia, so the Host no longer says "Mafia, open your eyes" before the Mafia's turn.
+  if (hasV9Order(room)) for (const st of steps) {
+    if (st.kind === 'action' && st.key.startsWith('act:') && ROLE_BY_ID[st.roleId]?.meeting) st.callName = st.label || ROLE_BY_ID[shownRoleId(st.roleId, room)]?.name;
+  }
+  if (hasV9Order(room)) for (const st of steps) {
+    const type = st.kind === 'identify' ? ROLE_BY_ID[st.roleId]?.action?.type : st.kind === 'action' && st.key.startsWith('act:') ? st.type : null;
+    if (V9_SHIFT[type]) st.order += V9_SHIFT[type];
+  }
   return steps.sort((a, b) => a.order - b.order);
 }
 
@@ -377,7 +394,7 @@ export function stepCues(step) {
   if (!step || (step.kind === 'info' && !step.spoken)) return null;
   const r = ROLE_BY_ID[step.roleId];
   const said = String(step.prompt || '').replace(/\s*Tap who (it is|they are)\.?\s*$/, '');
-  const name = TEAM_NAME[r?.meeting] || /^(.+?),\s/.exec(said)?.[1] || (ROLE_BY_ID[r?.seesAs] || r)?.name || 'Everyone';
+  const name = step.callName || TEAM_NAME[r?.meeting] || /^(.+?),\s/.exec(said)?.[1] || (ROLE_BY_ID[r?.seesAs] || r)?.name || 'Everyone';
   const open = /open your eyes/i.test(said) ? said
     : `${name}, open your eyes.${step.kind === 'action' ? ` ${ASK[step.type] || 'Make your choice.'}` : ''}`;
   return { open, close: /close your eyes/i.test(said) ? null : `${name}, close your eyes.` };
@@ -389,8 +406,8 @@ export function stepCues(step) {
 export function stepGesture(step, result) {
   if (!stepCues(step) || step.kind !== 'action') return null;
   if (['investigate', 'track', 'watch', 'autopsy'].includes(step.type)) {
-    if (!result || result.blocked) return null;
-    if ((result.neutral || result.novision) && step.type === 'investigate') return { kind: 'yesno', text: 'Give no sign: keep your hand flat and still' };
+    if (!result || (result.blocked && !result.noresult)) return null;
+    if ((result.neutral || result.novision || result.noresult) && step.type === 'investigate') return { kind: 'yesno', text: 'Give no sign: keep your hand flat and still' };
     const m = /^(.+) is (MAFIA|NOT Mafia)\.$/.exec(result.text || '');
     if (step.type === 'investigate' && m) {
       return m[2] === 'MAFIA'
@@ -427,7 +444,9 @@ export function previewNight(room, actions, stepKey) {
   const copy = structuredClone(room);
   copy.log = []; copy.pending = [];
   resolveNight(copy, sofar, { ghost: stepKey, preview: true }); // a dead investigator's call looks like any other to the Host
-  return copy.lastReport.info.find((i) => i.key === stepKey) || { text: '', note: 'No result: they were blocked or stayed home.', blocked: true };
+  return copy.lastReport.info.find((i) => i.key === stepKey)
+    || (hasV9Order(room) ? { text: 'No result tonight.', note: 'They were blocked: show the NO RESULT card.', blocked: true, noresult: true }
+      : { text: '', note: 'No result: they were blocked or stayed home.', blocked: true });
 }
 
 // Advice about a role set before dealing. level: 'error' blocks the deal, 'warn' is risky, 'tip' is a nudge.
@@ -761,6 +780,7 @@ export function checkCard(room, step, result) {
   if (step.type !== 'investigate' && !(isInfo && hasNightOnlyInfo(room))) return null;
   if (result.novision) return { kind: 'none', text: 'NO VISION TONIGHT' };
   if (result.neutral) return { kind: 'none', text: 'NO ANSWER' };
+  if (result.noresult) return { kind: 'none', text: 'NO RESULT' }; // v9: a blocked investigator still gets a card, just no answer
   if (result.blocked) return null;
   if (isInfo) return result.card || null;
   const t = String(result.text || '');
