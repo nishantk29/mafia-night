@@ -325,6 +325,11 @@ function scriptSteps(room) {
   for (const group of Object.values(said)) if (group.length > 1) for (const st of group) {
     st.hint = `More than one player answers to this call. Tap ${st.actors.map((id) => nameOf(room, id)).join(' and ')} on the shoulder so only they wake.`;
   }
+  // v9: a team member's own action (Hooker, Framer, Janitor...) is called by that role's name, not "Mafia": only the
+  // team's kill call wakes the whole Mafia, so the Host no longer says "Mafia, open your eyes" before the Mafia's turn.
+  if (hasV9Order(room)) for (const st of steps) {
+    if (st.kind === 'action' && st.key.startsWith('act:') && ROLE_BY_ID[st.roleId]?.meeting) st.callName = st.label || ROLE_BY_ID[shownRoleId(st.roleId, room)]?.name;
+  }
   if (hasV9Order(room)) for (const st of steps) {
     const type = st.kind === 'identify' ? ROLE_BY_ID[st.roleId]?.action?.type : st.kind === 'action' && st.key.startsWith('act:') ? st.type : null;
     if (V9_SHIFT[type]) st.order += V9_SHIFT[type];
@@ -388,7 +393,7 @@ export function stepCues(step) {
   if (!step || (step.kind === 'info' && !step.spoken)) return null;
   const r = ROLE_BY_ID[step.roleId];
   const said = String(step.prompt || '').replace(/\s*Tap who (it is|they are)\.?\s*$/, '');
-  const name = TEAM_NAME[r?.meeting] || /^(.+?),\s/.exec(said)?.[1] || (ROLE_BY_ID[r?.seesAs] || r)?.name || 'Everyone';
+  const name = step.callName || TEAM_NAME[r?.meeting] || /^(.+?),\s/.exec(said)?.[1] || (ROLE_BY_ID[r?.seesAs] || r)?.name || 'Everyone';
   const open = /open your eyes/i.test(said) ? said
     : `${name}, open your eyes.${step.kind === 'action' ? ` ${ASK[step.type] || 'Make your choice.'}` : ''}`;
   return { open, close: /close your eyes/i.test(said) ? null : `${name}, close your eyes.` };

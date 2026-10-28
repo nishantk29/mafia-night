@@ -170,3 +170,25 @@ describe('v9 blocker rule: a blocked role still wakes and chooses; only the effe
     assert.ok(games >= 25);
   });
 });
+
+describe('v9: only the Mafia kill call says "Mafia"; team members with their own action are called by their role', () => {
+  const TEAM = [['H', 'hooker'], ['F', 'framer'], ['Jn', 'janitor'], ['M', 'mafia'], ['D', 'doctor'], ['C', 'cop'], ['V1', 'villager'], ['V2', 'villager']];
+  for (const mode of Object.keys(MODES)) {
+    test(`${mode}: one "Mafia, open your eyes" per night, and it is the kill`, () => {
+      const room = mk(TEAM, { mode });
+      const says = nightScript(room).map((s) => [s.roleId, stepScript(s, room)?.say]).filter(([, t]) => t);
+      const mafiaCalls = says.filter(([, t]) => /^Mafia, open your eyes/.test(t));
+      assert.deepEqual(mafiaCalls.map(([r]) => r), ['mafia'], JSON.stringify(says));
+      assert.match(says.find(([r]) => r === 'hooker')[1], /^Hooker, open your eyes\. Pick someone to block\./);
+      assert.match(says.find(([r]) => r === 'framer')[1], /^Framer, open your eyes\./);
+      assert.match(says.find(([r]) => r === 'janitor')[1], /^Janitor, open your eyes\./);
+      const v = viewForHost(room);
+      assert.match(v.story.steps[key(room, 'hooker')].then, /^Hooker, close your eyes\./);
+    });
+  }
+  test('pinned: a v8 room still calls the Hooker as "Mafia"', () => {
+    const room = mk(TEAM, { version: 8 });
+    const st = nightScript(room).find((s) => s.roleId === 'hooker');
+    assert.match(stepScript(st, room).say, /^Mafia, open your eyes\. Pick someone to block\./);
+  });
+});
