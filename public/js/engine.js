@@ -170,7 +170,8 @@ function callFamilies(room) {
   const fams = {};
   for (const p of room.players || []) {
     const r = ROLE_BY_ID[p.roleId];
-    if (!r?.action || r.action.group || r.meeting) continue;
+    // v9: team members with their own action (two Hookers, two Framers...) are numbered too; before v9 they shared one call.
+    if (!r?.action || r.action.group || (r.meeting && !hasV9Order(room))) continue;
     const fam = ROLE_BY_ID[shownRoleId(p.roleId, room)] || r;
     (fams[fam.id] ||= { fam, ids: [] }).ids.push(p.id);
   }
