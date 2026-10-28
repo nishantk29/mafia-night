@@ -425,3 +425,19 @@ html[data-fx="off"] .check-card{animation:none}
 
 /* Next button: one line at 390px; the long label lives in aria-label/title */
 .action-dock .btn.big[data-a="nextStep"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:max(15px,min(var(--fs-lg),5vw))}
+
+/* ======================================================================================
+   Type tone-down (Nishant 2026-10-28: "you might be overdoing the artdeco font"). Limelight stays in Mafia, for headings
+   and titles only: the wordmark, page and section titles, the role card's name, win headings and the big-caps check card.
+   Body text, Say lines, buttons, labels, role names in lists, FAQ and rules text use Rubik.
+   Mafia owns its display font here, so a change to the shared family.css can't take it away.
+   Metric-matched fallbacks keep lines from jumping when the web fonts arrive (font-display:swap).
+   ====================================================================================== */
+@font-face{font-family:"Limelight Fallback";src:local("Arial"),local("Helvetica"),local("Liberation Sans");size-adjust:118%;ascent-override:77%;descent-override:26%;line-gap-override:0%}
+@font-face{font-family:"Rubik Fallback";src:local("Arial"),local("Helvetica"),local("Liberation Sans");size-adjust:103.5%;ascent-override:90%;descent-override:24%;line-gap-override:0%}
+:root{--mafia-display:"Limelight","Limelight Fallback",serif;--f-display-font:var(--mafia-display);--font-display:var(--mafia-display);
+  --font-ui:"Rubik","Rubik Fallback",system-ui,-apple-system,"Segoe UI",sans-serif;--font-voice:var(--font-ui)}
+.wordmark,h1,h2,.phase-title,.block-title,.path-title,.table-phase,.home-how-title,.rcard-name,.fx-pop-name,.fx-v-team,.fx-stamp,.check-text,.suggest-title,.hw-title{font-family:var(--mafia-display)}
+.role-name,.rrow-role,.suggest-name,.home-rules b,.faq-roles b,.faq-q summary,.faq-a,.btn,.tabbar button,.role-filter button,.code,.room-code{font-family:var(--font-ui);text-transform:none;letter-spacing:0}
+.role-name,.rrow-role,.suggest-name,.home-rules b{font-weight:700}
+.cue-body .story-line q,.cue-body .story-then q,.cue-body .tell-say b,.story-say .story-line q{font-family:var(--font-ui);font-weight:700;font-size:clamp(1.35rem,1.1rem + 1.4vw,1.6rem);line-height:1.35}

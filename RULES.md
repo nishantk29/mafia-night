@@ -17,6 +17,17 @@
 | R9 | Nothing leaks to a phone: no other player's role (unless revealed on death or the game is over), result, call number, variant id, host key or token. | v1 (variant ids: v7) | rules-gate: `house rule: nothing leaks to a player phone` → `v4…v7 reveal false/true: no other role, token, key, call number or variant id on any phone, in any phase`; `a player view never shows another player's call number`. Also audit-v7 `phones never carry other players' secrets`. |
 | R10 | A room keeps the night version it was created with. Only starting the next night applies a host-requested upgrade. Restart and New game move it to the latest. A v1 room (no field) reads as 1 and is never rewritten. | v1 | rules-gate: `house rule: a room keeps the night version it was created with` → `new rooms get the latest version`, `v2…v6: kept through deal, night, day, condemn, kill, revive and another night`, `v2…v6: only startNight applies a pending upgrade`, `v2…v6: Restart and newGame move the room to the latest`, `a v1 room (no field) reads as 1 and is never backfilled…`, `in the lobby the upgrade applies at once…`. Also night-version-legacy, restart. |
 
+## v9 rules (Nishant 2026-10-28, pinned by `nightVersion` 9; older rooms keep their behaviour)
+| Rule | Test |
+|---|---|
+| Wake order: Mafia (and every other killer) pick before protectors; Mafia -> Doctor -> Cop in every mode | `test/night-order-v9.test.js` "v9 night order" |
+| Only the Mafia kill call says "Mafia"; team members with their own action are called by their role name | `test/night-order-v9.test.js` "only the Mafia kill call says Mafia" |
+| A blocked or jailed role wakes and picks as normal; the block only cancels the effect (Doctor save fails, Cop/Detective gets a NO RESULT card); limited uses are still spent | `test/night-order-v9.test.js` "v9 blocker rule" |
+| Every duplicated night role (team roles included) gets its own numbered call, pick and result | `test/duplicate-roles-v9.test.js` |
+| A player's hand opens at the top with the card face down | `test/e2e/hand-top.e2e.mjs` (browser, run by hand: not in the node gate) |
+| No AI wording in shipped copy | `test/copy-lint.test.js` |
+| Limelight for headings and titles only, loaded by Mafia itself | `test/fonts.test.js` |
+
 ## v8 rules
 
 All gated on `nightVersion >= 8`; v1..v7 rooms behave exactly as before. Every rule is tested three ways: what it does, that the table (Say lines, steps, cues, morning announcement, other phones) cannot tell whether it happened, and that v7 is unchanged. All tests are in `rules-gate`.
