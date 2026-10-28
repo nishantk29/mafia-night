@@ -441,3 +441,11 @@ html[data-fx="off"] .check-card{animation:none}
 .role-name,.rrow-role,.suggest-name,.home-rules b,.faq-roles b,.faq-q summary,.faq-a,.btn,.tabbar button,.role-filter button,.code,.room-code{font-family:var(--font-ui);text-transform:none;letter-spacing:0}
 .role-name,.rrow-role,.suggest-name,.home-rules b{font-weight:700}
 .cue-body .story-line q,.cue-body .story-then q,.cue-body .tell-say b,.story-say .story-line q{font-family:var(--font-ui);font-weight:700;font-size:clamp(1.35rem,1.1rem + 1.4vw,1.6rem);line-height:1.35}
+
+/* ---- callout: a small boxed notice (info or warning). One or two short lines, muted, never a wall of yellow text. ---- */
+.callout{display:flex;align-items:flex-start;gap:var(--f-s2);margin:0 0 var(--f-s3);padding:var(--f-s2) var(--f-s3);max-width:var(--measure,60ch);
+  border:1px solid var(--f-line);border-radius:var(--f-r-sm);background:rgba(255,255,255,.04);
+  font:400 .875rem/1.4 var(--font-ui);color:var(--smoke,#C9BFAE);letter-spacing:0;text-transform:none}
+.callout > .ui-ico{flex:none;width:16px;height:16px;margin-top:.15em;color:var(--f-accent)}
+.callout.is-warn{border-color:rgba(224,174,82,.55);background:rgba(224,174,82,.08);color:var(--f-ink)}
+.callout.is-warn > .ui-ico{color:var(--f-accent)}

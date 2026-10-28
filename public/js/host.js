@@ -140,7 +140,7 @@ function lobby(v, local) {
   const counts = {};
   for (const id of c.roles) counts[id] = (counts[id] || 0) + 1;
 
-  const joinCode = local ? `<p class="note local-note">${ui('phone')} <span>This game is saved only in this browser on this device. Nobody else can see it, and nothing is sent online. Opening the site somewhere else starts fresh.</span></p>` : `<section class="block join-code">
+  const joinCode = local ? `<p class="callout local-note" role="note">${ui('info')} <span>Saved only in this browser. Nothing is sent online.</span></p>` : `<section class="block join-code">
     <p class="muted">Players go to <b>${esc(joinSite())}</b> and enter</p>
     <div class="room-code code" aria-label="Room code ${esc(v.code.split('').join(' '))}">${esc(v.code)}</div>
     <button type="button" class="join-qr" data-a="showQr" aria-label="Join QR code for room ${esc(v.code)}. Tap to enlarge.">${qrFor(link)}</button>
@@ -282,7 +282,7 @@ function simplePanel(v, local, need, fitMsg) {
     <ul class="deck-list">${rows}</ul>
     ${advice(c.roles, v.players.length)}
     <div class="rules">${toggle}</div>
-    ${fitMsg ? `<p class="note is-warn">${ui('warning')} ${esc(fitMsg)}</p>` : ''}${key}${flow}
+    ${fitMsg ? `<p class="callout is-warn" role="note">${ui('warning')} <span>${esc(fitMsg)}</span></p>` : ''}${key}${flow}
   </section>`;
 }
 
@@ -685,7 +685,7 @@ function upgradeCard(v) {
   if (v.nightVersion >= LATEST_NIGHT_VERSION || v.phase === 'lobby') return '';
   const queued = !!v.upgradeNext;
   return `<section class="block upgrade-night"><h2 class="block-title">Use the new night script from next night</h2>
-    <p class="note">${v.nightVersion >= 2 ? 'Adds the v9 order: the Mafia pick before the Doctor and Bodyguard. A blocked player still wakes and picks. Two players with the same role each get a number. Also the v8 rules: a Doctor and Bodyguard on one target save both, used-up roles are still called, the Coroner and Psychic get less certain, and an Executioner whose target dies becomes a Jester.' : 'Dead roles are still called at night, so nobody can tell who died.'} Takes effect when the next night starts; nothing changes mid-step.</p>
+    <p class="callout" role="note">${ui('info')} <span>${v.nightVersion >= 2 ? 'Adds the v9 order: the Mafia pick before the Doctor and Bodyguard. A blocked player still wakes and picks. Two players with the same role each get a number. Also the v8 rules: a Doctor and Bodyguard on one target save both, used-up roles are still called, the Coroner and Psychic get less certain, and an Executioner whose target dies becomes a Jester.' : 'Dead roles are still called at night, so nobody can tell who died.'} Takes effect when the next night starts; nothing changes mid-step.</span></p>
     ${queued ? `<p class="note is-private">Switches on at the start of night ${v.night + 1}.</p><button type="button" class="btn ghost" data-a="upgradeNight" data-off="1">Undo</button>`
       : `<button type="button" class="btn" data-a="upgradeNight">Use the new night script</button>`}</section>`;
 }
