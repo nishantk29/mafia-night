@@ -89,11 +89,14 @@ function followCue() {
   const key = cur ? `${S.view?.night}:${cur.dataset.ck}` : null;
   if (!cur || key === S.ui.lastCue) { if (!cur) S.ui.lastCue = null; return; }
   S.ui.lastCue = key;
-  requestAnimationFrame(() => cur.scrollIntoView({ behavior: animOn() ? 'smooth' : 'auto', block: 'center' }));
+  // A tall step (the line to read plus its picker) is aligned to its top, under the app bar, so the line to read stays on screen.
+  requestAnimationFrame(() => cur.scrollIntoView({ behavior: animOn() ? 'smooth' : 'auto', block: cur.offsetHeight > innerHeight * 0.55 ? 'start' : 'center' }));
 }
 // The key of what a player's hand shows. When it changes (joined, dealt, card entered, a new phase, a new game, a death)
 // the screen opens at the top, where the face-down card is, instead of keeping the old screen's scroll position.
-const handKey = (mode, v) => (mode === 'play' ? `${v ? `${v.kind}|${v.gameNo}|${v.phase}|${v.me?.role?.id || ''}|${v.me?.card ? 1 : 0}|${v.me?.alive}` : 'join'}` : null);
+// The Host's screen does the same when the phase changes (Deal roles, Start night, dawn), since its button sits at the bottom.
+const handKey = (mode, v) => (mode === 'play' ? `${v ? `${v.kind}|${v.gameNo}|${v.phase}|${v.me?.role?.id || ''}|${v.me?.card ? 1 : 0}|${v.me?.alive}` : 'join'}`
+  : (mode === 'host' || mode === 'local') && v ? `host|${v.gameNo}|${v.phase}|${v.night || 0}` : null);
 function paintScreen() {
   const a = document.activeElement;
   const sel = a && a !== document.body && $app.contains(a) ? focusSelector(a) : null;
