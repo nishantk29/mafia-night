@@ -60,22 +60,22 @@ describe('v6 Godfather vs Detective', () => {
 
 describe('v6 versioning', () => {
   const up = (room) => reduce(room, HOST, { type: 'upgradeNight' });
-  test('new rooms are v8', () => assert.equal(newRoom('X', 'k').nightVersion, 8));
+  test('new rooms are v9', () => assert.equal(newRoom('X', 'k').nightVersion, 9));
   test('a v1 room upgrades to 8 at the next night and the Detective sees VILLAGER', () => {
     const room = mk(1, { phase: 'day', night: 1 });
     assert.ok(up(room).ok);
     assert.ok(reduce(room, HOST, { type: 'startNight' }).ok);
-    assert.equal(nightVersion(room), 8);
+    assert.equal(nightVersion(room), 9);
     assert.equal(check(room, 'detective', 'God').card.text, 'VILLAGER');
   });
   test('a v5 room can upgrade to 8', () => {
     const room = mk(5, { phase: 'day', night: 1 });
     assert.ok(up(room).ok);
-    assert.equal(room.upgradeNext, 8);
+    assert.equal(room.upgradeNext, 9);
     assert.ok(reduce(room, HOST, { type: 'startNight' }).ok);
-    assert.equal(nightVersion(room), 8);
+    assert.equal(nightVersion(room), 9);
   });
-  test('a v8 room is already current', () => {
-    assert.match(up(mk(8, { phase: 'day', night: 1 })).error, /Already using/);
+  test('a v9 room is already current', () => {
+    assert.match(up(mk(9, { phase: 'day', night: 1 })).error, /Already using/);
   });
 });

@@ -151,7 +151,14 @@ export const hasNightOnlyInfo = (room) => nightVersion(room) >= 7;
 // anybody visited them. (6) An Executioner whose target dies any way but a day vote becomes a Jester; every Executioner is called every
 // night and told privately through the check card.
 export const hasV8Rules = (room) => nightVersion(room) >= 8;
-export const LATEST_NIGHT_VERSION = 8;
+// 9: (1) standard wake order: protectors (Doctor, Bodyguard and their look-alikes) wake AFTER the Mafia and every other killer,
+// so the order the Host reads is Mafia -> Doctor -> Detective. Resolution is unchanged (it never depended on call order for
+// saves). (2) A blocked or jailed role still wakes and picks like anyone else; the block only cancels the effect when the
+// night resolves. A blocked investigator is shown a "NO RESULT" card, so the step plays out the same way with or without a block.
+export const hasV9Order = (room) => nightVersion(room) >= 9;
+export const LATEST_NIGHT_VERSION = 9;
+// v9 wake order: protect 20 -> 54, guard 21 -> 55 (after the last killer at 53, before the Coroner at 58 and the investigators).
+const V9_SHIFT = { protect: 34, guard: 34 };
 // 7: every look-alike call family is numbered 1..N (Cop 1, Cop 2...), the player's phone shows their number, and the Confused Cop is a disguised Cop
 export const hasNumberedCalls = (room) => nightVersion(room) >= 7;
 
@@ -318,6 +325,10 @@ function scriptSteps(room) {
   for (const group of Object.values(said)) if (group.length > 1) for (const st of group) {
     st.hint = `More than one player answers to this call. Tap ${st.actors.map((id) => nameOf(room, id)).join(' and ')} on the shoulder so only they wake.`;
   }
+  if (hasV9Order(room)) for (const st of steps) {
+    const type = st.kind === 'identify' ? ROLE_BY_ID[st.roleId]?.action?.type : st.kind === 'action' && st.key.startsWith('act:') ? st.type : null;
+    if (V9_SHIFT[type]) st.order += V9_SHIFT[type];
+  }
   return steps.sort((a, b) => a.order - b.order);
 }
 
@@ -389,8 +400,8 @@ export function stepCues(step) {
 export function stepGesture(step, result) {
   if (!stepCues(step) || step.kind !== 'action') return null;
   if (['investigate', 'track', 'watch', 'autopsy'].includes(step.type)) {
-    if (!result || result.blocked) return null;
-    if ((result.neutral || result.novision) && step.type === 'investigate') return { kind: 'yesno', text: 'Give no sign: keep your hand flat and still' };
+    if (!result || (result.blocked && !result.noresult)) return null;
+    if ((result.neutral || result.novision || result.noresult) && step.type === 'investigate') return { kind: 'yesno', text: 'Give no sign: keep your hand flat and still' };
     const m = /^(.+) is (MAFIA|NOT Mafia)\.$/.exec(result.text || '');
     if (step.type === 'investigate' && m) {
       return m[2] === 'MAFIA'
@@ -427,7 +438,9 @@ export function previewNight(room, actions, stepKey) {
   const copy = structuredClone(room);
   copy.log = []; copy.pending = [];
   resolveNight(copy, sofar, { ghost: stepKey, preview: true }); // a dead investigator's call looks like any other to the Host
-  return copy.lastReport.info.find((i) => i.key === stepKey) || { text: '', note: 'No result: they were blocked or stayed home.', blocked: true };
+  return copy.lastReport.info.find((i) => i.key === stepKey)
+    || (hasV9Order(room) ? { text: 'No result tonight.', note: 'They were blocked: show the NO RESULT card.', blocked: true, noresult: true }
+      : { text: '', note: 'No result: they were blocked or stayed home.', blocked: true });
 }
 
 // Advice about a role set before dealing. level: 'error' blocks the deal, 'warn' is risky, 'tip' is a nudge.
@@ -761,6 +774,7 @@ export function checkCard(room, step, result) {
   if (step.type !== 'investigate' && !(isInfo && hasNightOnlyInfo(room))) return null;
   if (result.novision) return { kind: 'none', text: 'NO VISION TONIGHT' };
   if (result.neutral) return { kind: 'none', text: 'NO ANSWER' };
+  if (result.noresult) return { kind: 'none', text: 'NO RESULT' }; // v9: a blocked investigator still gets a card, just no answer
   if (result.blocked) return null;
   if (isInfo) return result.card || null;
   const t = String(result.text || '');

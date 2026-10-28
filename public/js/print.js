@@ -2,7 +2,7 @@
 // 1. Simple mode: one page with the playing-card key and suggested counts for 5 to 30 players.
 // 2. Complex mode: for one player count, which card means which role, setup steps and an eyes-closed night script.
 // 3. Complex mode: a sheet of role cards to cut out.
-import { suggestRoles, buildDeckMap, FULL_DECK, cardInfo, nightScript, MIN_PLAYERS, START_CUE, END_CUE } from './engine.js';
+import { suggestRoles, buildDeckMap, FULL_DECK, cardInfo, nightScript, prepNotes, MIN_PLAYERS, START_CUE, END_CUE, LATEST_NIGHT_VERSION } from './engine.js';
 import { ROLE_BY_ID } from './roles.js';
 import { cardArt } from './art.js';
 import { SIMPLE_ROLES, SIMPLE_CARDS, simpleCounts, simpleRoleIds, deckFit } from './simple.js';
@@ -17,14 +17,18 @@ export const hostWords = (s) => String(s ?? '').replace(/story\s?teller/gi, (w) 
 const say = (s) => esc(hostWords(s));
 
 // Everything one Complex player count needs. The fixed key is used so a printed page stays true game after game.
-export function buildGuide(n) {
-  const roleIds = suggestRoles(n);
+// `roles` (optional): the exact role list of a game, so the printed cards match the app's fixed key for that game.
+export function buildGuide(n, roles = null) {
+  const roleIds = roles?.length ? roles : suggestRoles(n);
+  n = roleIds.length;
   const map = buildDeckMap(roleIds, 'fixed');
   const rows = map.map(({ card, roleId }) => ({ card, info: cardInfo(card), role: ROLE_BY_ID[roleId] }))
     .sort((a, b) => (a.role.alignment === 'town') - (b.role.alignment === 'town') || a.role.alignment.localeCompare(b.role.alignment)
       || a.role.name.localeCompare(b.role.name) || FULL_DECK.indexOf(a.card) - FULL_DECK.indexOf(b.card));
-  const room = { night: 1, config: { mode: 'cards' }, usage: {}, players: map.map((m, i) => ({ id: `p${i}`, name: `Player ${i + 1}`, alive: true, roleId: m.roleId })) };
-  return { n, roleIds, map, rows, steps: nightScript(room) };
+  // The printed script follows the latest wake order (Mafia, then the Doctor, then the Cop). Host-only notes come first.
+  const room = { night: 1, nightVersion: LATEST_NIGHT_VERSION, copSalt: 0.5, config: { mode: 'cards' }, usage: {}, players: map.map((m, i) => ({ id: `p${i}`, name: `Player ${i + 1}`, alive: true, roleId: m.roleId })) };
+  const notes = prepNotes(room).map((x) => ({ kind: 'info', spoken: false, roleId: x.roleId, prompt: x.text }));
+  return { n, roleIds, map, rows, steps: [...notes, ...nightScript(room)] };
 }
 
 // Script lines in wake order. Info steps that are not read aloud are notes for the Host.
@@ -63,7 +67,7 @@ export function guidePage(n) {
     <h3>Card key</h3>${keyTable(g)}
     <h3>Setting up</h3>${setup(g)}
     <h3>Eyes-closed script, night 1</h3>${narration(g)}
-    <p class="fine">Later nights use the same order and skip anyone who has died. The Mafia win when they match everyone else; the town wins when every Mafia member is out.</p>
+    <p class="fine">Later nights use the same order. Keep calling roles whose player has died, so nobody can tell who is gone. The Mafia win when they match everyone else; the town wins when every Mafia member and every other killer is out.</p>
   </section>`;
 }
 
@@ -71,8 +75,8 @@ const cardFace = (row) => `<div class="pcard a-${row.role.alignment}">
   <span class="corner tl ${row.info.red ? 'red' : ''}">${esc(row.info.label)}</span><span class="corner br ${row.info.red ? 'red' : ''}">${esc(row.info.label)}</span>
   ${cardArt(row.role)}<div class="pcard-name">${esc(row.role.name)}</div><div class="pcard-team">${TEAM[row.role.alignment]}</div><p>${say(row.role.blurb)}</p></div>`;
 
-export function sheetPages(n) {
-  const { rows } = buildGuide(n);
+export function sheetPages(n, roles = null) {
+  const { rows } = buildGuide(n, roles);
   const pages = [];
   for (let i = 0; i < rows.length; i += 9) pages.push(rows.slice(i, i + 9));
   return pages.map((p) => `<section class="page sheet">${p.map(cardFace).join('')}</section>`).join('');
@@ -137,7 +141,7 @@ export function simplePage() {
       <div><h3>Setting up</h3>${simpleSetup()}</div>
       <div><h3>Each night</h3>${simpleNight()}</div>
     </div>
-    <p class="fine">Later nights use the same order and skip anyone who has died. The Mafia win when they match the rest; the town wins when every Mafia member is out.</p>
+    <p class="fine">Later nights use the same order. Keep calling roles whose player has died, so nobody can tell who is gone. The Mafia win when they match the rest; the town wins when every Mafia member is out.</p>
   </section>`;
 }
 
@@ -145,8 +149,10 @@ export function render(root, params) {
   const view = VIEWS.some(([v]) => v === params.view) ? params.view : 'simple';
   const all = params.n === 'all';
   const n = COUNTS.includes(Number(params.n)) ? Number(params.n) : 8;
+  // ?roles=mafia,doctor,... (from the game's lobby): print the cards for exactly that game.
+  const roles = String(params.roles || '').split(',').filter((id) => ROLE_BY_ID[id]).slice(0, 30);
   const opt = (v, label, cur) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${label}</option>`;
-  const body = view === 'simple' ? simplePage() : view === 'sheet' ? sheetPages(n) : (all ? COUNTS : [n]).map(guidePage).join('');
+  const body = view === 'simple' ? simplePage() : view === 'sheet' ? sheetPages(n, roles.length >= MIN_PLAYERS ? roles : null) : (all ? COUNTS : [n]).map(guidePage).join('');
   root.innerHTML = `<header class="bar noprint">
       <a class="back" href="/#/faq">← How it works</a>
       <h1>Printable card guide</h1>

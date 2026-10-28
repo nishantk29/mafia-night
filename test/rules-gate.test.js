@@ -10,7 +10,7 @@ import { ROLES, ROLE_BY_ID } from '../public/js/roles.js';
 import { newRoom, reduce, viewForPlayer, viewForHost, messagesFor, migrateRoleIds } from '../public/js/room.js';
 
 const HOST = { host: true }, ANON = { anon: true };
-const VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+const VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 function mk(spec, { version = LATEST_NIGHT_VERSION, phase = 'night', night = 2, salt = 0.5 } = {}) {
   const room = newRoom('RG', 'hostkey');
@@ -340,7 +340,7 @@ describe('house rule: a room keeps the night version it was created with', () =>
   };
   test('new rooms get the latest version', () => {
     assert.equal(newRoom('A', 'k').nightVersion, LATEST_NIGHT_VERSION);
-    assert.equal(LATEST_NIGHT_VERSION, 8);
+    assert.equal(LATEST_NIGHT_VERSION, 9);
   });
   for (const v of [2, 3, 4, 5, 6, 7]) {
     test(`v${v}: kept through deal, night, day, condemn, kill, revive and another night`, () => {
@@ -357,18 +357,18 @@ describe('house rule: a room keeps the night version it was created with', () =>
       const room = tinyRoom(v);
       assert.ok(reduce(room, HOST, { type: 'deal' }).ok);
       assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok);
-      assert.equal(room.nightVersion, v); assert.equal(room.upgradeNext, 8);
+      assert.equal(room.nightVersion, v); assert.equal(room.upgradeNext, 9);
       assert.ok(reduce(room, HOST, { type: 'setNote', playerId: room.players[0].id, note: 'n' }).ok);
       assert.equal(room.nightVersion, v);
       assert.ok(reduce(room, HOST, { type: 'startNight' }).ok);
-      assert.equal(room.nightVersion, 8); assert.equal(room.upgradeNext, undefined);
+      assert.equal(room.nightVersion, 9); assert.equal(room.upgradeNext, undefined);
     });
     test(`v${v}: Restart and newGame move the room to the latest`, () => {
       for (const type of ['restart', 'newGame']) {
         const room = tinyRoom(v);
         assert.ok(reduce(room, HOST, { type: 'deal' }).ok);
         assert.ok(reduce(room, HOST, { type }).ok);
-        assert.equal(room.nightVersion, 8, type);
+        assert.equal(room.nightVersion, 9, type);
       }
     });
   }
@@ -384,7 +384,7 @@ describe('house rule: a room keeps the night version it was created with', () =>
   test('in the lobby the upgrade applies at once; a room already at latest refuses it', () => {
     const room = tinyRoom(5);
     assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok);
-    assert.equal(room.nightVersion, 8);
+    assert.equal(room.nightVersion, 9);
     assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).error);
   });
 });
@@ -607,11 +607,11 @@ describe('house rule: v8 an Executioner whose target dies any way but a vote bec
 });
 
 describe('house rule: v8 version plumbing', () => {
-  test('latest is 8, v7 rooms are offered the upgrade, v8 rooms are not', () => {
-    assert.equal(LATEST_NIGHT_VERSION, 8);
+  test('v7 rooms are offered the upgrade (to the latest), latest rooms are not', () => {
+    assert.ok(LATEST_NIGHT_VERSION >= 8);
     assert.equal(hasV8Rules({ nightVersion: 7 }), false); assert.equal(hasV8Rules({ nightVersion: 8 }), true);
     const room = mk([['A', 'villager'], ['B', 'villager'], ['C', 'villager'], ['D', 'villager'], ['E', 'mafia']], { version: 7, phase: 'day', night: 1 });
-    assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok); assert.equal(room.upgradeNext, 8);
-    assert.ok(reduce(mk([['A', 'villager']], { version: 8, phase: 'day' }), HOST, { type: 'upgradeNight' }).error);
+    assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok); assert.equal(room.upgradeNext, LATEST_NIGHT_VERSION);
+    assert.ok(reduce(mk([['A', 'villager']], { version: LATEST_NIGHT_VERSION, phase: 'day' }), HOST, { type: 'upgradeNight' }).error);
   });
 });

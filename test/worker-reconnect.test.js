@@ -142,7 +142,7 @@ test('Restart reaches every socket with the new gameNo, the Graveyard is cleared
     assert.equal(view(w).gameNo, 2, 'every socket sees game 2');
     assert.equal(view(w).phase, 'dealt');
   }
-  assert.equal(r.nightVersion, 8);
+  assert.equal(r.nightVersion, 9);
   assert.ok(r.players.every((p) => p.alive));
   for (const w of [host, ...ps]) assert.ok(!JSON.stringify(w.sent).includes('old'));
   assert.equal(gy(host).entries.length, 0);
