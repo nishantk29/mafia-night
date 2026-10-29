@@ -198,11 +198,11 @@ describe('FAQ matches what ships', () => {
     const { faqScreen } = await import('../public/js/faq.js');
     const html = faqScreen();
     const at = (t) => { const i = html.indexOf(t); assert.ok(i >= 0, t); return i; };
-    assert.ok(at('Blockers and jailers first') < at('The Mafia’s kill') && at('The Mafia’s kill') < at('Protectors (Doctor') && at('Protectors (Doctor') < at('Investigators, such as the Cop'));
-    at('Mafia, then Doctor, then Cop');
+    assert.ok(at('Blockers and jailers first') < at('The Mafia’s kill') && at('The Mafia’s kill') < at('Protectors (Doctor') && at('Protectors (Doctor') < at('Detectives, and the Investigator if you use one'));
+    at('Mafia, then Doctor, then Detective');
     at('A blocked or jailed player wakes and points like any other night');
     at('NO RESULT card');
-    at('Cop 1, Cop 2, Hooker 1, Hooker 2');
+    at('Detective 1, Detective 2, Hooker 1, Hooker 2');
     assert.ok(!/skip anyone who has died/i.test(html));
   });
 });

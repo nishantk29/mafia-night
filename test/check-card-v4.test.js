@@ -18,7 +18,7 @@ function mk(spec, night, version = 4) {
 const investigators = ROLES.filter((r) => r.action?.type === 'investigate' && !r.action.group);
 const expectKind = (r) => (r.action.check === 'role' ? 'role' : r.action.check === 'parity' ? 'parity' : 'alignment');
 const NAMES = ['Mob', 'Pat', 'Sam', 'Zed'];
-const people = () => [['Mob', 'mafia'], ['Pat', 'villager'], ['Sam', 'villager'], ['Zed', 'detective']];
+const people = () => [['Mob', 'mafia'], ['Pat', 'villager'], ['Sam', 'villager'], ['Zed', 'investigator']];
 const run = (roleId, alive, version = 4, targetName = 'Mob', flip = 'heads') => {
   const room = mk([['X', roleId, alive], ...people()], 2, version);
   const st = nightScript(room).find((s) => s.key === 'act:pX');
@@ -50,7 +50,7 @@ describe('checkCard', () => {
     });
   }
   test('role card is the role name in caps; alignment and parity texts', () => {
-    assert.deepEqual(run('detective', true, 4, 'Mob').card, { kind: 'role', text: 'MAFIA' });
+    assert.deepEqual(run('investigator', true, 4, 'Mob').card, { kind: 'role', text: 'MAFIA' });
     assert.deepEqual(run('cop', true, 4, 'Mob').card, { kind: 'alignment', text: 'MAFIA' });
     assert.deepEqual(run('cop', true, 4, 'Pat').card, { kind: 'alignment', text: 'NOT MAFIA' });
     assert.deepEqual(run('insane_cop', true, 4, 'Mob').card, { kind: 'alignment', text: 'NOT MAFIA' });

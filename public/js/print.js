@@ -3,7 +3,7 @@
 // 2. Complex mode: for one player count, which card means which role, setup steps and an eyes-closed night script.
 // 3. Complex mode: a sheet of role cards to cut out.
 import { suggestRoles, buildDeckMap, FULL_DECK, cardInfo, nightScript, prepNotes, MIN_PLAYERS, START_CUE, END_CUE, LATEST_NIGHT_VERSION } from './engine.js';
-import { ROLE_BY_ID } from './roles.js';
+import { ROLE_BY_ID, mergedRoleId, SETUP_LINK_VERSION } from './roles.js';
 import { cardArt } from './art.js';
 import { SIMPLE_ROLES, SIMPLE_CARDS, simpleCounts, simpleRoleIds, deckFit } from './simple.js';
 
@@ -25,7 +25,7 @@ export function buildGuide(n, roles = null) {
   const rows = map.map(({ card, roleId }) => ({ card, info: cardInfo(card), role: ROLE_BY_ID[roleId] }))
     .sort((a, b) => (a.role.alignment === 'town') - (b.role.alignment === 'town') || a.role.alignment.localeCompare(b.role.alignment)
       || a.role.name.localeCompare(b.role.name) || FULL_DECK.indexOf(a.card) - FULL_DECK.indexOf(b.card));
-  // The printed script follows the latest wake order (Mafia, then the Doctor, then the Cop). Host-only notes come first.
+  // The printed script follows the latest wake order (Mafia, then the Doctor, then the Detective). Host-only notes come first.
   const room = { night: 1, nightVersion: LATEST_NIGHT_VERSION, copSalt: 0.5, config: { mode: 'cards' }, usage: {}, players: map.map((m, i) => ({ id: `p${i}`, name: `Player ${i + 1}`, alive: true, roleId: m.roleId })) };
   const notes = prepNotes(room).map((x) => ({ kind: 'info', spoken: false, roleId: x.roleId, prompt: x.text }));
   return { n, roleIds, map, rows, steps: [...notes, ...nightScript(room)] };
@@ -95,7 +95,7 @@ export function simpleRows() {
 const SIMPLE_MEANS = {
   mafia: 'Black Aces, then black Kings, then black Jacks.',
   doctor: 'Red Kings.',
-  cop: 'Red Queens.',
+  detective: 'Red Queens.',
   villager: 'Number cards, 2 to 10. Villagers are never called, so any suit works.',
 };
 const cardLabel = (id) => { const c = cardInfo(id); return `<span class="${c.red ? 'red' : ''}">${esc(c.label)}</span>`; };
@@ -105,8 +105,8 @@ const simpleKey = () => `<table class="key"><thead><tr><th>Role</th><th>Cards, i
 </tbody></table>`;
 
 // Three tables side by side on paper and wide screens, stacked on a phone.
-const suggestTable = (rows) => `<table class="suggest"><thead><tr><th>Players</th><th>Mafia</th><th>Doctor</th><th>Cop</th><th>Villagers</th></tr></thead><tbody>
-  ${rows.map((r) => `<tr class="${r.fits ? '' : 'over'}"><th scope="row">${r.n}${r.fits ? '' : ' *'}</th><td>${r.counts.mafia}</td><td>${r.counts.doctor}</td><td>${r.counts.cop}</td><td>${r.counts.villager}</td></tr>`).join('')}
+const suggestTable = (rows) => `<table class="suggest"><thead><tr><th>Players</th><th>Mafia</th><th>Doctor</th><th>Detective</th><th>Villagers</th></tr></thead><tbody>
+  ${rows.map((r) => `<tr class="${r.fits ? '' : 'over'}"><th scope="row">${r.n}${r.fits ? '' : ' *'}</th><td>${r.counts.mafia}</td><td>${r.counts.doctor}</td><td>${r.counts.detective}</td><td>${r.counts.villager}</td></tr>`).join('')}
 </tbody></table>`;
 const suggestTables = (rows) => {
   const per = Math.ceil(rows.length / 3);
@@ -122,17 +122,17 @@ const simpleSetup = () => `<ol class="setup">
 
 const simpleNight = () => `<ol class="script">
   <li class="say">${START_CUE}</li>
-  <li class="note"><span class="tag">Night 1</span> Call Mafia, Doctor and Cop with eyes open: “Doctor, open your eyes. Whoever holds a Doctor card, raise a hand.” Note the hands, then close their eyes.</li>
+  <li class="note"><span class="tag">Night 1</span> Call Mafia, Doctor and Detective with eyes open: “Doctor, open your eyes. Whoever holds a Doctor card, raise a hand.” Note the hands, then close their eyes.</li>
   <li class="say">Mafia, wake up. Who do you kill? Then: “Mafia, close your eyes.”</li>
   <li class="say">Doctor, wake up. Who do you protect? Then: “Doctor, close your eyes.”</li>
-  <li class="say">Cop, wake up. Who do you check? Nod if they are Mafia, shake your head if not. Then: “Cop, close your eyes.”</li>
+  <li class="say">Detective, wake up. Who do you check? Nod if they are Mafia, shake your head if not. Then: “Detective, close your eyes.”</li>
   <li class="say">${END_CUE} It is morning. Tell the table who did not wake up.</li>
 </ol>`;
 
 export function simplePage() {
   const rows = simpleRows();
   return `<section class="page guide simple">
-    <h2>Simple mode card key <small>Mafia, Doctor, Cop, Villager</small></h2>
+    <h2>Simple mode card key <small>Mafia, Doctor, Detective, Villager</small></h2>
     <p>Four roles from one 52-card deck. Keep this key on the table, where everyone can see it.</p>
     <h3>Card key</h3>${simpleKey()}
     <h3>Players and suggested counts</h3>${suggestTables(rows)}
@@ -150,7 +150,9 @@ export function render(root, params) {
   const all = params.n === 'all';
   const n = COUNTS.includes(Number(params.n)) ? Number(params.n) : 8;
   // ?roles=mafia,doctor,... (from the game's lobby): print the cards for exactly that game.
-  const roles = String(params.roles || '').split(',').filter((id) => ROLE_BY_ID[id]).slice(0, 30);
+  // Links made before the Detective merge carry no `v`: their `cop` is the Detective and their `detective` the Investigator.
+  const fromOld = params.v !== String(SETUP_LINK_VERSION);
+  const roles = String(params.roles || '').split(',').map((id) => (fromOld ? mergedRoleId(id) : id)).filter((id) => ROLE_BY_ID[id] && !ROLE_BY_ID[id].legacy).slice(0, 30);
   const opt = (v, label, cur) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${label}</option>`;
   const body = view === 'simple' ? simplePage() : view === 'sheet' ? sheetPages(n, roles.length >= MIN_PLAYERS ? roles : null) : (all ? COUNTS : [n]).map(guidePage).join('');
   root.innerHTML = `<header class="bar noprint">

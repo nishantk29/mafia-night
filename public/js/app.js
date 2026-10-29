@@ -357,7 +357,7 @@ function showTip(el) {
   if (r.onCondemn) bits.push(`<p><b>If condemned:</b> ${esc(r.onCondemn)}</p>`);
   if (r.night1) bits.push(`<p><b>Night 1:</b> ${esc(r.night1)}</p>`);
   if (r.seesAs) bits.push(`<p><b>Thinks they are:</b> ${esc(ROLE_BY_ID[r.seesAs]?.name || r.seesAs)}</p>`);
-  if (r.appearsAs) bits.push(`<p><b>Investigators see:</b> ${r.appearsAs === 'mafia' ? 'Mafia' : 'innocent'}</p>`);
+  if (r.appearsAs) bits.push(`<p><b>A Detective sees:</b> ${r.appearsAs === 'mafia' ? 'MAFIA' : 'NOT MAFIA'}</p>`);
   $tip.innerHTML = `<div class="tip-h"><span class="tip-glyph a-${r.alignment}">${ico(r)}</span><b>${esc(r.name)}</b><span class="team-tag a-${r.alignment}"><i class="team-mark a-${r.alignment}"></i>${teamName(r.alignment)}</span></div><p>${esc(r.blurb)}</p>${bits.join('')}`;
   themeDom($tip, themeOf(S.view), seatNames());
   $tip.dataset.for = r.id;

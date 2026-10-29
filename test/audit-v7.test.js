@@ -167,9 +167,9 @@ describe('no-condemn and restart housekeeping (v7)', () => {
 describe('Godfather vs every investigator (v7)', () => {
   const inv = ROLES.filter((r) => ['investigate', 'track', 'watch', 'autopsy'].includes(r.action?.type) && !r.meeting);
   const want = {
-    cop: 'God is NOT Mafia.', sheriff: 'God is NOT Mafia.', dirty_cop: 'God is NOT Mafia.', naive_cop: 'God is NOT Mafia.',
-    insane_cop: 'God is MAFIA.', paranoid_cop: 'God is MAFIA.', detective: 'God is the Villager.', psychic: 'God is MAFIA.',
-    confused_cop: 'God is NOT Mafia.',
+    detective: 'God is NOT Mafia.', sheriff: 'God is NOT Mafia.', dirty_detective: 'God is NOT Mafia.', naive_detective: 'God is NOT Mafia.',
+    insane_detective: 'God is MAFIA.', paranoid_detective: 'God is MAFIA.', investigator: 'God is the Villager.', psychic: 'God is MAFIA.',
+    confused_detective: 'God is NOT Mafia.',
   };
   for (const r of inv.filter((x) => want[x.id])) {
     test(`${r.id}: ${want[r.id]}`, () => {
@@ -192,11 +192,11 @@ describe('Godfather vs every investigator (v7)', () => {
     const st = step(room, 'parity_cop');
     assert.equal(previewNight(room, { [st.key]: { targets: ['pGod', 'pV1'] } }, st.key).text, 'God and V1 are on the SAME side.');
   });
-  test('a framed Godfather is MAFIA to the Cop and Parity Cop, and still a Villager to the Detective', () => {
-    const room = mk([['Fr', 'framer'], ['God', 'godfather'], ['Cop', 'cop'], ['Det', 'detective'], ['PC', 'parity_cop'], ...town(3)]);
+  test('a framed Godfather is MAFIA to the Cop and Parity Cop, and still a Villager to the Investigator', () => {
+    const room = mk([['Fr', 'framer'], ['God', 'godfather'], ['Cop', 'cop'], ['Det', 'investigator'], ['PC', 'parity_cop'], ...town(3)]);
     const fr = ['framer', 'God'];
     assert.equal(preview(room, 'cop', fr, ['cop', 'God']).text, 'God is MAFIA.');
-    assert.equal(preview(room, 'detective', fr, ['detective', 'God']).text, 'God is the Villager.');
+    assert.equal(preview(room, 'investigator', fr, ['investigator', 'God']).text, 'God is the Villager.');
     assert.equal(preview(room, 'parity_cop', fr, ['parity_cop', 'God', 'V1']).text, 'God and V1 are on DIFFERENT sides.');
   });
   test('Cop cards: alignment cards say MAFIA / NOT MAFIA, never the role', () => {
@@ -208,12 +208,12 @@ describe('Godfather vs every investigator (v7)', () => {
 });
 
 describe('framer, blockers and jailer vs checks', () => {
-  const spec = [['Fr', 'framer'], ['Hk', 'hooker'], ['Cop', 'cop'], ['Det', 'detective'], ['Pc', 'parity_cop'], ['Jl', 'jailer'], ['Mob', 'mafia'], ...town(3)];
-  test('frame wakes before every check: Cop, Parity Cop see it; Detective does not care', () => {
+  const spec = [['Fr', 'framer'], ['Hk', 'hooker'], ['Cop', 'cop'], ['Det', 'investigator'], ['Pc', 'parity_cop'], ['Jl', 'jailer'], ['Mob', 'mafia'], ...town(3)];
+  test('frame wakes before every check: Cop, Parity Cop see it; Investigator does not care', () => {
     const room = mk(spec);
     assert.equal(preview(room, 'cop', ['framer', 'V1'], ['cop', 'V1']).text, 'V1 is MAFIA.');
     assert.equal(preview(room, 'parity_cop', ['framer', 'V1'], ['parity_cop', 'V1', 'V2']).text, 'V1 and V2 are on DIFFERENT sides.');
-    assert.equal(preview(room, 'detective', ['framer', 'V1'], ['detective', 'V1']).text, 'V1 is the Villager.');
+    assert.equal(preview(room, 'investigator', ['framer', 'V1'], ['investigator', 'V1']).text, 'V1 is the Villager.');
   });
   test('a blocked Framer frames nobody; the frame ends with the night', () => {
     const room = mk(spec);
@@ -384,7 +384,7 @@ describe('day: ties, no-lynch, on-death triggers, Jester', () => {
 });
 
 describe('phones never carry other players\' secrets', () => {
-  const spec = [['Mob', 'mafia'], ['God', 'godfather'], ['Cop', 'cop'], ['Ic', 'insane_cop'], ['Cc', 'confused_cop'], ['Det', 'detective'], ['Doc', 'doctor'],
+  const spec = [['Mob', 'mafia'], ['God', 'godfather'], ['Cop', 'cop'], ['Ic', 'insane_cop'], ['Cc', 'confused_cop'], ['Det', 'investigator'], ['Doc', 'doctor'],
     ['Tr', 'tracker'], ['Lo', 'lookout'], ['Co', 'coroner'], ['Vig', 'vigilante'], ['Jan', 'janitor'], ['V1', 'villager'], ['V2', 'villager']];
   const secretKeys = ['framed', 'callNo', 'copSalt', 'usage', 'report', 'deck', 'script', 'story', 'pending', 'dayUsed', 'lastReport', 'shield'];
   const scan = (room, label) => {

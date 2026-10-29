@@ -67,8 +67,8 @@ describe('house rule: dead roles are called exactly like living ones', () => {
 
 // ---------------------------------------------------------------------------------------------------------------
 describe('house rule: investigator results are given only at night', () => {
-  const SPEC = [['Mob', 'mafia'], ['Cop', 'cop'], ['Det', 'detective'], ['Trk', 'tracker'], ['Lkt', 'lookout'], ['Cor', 'coroner'], ['V1', 'villager'], ['V2', 'villager'], ['V3', 'villager'], ['Dead', 'villager', false]];
-  const targets = { cop: 'Mob', detective: 'Mob', tracker: 'V1', lookout: 'V1', coroner: 'Dead' };
+  const SPEC = [['Mob', 'mafia'], ['Cop', 'cop'], ['Det', 'detective_v1'], ['Trk', 'tracker'], ['Lkt', 'lookout'], ['Cor', 'coroner'], ['V1', 'villager'], ['V2', 'villager'], ['V3', 'villager'], ['Dead', 'villager', false]];
+  const targets = { cop: 'Mob', detective_v1: 'Mob', tracker: 'V1', lookout: 'V1', coroner: 'Dead' };
   const night = (version) => {
     const room = mk(SPEC, { version, night: 2 });
     const ans = {};
@@ -79,13 +79,13 @@ describe('house rule: investigator results are given only at night', () => {
   const infoRoles = (rep) => rep.info.map((i) => i.roleId).sort();
   test('v4 (control): results are in the report and on the phone', () => {
     const { room, rep } = night(4);
-    assert.deepEqual(infoRoles(rep), ['cop', 'coroner', 'detective', 'lookout', 'tracker']);
+    assert.deepEqual(infoRoles(rep), ['cop', 'coroner', 'detective_v1', 'lookout', 'tracker']);
     assert.ok(viewForPlayer(room, 'pCop').me.results.length > 0);
   });
   for (const v of [5, 6, 7]) {
     test(`v${v}: Cop and Detective results never reach report.info, the morning notes or any phone`, () => {
       const { room, rep } = night(v);
-      assert.ok(!infoRoles(rep).includes('cop') && !infoRoles(rep).includes('detective'));
+      assert.ok(!infoRoles(rep).includes('cop') && !infoRoles(rep).includes('detective_v1'));
       assert.deepEqual(room.results.filter((r) => r.ids.some((id) => ['pCop', 'pDet'].includes(id))), []);
       assert.ok(!/is MAFIA|Mob is the/.test(JSON.stringify(morningAnnouncement(room, rep))));
       assert.ok(!/is MAFIA|Mob is the/.test(JSON.stringify(viewForHost(room).report)));
@@ -112,7 +112,7 @@ describe('house rule: investigator results are given only at night', () => {
 
 // ---------------------------------------------------------------------------------------------------------------
 describe('house rule: the Detective sees the exact role; the Godfather reads as a Villager from v6', () => {
-  const SPEC = [['Mob', 'mafia'], ['God', 'godfather'], ['Det', 'detective'], ['Doc', 'doctor'], ['V1', 'villager'], ['V2', 'villager']];
+  const SPEC = [['Mob', 'mafia'], ['God', 'godfather'], ['Det', 'detective_v1'], ['Doc', 'doctor'], ['V1', 'villager'], ['V2', 'villager']];
   for (const v of [4, 5, 6, 7]) {
     test(`v${v}: Detective sees ${v >= 6 ? 'VILLAGER' : 'GODFATHER'} for the Godfather and the exact role for everyone else`, () => {
       const room = mk(SPEC, { version: v });
@@ -172,7 +172,7 @@ describe('house rule: Cops and Detectives are numbered 1..N (v7)', () => {
   const BAD = /insane|naive|paranoid|confused|\breal\b|dirty|parity/i;
   const FAMILIES = [
     ['Cop', ['cop', 'cop', 'insane_cop', 'naive_cop', 'confused_cop']],
-    ['Detective', ['detective', 'detective', 'detective']],
+    ['Detective', ['detective_v1', 'detective_v1', 'detective_v1']],
   ];
   const room = (roles, salt = 0.5) => mk([...roles.map((r, i) => [`C${i}`, r]), ['Mob', 'mafia'], ['V1', 'villager'], ['V2', 'villager']], { version: 7, salt });
   for (const [fam, roles] of FAMILIES) {
@@ -270,7 +270,7 @@ describe('house rule: living players never receive the Graveyard', () => {
 
 // ---------------------------------------------------------------------------------------------------------------
 describe('house rule: nothing leaks to a player phone', () => {
-  const ROLE_IDS = ['mafia', 'godfather', 'doctor', 'cop', 'insane_cop', 'detective', 'confused_cop', 'tracker', 'villager', 'villager'];
+  const ROLE_IDS = ['mafia', 'godfather', 'doctor', 'cop', 'insane_cop', 'detective_v1', 'confused_cop', 'tracker', 'villager', 'villager'];
   function game(version, reveal) {
     const room = newRoom('LK', 'HOSTSECRET-key');
     room.config.mode = 'app'; room.config.roles = [...ROLE_IDS]; room.config.rules.revealOnDeath = reveal;
@@ -340,7 +340,7 @@ describe('house rule: a room keeps the night version it was created with', () =>
   };
   test('new rooms get the latest version', () => {
     assert.equal(newRoom('A', 'k').nightVersion, LATEST_NIGHT_VERSION);
-    assert.equal(LATEST_NIGHT_VERSION, 9);
+    assert.equal(LATEST_NIGHT_VERSION, 10);
   });
   for (const v of [2, 3, 4, 5, 6, 7]) {
     test(`v${v}: kept through deal, night, day, condemn, kill, revive and another night`, () => {
@@ -368,7 +368,7 @@ describe('house rule: a room keeps the night version it was created with', () =>
         const room = tinyRoom(v);
         assert.ok(reduce(room, HOST, { type: 'deal' }).ok);
         assert.ok(reduce(room, HOST, { type }).ok);
-        assert.equal(room.nightVersion, 9, type);
+        assert.equal(room.nightVersion, 10, type);
       }
     });
   }
@@ -384,7 +384,7 @@ describe('house rule: a room keeps the night version it was created with', () =>
   test('in the lobby the upgrade applies at once; a room already at latest refuses it', () => {
     const room = tinyRoom(5);
     assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok);
-    assert.equal(room.nightVersion, 9);
+    assert.equal(room.nightVersion, 10);
     assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).error);
   });
 });
@@ -611,7 +611,7 @@ describe('house rule: v8 version plumbing', () => {
     assert.ok(LATEST_NIGHT_VERSION >= 8);
     assert.equal(hasV8Rules({ nightVersion: 7 }), false); assert.equal(hasV8Rules({ nightVersion: 8 }), true);
     const room = mk([['A', 'villager'], ['B', 'villager'], ['C', 'villager'], ['D', 'villager'], ['E', 'mafia']], { version: 7, phase: 'day', night: 1 });
-    assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok); assert.equal(room.upgradeNext, LATEST_NIGHT_VERSION);
+    assert.ok(reduce(room, HOST, { type: 'upgradeNight' }).ok); assert.equal(room.upgradeNext, 9);
     assert.ok(reduce(mk([['A', 'villager']], { version: LATEST_NIGHT_VERSION, phase: 'day' }), HOST, { type: 'upgradeNight' }).error);
   });
 });

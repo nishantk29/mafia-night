@@ -57,12 +57,12 @@ describe('night gestures', () => {
     assert.deepEqual(doneStepLines(s, null), []);
   });
   test('blocked or missing result gives no yes/no gesture', () => {
-    const s = cases.find((c) => c.role.id === 'cop').s;
+    const s = cases.find((c) => c.role.id === 'detective').s;
     assert.equal(stepGesture(s, { text: '', blocked: true }), null);
     assert.equal(stepGesture(s, null), null);
   });
-  test('Cop: Mafia nods, not Mafia shakes', () => {
-    const s = cases.find((c) => c.role.id === 'cop').s;
+  test('Detective: Mafia nods, not Mafia shakes', () => {
+    const s = cases.find((c) => c.role.id === 'detective').s;
     assert.equal(stepGesture(s, { text: 'Mo is MAFIA.' }).text, 'Nod your head / Thumbs up — Mo is Mafia');
     assert.equal(stepGesture(s, { text: 'Vic is NOT Mafia.' }).text, 'Shake your head / Thumbs down — Vic is not Mafia');
   });
