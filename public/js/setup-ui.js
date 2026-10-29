@@ -54,7 +54,7 @@ export function carousel(c) {
     const done = i < st.step; const cur = i === st.step;
     return `<button type="button" class="setup-dot ${cur ? 'is-cur' : done ? 'is-done' : ''}" data-a="setupGo" data-v="${i}" ${cur ? 'aria-current="step"' : ''} ${i > st.step ? 'aria-disabled="true" tabindex="-1"' : ''} aria-label="Step ${i + 1}, ${label}${done ? ', done' : ''}"><span aria-hidden="true">${done ? ui('check') : i + 1}</span></button>`;
   }).join('');
-  const cards = steps.map(([k], i) => `<section class="setup-card ${i === st.step ? 'is-active' : ''}" data-card="${k}" ${i === st.step ? '' : 'inert aria-hidden="true"'}>${i === st.step ? cardBody(k, c) : ''}</section>`).join('');
+  const cards = steps.map(([k], i) => `<section class="setup-card ${i === st.step ? 'is-active' : ''}" data-card="${k}" ${i === st.step ? '' : 'inert aria-hidden="true"'}>${i === st.step || i === st.from ? cardBody(k, c) : ''}</section>`).join('');
   return `<div class="setup" data-step="${st.step}">
     <div class="setup-progress" role="group" aria-label="Setup steps"><div class="setup-dots">${dots}</div><span class="setup-count">Step ${st.step + 1} of ${total}: ${esc(steps[st.step][1])}</span></div>
     <div class="setup-viewport"><div class="setup-track" style="transform:translateX(-${st.step * 100}%)">${cards}</div></div>

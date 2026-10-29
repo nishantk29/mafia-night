@@ -65,13 +65,18 @@ export function afterSetupPaint(root) {
   const active = track.querySelector('.setup-card.is-active');
   const fit = () => { track.parentElement.style.height = `${active.offsetHeight}px`; };
   fit();
+  // The card being left keeps its content while it slides out (no blank slot), then empties once the slide ends.
+  const others = [...track.querySelectorAll('.setup-card:not(.is-active)')].filter((x) => x.childElementCount);
+  for (const o of others) for (const x of o.querySelectorAll('[id]')) x.removeAttribute('id');
+  const clear = () => { for (const o of others) if (!o.classList.contains('is-active')) o.replaceChildren(); };
   if (st.from != null && st.from !== st.step) {
     if (animOn()) {
       track.style.transition = 'none'; track.style.transform = `translateX(-${st.from * 100}%)`; void track.offsetWidth;
       track.style.transition = ''; track.style.transform = `translateX(-${st.step * 100}%)`;
-    } else active.classList.add('is-fade');
+      track.addEventListener('transitionend', clear, { once: true }); setTimeout(clear, 1000);
+    } else { active.classList.add('is-fade'); clear(); }
     st.from = null;
-  }
+  } else clear();
   let moved = false;
   if (st.focus) {
     st.focus = false; moved = true;

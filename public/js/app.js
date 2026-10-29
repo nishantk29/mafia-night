@@ -25,6 +25,7 @@ import { seatingOf } from './setup-store.js';
 import { passReveal, goneScreen } from './seating.js';
 import { SETUP_ACTIONS, syncSetup, afterSetupPaint, markCustom, setupDealProblem, wireSetupGestures } from './setup-actions.js';
 import { step, gameAwake } from './motion.js';
+import { enterKeys, settle } from './settle.js';
 import { createHold } from './hold.js';
 import { siteFooter } from './footer.js';
 import { HOST_HELP_ACTIONS, hostHelpOpen } from './host_help.js';
@@ -101,7 +102,9 @@ function paintScreen() {
   $html.dataset.world = shell === 'player' ? worldOf(phase) : 'neutral'; // follows the broadcast phase, dead players included
   const opened = S.ui.anim;
   const keepMark = $app.querySelector('.splash .wordmark'); // the static splash logo stays (its drips and hub handoff keep playing)
+  const shown = enterKeys($app); // entrances already on screen do not replay on this repaint
   $app.innerHTML = screen();
+  settle($app, shown);
   if (keepMark) $app.querySelector('.home-hero .wordmark')?.replaceWith(keepMark);
   themeDom($app, themeOf(S.view), seatNames());
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
