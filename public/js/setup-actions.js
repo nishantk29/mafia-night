@@ -5,6 +5,7 @@ import { MAFIA_PRESETS, mafiaPresetById } from './preset-mixes.js';
 import { loadSetup, saveSetup, loadAdvanced, saveAdvanced, loadSaved, writeSaved, addSaved, renameSaved, deleteSaved, presetOf, desiredRoles, stepProblem, localDealConfig, cleanName } from './setup-store.js';
 import { setupCtx, carousel, dock, presetsPage, presetsDock, previewSheet, customizePage, customizeDock, saveSheet, menuSheet } from './setup-ui.js';
 import { animOn } from './fx.js';
+import { REVEAL_POLICY } from './engine.js';
 
 const roomKey = (local) => (local ? 'LOCAL' : S.code);
 const last = {}; // what was last sent for each kind of sync, so a rejected or sliced value can't loop
@@ -46,7 +47,7 @@ export function syncSetup() {
   if (want && !sameList(want, v.config.roles)) push('roles', { type: 'setConfig', roles: want }); else delete last.roles;
   const a = S.ui.advanced; const cur = v.advanced || {};
   if (a.dayTimer !== !!cur.dayTimer || a.hiddenSetup !== !!cur.hiddenSetup || a.cardOnDeath !== (v.config.rules?.revealOnDeath !== false)) {
-    push('adv', { type: 'setConfig', advanced: { dayTimer: a.dayTimer, hiddenSetup: a.hiddenSetup }, rules: { revealOnDeath: a.cardOnDeath } });
+    push('adv', { type: 'setConfig', advanced: { dayTimer: a.dayTimer, hiddenSetup: a.hiddenSetup }, rules: { revealOnDeath: a.cardOnDeath }, revealPolicy: REVEAL_POLICY });
   } else delete last.adv;
   if (local) {
     const wantCfg = localDealConfig(st.deal, v.config.roles);

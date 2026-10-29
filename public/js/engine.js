@@ -126,8 +126,17 @@ export function unidentifiedSlots(room) {
 }
 
 // House rules the Host can switch in the lobby.
-export const DEFAULT_RULES = { revealOnDeath: true, selfProtect: true, firstNightKill: true, dayStart: false };
-export const rulesOf = (room) => ({ ...DEFAULT_RULES, ...(room?.config?.rules || {}) });
+export const DEFAULT_RULES = { revealOnDeath: false, selfProtect: true, firstNightKill: true, dayStart: false };
+// "Show a player's card when they die" was on by default until Oct 29 2026, so rooms made before then hold
+// revealOnDeath:true without the host ever choosing it. Only a room stamped with REVEAL_POLICY (new rooms, or a host who
+// turned the switch on with a build that sends the stamp) may reveal; everything else is treated as off. Game over still shows all.
+export const REVEAL_POLICY = 2;
+export const revealChosen = (room) => room?.config?.revealPolicy === REVEAL_POLICY;
+export const rulesOf = (room) => {
+  const r = { ...DEFAULT_RULES, ...(room?.config?.rules || {}) };
+  if (!revealChosen(room)) r.revealOnDeath = false;
+  return r;
+};
 
 // Night-script rules version, stored on the room when it is created. 1 (or no field: a legacy room) skips dead
 // roles at night; 2 calls them exactly like living ones (their action then does nothing, see resolveNight).

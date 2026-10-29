@@ -90,7 +90,7 @@ function planGame(g) {
     const need = ROLE_BY_ID[id].requiresPartner;
     if (need && !roles.includes(need)) { const v = roles.indexOf('villager'); if (v >= 0) roles[v] = need; else roles[i] = 'villager'; }
   }
-  const rules = { revealOnDeath: R.chance(0.8), selfProtect: R.chance(0.7), firstNightKill: R.chance(0.8), dayStart: R.chance(0.15) };
+  const rules = { revealOnDeath: R.chance(0.5), selfProtect: R.chance(0.7), firstNightKill: R.chance(0.8), dayStart: R.chance(0.15) };
   return { g, R, n, modeKind, strategy, customs, roles, rules };
 }
 const PLANS = Array.from({ length: GAMES }, (_, g) => planGame(g));
@@ -185,7 +185,7 @@ async function playGame(plan) {
   // Setup
   if (usesCustom) await act({ type: 'setCustomRoles', roles: customs });
   const mode = modeKind === 'app' ? 'app' : 'cards';
-  await act({ type: 'setConfig', mode, cardFlow: modeKind === 'blind' ? 'blind' : 'claim', deckStyle: R.pick(['fixed', 'random']), roles: roles.slice(0, count), rules });
+  await act({ type: 'setConfig', mode, cardFlow: modeKind === 'blind' ? 'blind' : 'claim', deckStyle: R.pick(['fixed', 'random']), roles: roles.slice(0, count), rules, revealPolicy: 2 });
   const accepted = host.last().config.roles;
   if (accepted.length !== Math.min(roles.length, count)) problem(`setConfig dropped roles: sent ${roles.length}, kept ${accepted.length}`);
   const dealErr = await act({ type: 'deal' }, { expectError: true });
@@ -232,6 +232,10 @@ async function playGame(plan) {
     && v.players.filter((q) => q.alive).map((q) => q.id).join() === H.players.filter((q) => q.alive).map((q) => q.id).join();
   const checkSecrecy = async () => {
     const H = host.last(); if (!H) return;
+    if (rules.revealOnDeath === false && H.phase !== 'over' && H.story?.morning?.say) { // the read-aloud morning line names no role of the dead
+      let say = H.story.morning.say; for (const q of H.players) say = say.split(q.name).join('');
+      for (const q of H.players) if (!q.alive && q.roleId && say.includes(ROLE_BY_ID[q.roleId]?.name)) problem(`LEAK: morning line names ${q.name}'s role with reveal off: ${H.story.morning.say}`);
+    }
     const open = phones.filter((p) => !p.closed && p.last()?.kind === 'player');
     try { await until(() => open.every((p) => p.closed || inSync(p.last(), H)), 'phones to catch up', 5000); }
     catch { problem(`a phone's view did not catch up with the host (${H.phase}, night ${H.night})`); return; }
@@ -255,6 +259,12 @@ async function playGame(plan) {
         if (!over && q.alive && q.role) problem(`LEAK: ${v.me.name} sees living ${q.name}'s role`);
         if (!over && !q.alive && real?.roleHidden && q.role) problem(`LEAK: Janitor-hidden role of ${q.name} visible`);
         if (!over && !q.alive && rules.revealOnDeath === false && q.role) problem(`LEAK: ${q.name}'s role shown on death with "reveal on death" off`);
+      }
+      // Reveal off (the default since Oct 29): the public log never names a role of the dead (house rule R9).
+      if (!over && rules.revealOnDeath === false) for (const l of v.publicLog || []) for (const q of H.players) {
+        if (q.alive || !q.roleId || q.id === v.me.id) continue;
+        const nm = ROLE_BY_ID[q.roleId]?.name;
+        if (nm && H.players.reduce((t, x) => t.split(x.name).join(''), l.text).includes(nm)) problem(`LEAK: public log names dead ${q.name}'s role with reveal off: ${l.text}`);
       }
       // Teammates only for meeting roles
       const myReal = ROLE_BY_ID[me.roleId];
