@@ -1,7 +1,9 @@
 {
   "name": "mafia-app",
   "main": "src/worker.js",
-  "compatibility_date": "2025-09-01",
+  // 2026-10-01 matches the hub and Odd Card. Flags between 2025-09-01 and this date were reviewed on Oct 28 2026
+  // (WebSocket close auto-reply, close-reason limit, deleteAll also deletes alarms, nodejs_compat default): see test/compat-date.test.js.
+  "compatibility_date": "2026-10-01",
   "assets": { "directory": "./public", "binding": "ASSETS", "not_found_handling": "404-page" },
   "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
