@@ -25,6 +25,7 @@ import { siteFooter } from './footer.js';
 import { HOST_HELP_ACTIONS, hostHelpOpen } from './host_help.js';
 import { errorBody, errorButtons, crashHtml, FATAL, ENDED } from './error-screen.js';
 import { wordmark, knifeSvg, suggestions } from './flair.js';
+import { wakeReconnect } from './wake.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -227,8 +228,9 @@ function closeTransport() { closeVictory(); S.transport?.close?.(); S.transport 
 function wsTransport(code, helloFn) {
   let ws; let closed = false; let tries = 0; let timer; let longTimer;
   const open = () => {
-    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/${code}`);
-    ws.onopen = () => { tries = 0; S.conn = true; S.connLong = false; clearTimeout(longTimer); longTimer = null; const h = helloFn(); if (h) ws.send(JSON.stringify(h)); S.render(); };
+    // Each socket's handlers check s === ws, so a socket abandoned by a wake-up reconnect can't schedule another one.
+    const s = ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/${code}`);
+    ws.onopen = () => { if (s !== ws) return s.close(); tries = 0; S.conn = true; S.connLong = false; clearTimeout(longTimer); longTimer = null; const h = helloFn(); if (h) ws.send(JSON.stringify(h)); S.render(); };
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.type === 'view') {
@@ -243,12 +245,14 @@ function wsTransport(code, helloFn) {
       else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); applyClosed(m, S.mode, closeVictory); S.render(); }
       else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = FATAL.closed; S.render(); } }
     };
-    ws.onclose = () => { if (closed) return; S.conn = false; if (!longTimer) { longTimer = setTimeout(() => { if (!S.conn && !closed) { S.connLong = true; S.render(); } }, 20000); } S.render(); timer = setTimeout(open, Math.min(8000, 400 * 2 ** tries++)); };
+    ws.onclose = () => { if (closed || s !== ws) return; S.conn = false; if (!longTimer) { longTimer = setTimeout(() => { if (!S.conn && !closed) { S.connLong = true; S.render(); } }, 20000); } S.render(); timer = setTimeout(open, Math.min(8000, 400 * 2 ** tries++)); };
   };
   open();
+  // Phone back (screen on, app switched back, signal back): reconnect now instead of waiting up to 8 s for the timer.
+  const stopWake = wakeReconnect({ getSocket: () => ws, isStopped: () => closed, reconnect: () => { clearTimeout(timer); tries = 0; open(); } });
   return {
     send: (a) => { if (ws?.readyState === 1) ws.send(JSON.stringify(a)); else S.toast('Not connected to the room yet. Try again in a moment.'); },
-    close: () => { closed = true; clearTimeout(timer); clearTimeout(longTimer); ws?.close(); },
+    close: () => { closed = true; stopWake(); clearTimeout(timer); clearTimeout(longTimer); ws?.close(); },
   };
 }
 
