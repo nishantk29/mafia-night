@@ -13,7 +13,7 @@ const ACTIONS = {
   grandma: '-', granny: 'alert:22', bodyguard: 'guard:21', muscle: 'guard:21', mercenary: 'guard:21',
   security_guard: 'blockVisitors:14', bouncer: 'blockVisitors:13', doorman: 'blockVisitors:14', smuggler: 'blockVisitors:14',
   jailer: 'jail:10', kidnapper: 'jail:10', drunk: 'block:11', hooker: 'block:12', collaborator: 'block:11',
-  veteran: 'alert:22', sentinel: 'alert:22', prepper: 'alert:22', parity_cop: 'investigate:62', bookkeeper: 'investigate:62', oracle: '-',
+  veteran: 'alert:22', sentinel: 'alert:22', prepper: 'alert:22', comparer: 'investigate:62', bookkeeper: 'investigate:62', oracle: '-',
   tracker: 'track:63', shadow: 'track:63', lookout: 'watch:64', spy: 'watch:64', hangman: '-', defense_attorney: '-', mob_lawyer: '-',
   jester: '-', patsy: '-', poltergeist: '-', zealot: '-', executioner: '-', rival: '-', stalker: 'watch:64', vendetta: '-',
   survivor: '-', hermit: '-', opportunist: '-', profiteer: 'watch:64', vulture: 'autopsy:58',
@@ -89,7 +89,7 @@ describe('role groups', () => {
   });
 
   test('the Cop family stays ungrouped', () => {
-    for (const id of ['cop', 'insane_cop', 'naive_cop', 'paranoid_cop', 'confused_cop']) assert.equal(ROLE_BY_ID[id].group, undefined, id);
+    for (const id of ['detective', 'insane_detective', 'naive_detective', 'paranoid_detective', 'confused_detective']) assert.equal(ROLE_BY_ID[id].group, undefined, id);
   });
 
   test('picker entries: one per group, and two variants of one group count independently', () => {

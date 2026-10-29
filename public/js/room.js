@@ -2,11 +2,11 @@
 import {
   FULL_DECK, roleMax, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
-  setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard,
+  setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard, upgradeTarget, hasMergedDetective,
   hasStoryScript, hasNightOnlyChecks, assignCallNumbers, callNumbers, hasNumberedCalls, shownRoleId, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
-import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId } from './roles.js';
+import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId, legacyRoleId, pinStoredId, storedToMerged } from './roles.js';
 import { roleGuide } from './role_guide.js';
 import { ROOM_MODES, CARD_FLOWS } from './modes.js';
 
@@ -53,6 +53,7 @@ function resetDeal(room) {
 // Restart: a fresh game for the same room. Keeps code, hostKey, players and config; moves the room to the latest night version.
 export function restartGame(room) {
   resetDeal(room);
+  if (!hasMergedDetective(room) && room.config?.roles) room.config.roles = room.config.roles.map(storedToMerged); // the merge starts with a new game
   room.nightVersion = LATEST_NIGHT_VERSION;
   delete room.upgradeNext;
   room.results = []; room.lastReport = null; room.log = []; room.framed = []; room.pending = [];
@@ -93,7 +94,9 @@ function postChat(room, actor, a) {
 export function reduce(room, actor, a) {
   registerRoles(room.config.customRoles);
   migrateRoleIds(room);
-  if (a && typeof a.roleId === 'string') a = { ...a, roleId: resolveRoleId(a.roleId) };
+  // A pinned room (before the Detective merge) keeps the old roles: ids from the new picker map back to them.
+  const pin = (id) => (hasMergedDetective(room) ? id : legacyRoleId(id));
+  if (a && typeof a.roleId === 'string') a = { ...a, roleId: pin(resolveRoleId(a.roleId)) };
   const host = !!actor.host;
   const err = (e) => ({ error: e });
   const t = a.type;
@@ -173,7 +176,7 @@ export function reduce(room, actor, a) {
       if (a.cardFlow && CARD_FLOWS.includes(a.cardFlow)) c.cardFlow = a.cardFlow;
       if (Array.isArray(a.roles)) {
         const seen = {};
-        c.roles = a.roles.map(resolveRoleId).filter((r) => ROLE_BY_ID[r]).filter((r) => (seen[r] = (seen[r] || 0) + 1) <= roleMax(r)).slice(0, MAX_PLAYERS);
+        c.roles = a.roles.map(resolveRoleId).map(pin).filter((r) => ROLE_BY_ID[r]).filter((r) => (seen[r] = (seen[r] || 0) + 1) <= roleMax(r)).slice(0, MAX_PLAYERS);
       }
       if (typeof a.sharedBoard === 'boolean') c.sharedBoard = a.sharedBoard;
       if (a.theme && THEMES[a.theme]) c.theme = a.theme;
@@ -234,10 +237,11 @@ export function reduce(room, actor, a) {
       p.roleId = resolveRoleId(a.roleId); assignCallNumbers(room); return { ok: true };
     }
     case 'upgradeNight': { // host opt-in for legacy rooms; always applied when the next night starts, never mid-step
-      if (nightVersion(room) >= LATEST_NIGHT_VERSION) return err('Already using the new night script.');
+      const target = upgradeTarget(room); // a room already in a game stops before the Detective merge
+      if (nightVersion(room) >= target) return err('Already using the new night script.');
       if (a.off) delete room.upgradeNext;
-      else if (room.phase === 'lobby') room.nightVersion = LATEST_NIGHT_VERSION;
-      else room.upgradeNext = LATEST_NIGHT_VERSION;
+      else if (room.phase === 'lobby') { room.nightVersion = target; if (room.config.roles) room.config.roles = room.config.roles.map(storedToMerged); }
+      else room.upgradeNext = target;
       return { ok: true };
     }
     case 'startNight': {
@@ -245,7 +249,7 @@ export function reduce(room, actor, a) {
       if (room.pending.length) return err('Resolve the pending prompts first.');
       const blindFirst = isBlind(room) && room.night === 0;
       if (!blindFirst && room.players.some((p) => !p.roleId)) return err('Every player needs a role first.');
-      if (room.upgradeNext) { room.nightVersion = Math.max(nightVersion(room), room.upgradeNext); delete room.upgradeNext; }
+      if (room.upgradeNext) { room.nightVersion = Math.max(nightVersion(room), Math.min(room.upgradeNext, upgradeTarget(room))); delete room.upgradeNext; }
       room.night += 1; room.phase = 'night'; room.condemnedDay = null; assignCallNumbers(room);
       if (room.night === 1) {
         finalizeBlind(room);
@@ -468,9 +472,11 @@ export function viewForHost(room, connected = new Set()) {
 // Old ids (see ROLE_ALIASES) in a stored room or host view are rewritten to the canonical role, in place.
 export function migrateRoleIds(room) {
   const c = room?.config;
-  if (c?.roles) c.roles = c.roles.map(resolveRoleId);
-  for (const p of room?.players || []) { if (p.roleId) p.roleId = resolveRoleId(p.roleId); if (p.convertedFrom) p.convertedFrom = resolveRoleId(p.convertedFrom); }
-  if (room?.deck?.map) for (const m of room.deck.map) m.roleId = resolveRoleId(m.roleId);
+  // A room before night version 10 keeps its roles and names; its old exact-role Detective (`detective`) is stored as `detective_v1`.
+  const fix = hasMergedDetective(room) ? resolveRoleId : (id) => pinStoredId(resolveRoleId(id));
+  if (c?.roles) c.roles = c.roles.map(fix);
+  for (const p of room?.players || []) { if (p.roleId) p.roleId = fix(p.roleId); if (p.convertedFrom) p.convertedFrom = fix(p.convertedFrom); }
+  if (room?.deck?.map) for (const m of room.deck.map) m.roleId = fix(m.roleId);
   return room;
 }
 

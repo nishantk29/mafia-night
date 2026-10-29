@@ -1,7 +1,7 @@
 # Mafia Night house rules and the tests that guard them
 
 `build-deploy` runs the whole suite first (`scripts/test-gate.mjs`) and writes nothing if any test fails. Every rule below has a row here and a named test.
-"Since" is the `nightVersion` that introduced the rule; a room keeps the version it was created with (rule 10). Latest is 8.
+"Since" is the `nightVersion` that introduced the rule; a room keeps the version it was created with (rule 10). Latest is 10.
 `rules-gate` = `test/rules-gate.test.js`. Test names are the exact `describe` / `test` strings.
 
 | # | House rule (plain words) | Since | Test (file: describe → test) |
@@ -60,6 +60,20 @@ Notes: only the plain `executioner` role converts (Rival, Stalker and Vendetta a
 | Reconnecting mid-night restores the night view, with no one else's role; a dropped phone shows offline, then online. | all | `reconnect mid-night: the player gets the night view with their own call name, never anyone else's role`; `a dropped socket shows the player offline; the reconnect shows them online` |
 | After reconnect the Graveyard is still for the dead and the Host only. | v3 | `Graveyard after reconnect: dead players and the Host get it, living players never do` |
 | Restart reaches every phone and the Host with the new game number; only the Host can restart. | v7 | `Restart reaches every socket with the new gameNo, the Graveyard is cleared for everyone`; `only the Host can restart; a player's restart is rejected and nothing changes` |
+
+## Cop and Detective merge (night version 10)
+
+File `test/detective-merge.test.js`. A room created before version 10 keeps its roles and names; a room still in a lobby can take the merge, and a restart moves the setup over.
+
+| House rule | Since | Test |
+|---|---|---|
+| One Detective checks one player and learns MAFIA or NOT MAFIA; the Godfather shows as NOT MAFIA. | v10 | `the merged Detective (night version 10)` |
+| The old exact-role Detective is the optional Investigator (name in `INVESTIGATOR_NAME`); the Godfather shows as a Villager. | v10 | `the merged Detective (night version 10)`: `the Investigator still learns the exact role...` |
+| Two or three Detectives are called and numbered on their own (Detective 1, Detective 2, Detective 3). | v10 | `two and three Detectives are called and numbered on their own`; `sims: 1, 2 and 3 Detectives` |
+| Old setups map when they load: Cop to Detective, Insane Cop to Insane Detective, Parity Cop to Comparer, old Detective to Investigator (one pass, never chained). | v10 | `mapping` |
+| A room before version 10 behaves exactly as before: Cop, Detective (exact role), Parity Cop, same names and cards. | v9 and older | `pinned rooms keep the old roles and names` |
+| A room already in a game cannot take the merge from the new-night-script switch (it stops at 9). | v10 | `pinned rooms keep the old roles and names`: `a mid-game room cannot take the merge...` |
+| Shared invariants: no step can block, game over is terminal, no leaks, no Undo after over, with 1, 2 and 3 Detectives. | v10 | `test/game-invariants.test.js` (the shared kit) |
 
 ## Seeded simulations (many whole games)
 

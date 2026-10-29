@@ -25,7 +25,7 @@ const investigators = ROLES.filter((r) => ['investigate', 'track', 'watch', 'aut
 
 describe('v3 basics', () => {
   test('new rooms are v4 (which includes v3); hasGraveyard only from v3', () => {
-    assert.equal(nightVersion(newRoom("A", "k")), 9);
+    assert.equal(nightVersion(newRoom("A", "k")), 10);
     assert.ok(hasGraveyard(newRoom('A', 'k')));
     assert.ok(!hasGraveyard({ nightVersion: 2 }) && !hasGraveyard({}));
   });

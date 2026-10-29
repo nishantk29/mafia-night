@@ -83,8 +83,8 @@ describe('v7 numbered calls', () => {
 
   for (const n of [2, 3]) {
     test(`${n} Detectives are numbered; Godfather stays a Villager`, () => {
-      const room = mk(Array(n).fill('detective'), { godfather: true });
-      const ds = nightScript(room).filter((s) => s.roleId === 'detective');
+      const room = mk(Array(n).fill('detective_v1'), { godfather: true });
+      const ds = nightScript(room).filter((s) => s.roleId === 'detective_v1');
       assert.deepEqual(ds.map((s) => s.label).sort(), Array.from({ length: n }, (_, i) => `Detective ${i + 1}`));
       for (let i = 0; i < n; i++) {
         const r = answer(room, `C${i}`, 'God');
@@ -117,10 +117,10 @@ describe('v7 numbered calls', () => {
   });
 
   test('v6 rooms keep the old numbering', () => {
-    const room = mk(['cop', 'insane_cop', 'detective', 'detective'], { version: 6 });
+    const room = mk(['cop', 'insane_cop', 'detective_v1', 'detective_v1'], { version: 6 });
     const s = nightScript(room);
     assert.deepEqual(s.filter((x) => /^Cop \d/.test(x.prompt)).length, 2);
-    assert.ok(s.filter((x) => x.roleId === 'detective').every((x) => !/Detective \d/.test(x.prompt)));
+    assert.ok(s.filter((x) => x.roleId === 'detective_v1').every((x) => !/Detective \d/.test(x.prompt)));
     assert.ok(s.every((x) => !x.label));
   });
 });

@@ -1,9 +1,9 @@
-// Simple mode: four roles (Mafia, Doctor, Cop, Villager), suggested counts and a playing-card key. Pure, no DOM.
+// Simple mode: four roles (Mafia, Doctor, Detective, Villager), suggested counts and a playing-card key. Pure, no DOM.
 // Simple role names map onto the existing role ids, so the engine and room code are unchanged.
 export const SIMPLE_ROLES = [
   { id: 'mafia', name: 'Mafia' },
   { id: 'doctor', name: 'Doctor' },
-  { id: 'cop', name: 'Cop' },
+  { id: 'detective', name: 'Detective' },
   { id: 'villager', name: 'Villager' },
 ];
 export const SIMPLE_IDS = SIMPLE_ROLES.map((r) => r.id);
@@ -11,13 +11,13 @@ export const isSimpleSet = (roleIds) => roleIds.every((id) => SIMPLE_IDS.include
 
 export const SIMPLE_KEY = 'mafia.setupMode';
 
-// Suggested counts for n players: 1 Mafia per ~4 players, 1 Doctor, 1 Cop, the rest Villagers.
+// Suggested counts for n players: 1 Mafia per ~4 players, 1 Doctor, 1 Detective, the rest Villagers.
 export function simpleCounts(n) {
   const players = Math.max(0, Math.floor(n) || 0);
   const mafia = Math.max(1, Math.round(players / 4));
   const doctor = players >= 5 ? 1 : 0;
-  const cop = players >= 5 ? 1 : 0;
-  return { mafia, doctor, cop, villager: Math.max(0, players - mafia - doctor - cop) };
+  const detective = players >= 5 ? 1 : 0;
+  return { mafia, doctor, detective, villager: Math.max(0, players - mafia - doctor - detective) };
 }
 
 // Counts -> the flat role id list the room config uses.
@@ -25,18 +25,18 @@ export const simpleRoleIds = (counts) => SIMPLE_IDS.flatMap((id) => Array(Math.m
 
 // Role id list -> counts (ignores anything outside the Simple set).
 export function countsOf(roleIds) {
-  const c = { mafia: 0, doctor: 0, cop: 0, villager: 0 };
-  for (const id of roleIds) if (id in c) c[id]++;
+  const c = { mafia: 0, doctor: 0, detective: 0, villager: 0 };
+  for (const raw of roleIds) { const id = raw === 'cop' ? 'detective' : raw; if (id in c) c[id]++; } // a room from before the merge still lists its Detective as `cop`
   return c;
 }
 
 // Playing-card key, same idea as Black Aces: black Aces, then black Kings, then black Jacks are Mafia,
-// red Kings are the Doctor, red Queens the Cop, number cards are Villagers.
+// red Kings are the Doctor, red Queens the Detective (the old Cop cards), number cards are Villagers.
 // Each list is in the order cards are used; extra copies of a role spill into the next card.
 export const SIMPLE_CARDS = {
   mafia: ['AS', 'AC', 'KS', 'KC', 'JS', 'JC'],
   doctor: ['KH', 'KD'],
-  cop: ['QH', 'QD'],
+  detective: ['QH', 'QD'],
   villager: ['2', '3', '4', '5', '6', '7', '8', '9', '10'].flatMap((r) => ['S', 'H', 'D', 'C'].map((s) => r + s)),
 };
 
@@ -44,7 +44,7 @@ export const SIMPLE_CARDS = {
 export const SIMPLE_CARD_TEXT = {
   mafia: 'Black Aces, then black Kings, then black Jacks',
   doctor: 'Red Kings (K♥ first)',
-  cop: 'Red Queens (Q♥ first)',
+  detective: 'Red Queens (Q♥ first)',
   villager: 'Number cards, 2–10',
 };
 
@@ -65,7 +65,7 @@ export function deckFitText(roleIds) {
 
 // [{card, roleId}], one card per role slot, in the same shape as the engine's buildDeckMap.
 export function simpleDeckMap(roleIds) {
-  const used = { mafia: 0, doctor: 0, cop: 0, villager: 0 };
+  const used = { mafia: 0, doctor: 0, detective: 0, villager: 0 };
   return roleIds.map((roleId) => {
     const list = SIMPLE_CARDS[roleId];
     if (!list) throw new Error(`Not a Simple role: ${roleId}`);

@@ -40,13 +40,13 @@ export function buildExtra(R, A) {
       { night1: 'Nosy Neighbor, open your eyes. Tell them whether the players seated to their left and right look Mafia.' }),
 
     // --- public / suspicious-looking power roles ---
-    R('sheriff', 'Sheriff', '🤠', 'town', 'An openly announced Cop. Everyone knows your badge, so stay alive and check someone each night.',
+    R('sheriff', 'Sheriff', '🤠', 'town', 'An openly announced Detective. Everyone knows your badge, so stay alive and check someone each night.',
       { revealToTown: true, night1: 'Announce the Sheriff to the town.',
         action: A('investigate', 60, 'Sheriff, wake up. Who do you check?', { check: 'alignment' }) }),
     R('back_alley_doctor', 'Back-Alley Doctor', '💉', 'town', 'You save lives each night, but your shady reputation makes you look like Mafia to investigators.',
       { appearsAs: 'mafia', action: A('protect', 20, 'Back-Alley Doctor, wake up. Who do you patch up?') }),
-    R('dirty_cop', 'Dirty Cop', '🚔', 'town', 'You check one player each night, but investigators think you are Mafia.',
-      { appearsAs: 'mafia', action: A('investigate', 60, 'Dirty Cop, wake up. Who do you check?', { check: 'alignment' }) }),
+    R('dirty_detective', 'Dirty Detective', '🚔', 'town', 'You check one player each night, but investigators think you are Mafia.',
+      { appearsAs: 'mafia', action: A('investigate', 60, 'Dirty Detective, wake up. Who do you check?', { check: 'alignment' }) }),
     R('peeping_tom', 'Peeping Tom', '🪟', 'town', 'You watch one house each night and see who visits. Investigators find you suspicious.',
       { appearsAs: 'mafia', action: A('watch', 64, 'Peeping Tom, wake up. Whose window do you watch?') }),
     R('retired_hitman', 'Retired Hitman', '🧓', 'town', 'You cannot be killed at night, but your past makes you look like Mafia to investigators.',

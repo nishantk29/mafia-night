@@ -3,7 +3,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { newRoom, reduce, viewForHost, viewForPlayer } from '../public/js/room.js';
-import { ROLE_BY_ID, factionOf, registerRoles } from '../public/js/roles.js';
+import { MERGED_TO_LEGACY, ROLE_BY_ID, factionOf, registerRoles } from '../public/js/roles.js';
 import {
   CATALOGUE, rng, dealRefusal, planCoverage, candidates, pickNightActions, livePreviews, nightProblems, disguiseLeaks,
 } from '../scripts/sim-lib.mjs';
@@ -159,7 +159,8 @@ describe('random games: live results, honest checks and disguises', () => {
     });
   }
   test('every built-in role was dealt', () => {
-    assert.deepEqual(CATALOGUE.filter((id) => !dealt.has(id)), []);
+    // this room is pinned to v4, so the merged ids deal as their old roles (see detective-merge.test.js and the v10 sims)
+    assert.deepEqual(CATALOGUE.filter((id) => !dealt.has(id) && !(id in MERGED_TO_LEGACY)), []);
     assert.ok([...dealt].every((id) => factionOf(id) && ROLE_BY_ID[id]));
   });
 });

@@ -466,3 +466,28 @@ html[data-fx="off"] .check-card{animation:none}
 html[data-shell="host"]{scroll-padding-bottom:calc(var(--tabbar-h) + 104px + env(safe-area-inset-bottom))}
 /* A step scrolled to its top lands below the sticky app bar. */
 .cues .cue{scroll-margin-top:calc(var(--appbar-h) + env(safe-area-inset-top) + var(--s2))}
+
+/* Role card: card stock, ink, a team-coloured icon, the name in Limelight at the foot (Detective merge, item 2).
+   Town blue, Mafia red and Neutral purple are the card's ink; the page behind stays noir. */
+.rcard{--stock:oklch(91.5% 0.035 80);--stock-ink:oklch(20% 0.02 50);--stock-tint:oklch(38% 0.02 60);--card-team:oklch(42% 0.09 250)}
+.rcard.a-mafia{--card-team:oklch(46% 0.16 25)}
+.rcard.a-third{--card-team:oklch(42% 0.12 305)}
+.rcard-front{background:var(--stock);color:var(--stock-ink);padding:8% 8% 9%;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 1px 0 rgba(0,0,0,.27),0 3px 0 #A8977A,var(--lift-2)}
+.rcard-front .rcard-index{display:none}
+.rcard-team{align-self:flex-start;font-family:var(--font-ui);font-weight:600;font-size:var(--fs-sm);color:var(--card-team)}
+.rcard-front .cardart{background:none;box-shadow:none;border-radius:0;aspect-ratio:auto}
+.rcard-front .cardart .bgart{display:none}
+.rcard-front .cardart .ico.big{color:var(--card-team);filter:none;width:min(44cqw,52cqh);height:min(44cqw,52cqh)}
+.rcard-front .cardart .portrait{border-radius:3px}
+.rcard-body{padding-top:var(--s2);justify-items:start;text-align:left;gap:var(--s2)}
+.rcard-name{color:var(--stock-ink);text-transform:none;letter-spacing:0;font-weight:400;font-size:min(var(--fs-xl,1.75rem),13cqi);line-height:1.05}
+.rcard-call{font-size:var(--fs-sm);color:var(--stock-tint);margin:0}
+.rcard-call b{color:var(--stock-ink)}
+.rcard-blurb{color:var(--stock-tint);font-size:var(--fs-sm);line-height:1.4;max-width:none;margin:0}
+.rcard-front .rcard-body .team-tag{color:var(--card-team)}
+
+/* Check result stamp: Limelight, MAFIA in the Mafia red, NOT MAFIA in card cream. */
+.check-card.is-mafia .check-text{color:oklch(70% 0.15 25)}
+.check-card .check-text{color:oklch(94% 0.03 80)}
+.check-card.is-role .check-text{color:var(--brass)}

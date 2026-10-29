@@ -2,7 +2,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { nightScript, resolveNight, previewNight, setupWarnings } from '../public/js/engine.js';
-import { ROLES, ROLE_BY_ID } from '../public/js/roles.js';
+import { ROLES, LEGACY_ROLES, ROLE_BY_ID } from '../public/js/roles.js';
 import { newRoom, reduce, viewForPlayer } from '../public/js/room.js';
 import { themeText } from '../public/js/theme.js';
 
@@ -212,11 +212,11 @@ describe('setup warnings', () => {
 });
 
 describe('Cop, Detective and Confused Cop in one game', () => {
-  const setup = () => mk([['Cop', 'cop'], ['Det', 'detective'], ['Con', 'confused_cop'], ['Mo', 'mafia'], ['Vic', 'villager'], ...filler(3)]);
+  const setup = () => mk([['Cop', 'cop'], ['Det', 'detective_v1'], ['Con', 'confused_cop'], ['Mo', 'mafia'], ['Vic', 'villager'], ...filler(3)]);
   test('the Confused Cop and the Detective each have their own call, apart from the Cop', () => {
     const steps = nightScript(setup()).filter((s) => s.kind === 'action');
     assert.equal(steps.filter((s) => s.prompt === 'Cop, wake up. Who do you check?').length, 1);
-    for (const r of ['cop', 'confused_cop', 'detective']) assert.equal(steps.find((s) => s.roleId === r).hint, undefined);
+    for (const r of ['cop', 'confused_cop', 'detective_v1']) assert.equal(steps.find((s) => s.roleId === r).hint, undefined);
   });
   test('the real Cop gets the truth, the Confused Cop gets the coin, the Detective sees the true role', () => {
     const room = setup();
@@ -228,7 +228,7 @@ describe('Cop, Detective and Confused Cop in one game', () => {
     const by = (r) => room.lastReport.info.find((i) => i.roleId === r).text;
     assert.equal(by('cop'), 'Mo is MAFIA.');
     assert.equal(by('confused_cop'), 'Mo is NOT Mafia.');
-    assert.equal(by('detective'), 'Con is the Confused Cop.');
+    assert.equal(by('detective_v1'), 'Con is the Confused Cop.');
   });
   test('nobody is offered themselves as a target in the engine script data', () => {
     for (const s of nightScript(setup()).filter((x) => x.kind === 'action')) assert.ok(Array.isArray(s.actors) && s.actors.length);
@@ -244,7 +244,7 @@ describe('Role guide on the phone', () => {
     }
   });
   test('a disguised role reads the guide of the role it thinks it is, and never its real name', () => {
-    for (const r of ROLES.filter((x) => x.seesAs)) {
+    for (const r of [...ROLES, ...LEGACY_ROLES].filter((x) => x.seesAs && x.seesAs !== 'detective')) { // the pinned v4 room reads `detective` as the old exact-role one; new disguises are in detective-merge.test.js
       const room = mk([['X', r.id], ['Mo', 'mafia'], ...filler(4)], { phase: 'dealt', night: 0 });
       const v = viewForPlayer(room, id(room, 'X'));
       const shown = mk([['X', r.seesAs], ['Mo', 'mafia'], ...filler(4)], { phase: 'dealt', night: 0 });

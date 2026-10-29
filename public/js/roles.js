@@ -13,6 +13,10 @@
 import { buildExtra } from './roles_extra.js';
 import { buildExtra2 } from './roles_extra2.js';
 
+// The optional exact-role check. The name lives here once (open question: Nishant may rename it).
+export const INVESTIGATOR_ID = 'investigator';
+export const INVESTIGATOR_NAME = 'Investigator';
+
 const R = (id, name, emoji, alignment, blurb, o = {}) => ({
   id, name, emoji, alignment, blurb, weight: 1, meeting: null, action: null, ...o,
 });
@@ -21,14 +25,14 @@ const A = (type, order, prompt, extra = {}) => ({ type, order, prompt, targets: 
 export const ROLES = [
   // ---------- TOWN ----------
   R('villager', 'Villager', '🧑‍🌾', 'town', 'No powers. Win by reading people and voting well.'),
-  R('cop', 'Cop', '👮', 'town', 'Each night, check one player. You learn whether they look like Mafia.',
-    { action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'alignment' }) }),
-  R('detective', 'Detective', '🕵️', 'town', 'Each night, check one player and learn their exact role. A Godfather shows as a Villager.',
-    { action: A('investigate', 61, 'Detective, wake up. Who do you investigate?', { check: 'role' }) }),
-  R('insane_cop', 'Insane Cop', '🥴', 'town', 'You think you are a Cop, but your results are always backwards.',
-    { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'inverted' }) }),
-  R('parity_cop', 'Parity Cop', '🧭', 'town', 'Each night, pick two players and learn whether they are on the same side.',
-    { action: A('investigate', 62, 'Parity Cop, wake up. Which two players?', { check: 'parity', targets: 2 }) }),
+  R('detective', 'Detective', '🕵️', 'town', 'Each night, check one player. You learn MAFIA or NOT MAFIA. The Godfather shows as NOT MAFIA.',
+    { action: A('investigate', 60, 'Detective, wake up. Who do you check?', { check: 'alignment' }) }),
+  R('insane_detective', 'Insane Detective', '🥴', 'town', 'You think you are a Detective, but your results are always backwards.',
+    { seesAs: 'detective', action: A('investigate', 60, 'Detective, wake up. Who do you check?', { check: 'inverted' }) }),
+  R('comparer', 'Comparer', '🧭', 'town', 'Each night, pick two players and learn whether they are on the same side.',
+    { action: A('investigate', 62, `Comparer, wake up. Which two players?`, { check: 'parity', targets: 2 }) }),
+  R(INVESTIGATOR_ID, INVESTIGATOR_NAME, '🔎', 'town', 'Each night, check one player and learn their exact role. A Godfather shows as a Villager.',
+    { action: A('investigate', 61, `${INVESTIGATOR_NAME}, wake up. Who do you investigate?`, { check: 'role' }) }),
   R('tracker', 'Tracker', '👣', 'town', 'Each night, follow one player and learn who they visited.',
     { action: A('track', 63, 'Tracker, wake up. Who do you follow?') }),
   R('lookout', 'Lookout', '🔭', 'town', 'Each night, watch one player and learn who visited them.',
@@ -87,7 +91,7 @@ export const ROLES = [
   // ---------- MAFIA ----------
   R('mafia', 'Mafia', '🕴️', 'mafia', 'Choose a victim each night with your team. Blend in by day.',
     { meeting: 'mafia', action: A('kill', 50, 'Mafia, who do you kill?', { source: 'mafia', group: 'mafia' }) }),
-  R('godfather', 'Godfather', '🤵', 'mafia', 'Mafia leader. The Cop sees you as not Mafia, and the Detective sees you as a Villager.',
+  R('godfather', 'Godfather', '🤵', 'mafia', 'Mafia leader. A side check shows you as NOT MAFIA, and an exact-role check shows you as a Villager.',
     { meeting: 'mafia', appearsAs: 'innocent', action: A('kill', 50, 'Mafia, who do you kill?', { source: 'mafia', group: 'mafia' }) }),
   R('don', 'Don', '👑', 'mafia', 'Mafia boss. You count double toward the Mafia\'s majority.',
     { meeting: 'mafia', weight: 2, action: A('kill', 50, 'Mafia, who do you kill?', { source: 'mafia', group: 'mafia' }) }),
@@ -134,6 +138,46 @@ export const ROLES = [
 ROLES.push(...buildExtra(R, A));
 ROLES.push(...buildExtra2(R, A));
 
+// ---------- legacy roles (pinned rooms only) ----------
+// Before night version 10 the Cop checked a side and the Detective checked an exact role. Rooms already in a game keep
+// those roles and names, so the old definitions stay in the lookup, hidden from every picker (`legacy: true`).
+// The old exact-role Detective moved to the id `detective_v1` (the id `detective` now means the merged role).
+export const LEGACY_ROLES = [
+  R('cop', 'Cop', '👮', 'town', 'Each night, check one player. You learn whether they look like Mafia.',
+    { action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'alignment' }) }),
+  R('detective_v1', 'Detective', '🕵️', 'town', 'Each night, check one player and learn their exact role. A Godfather shows as a Villager.',
+    { action: A('investigate', 61, 'Detective, wake up. Who do you investigate?', { check: 'role' }) }),
+  R('insane_cop', 'Insane Cop', '🥴', 'town', 'You think you are a Cop, but your results are always backwards.',
+    { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'inverted' }) }),
+  R('parity_cop', 'Parity Cop', '🧭', 'town', 'Each night, pick two players and learn whether they are on the same side.',
+    { action: A('investigate', 62, 'Parity Cop, wake up. Which two players?', { check: 'parity', targets: 2 }) }),
+  R('confused_cop', 'Confused Cop', '😵', 'town', 'Each night you check one player, but every check is a coin flip: heads gives the TRUE result, tails gives the OPPOSITE. Needs a regular Cop in the game.',
+    { requiresPartner: 'cop', action: A('investigate', 60.5, 'Confused Cop, open your eyes. Who do you check?', { check: 'random' }) }),
+  R('naive_cop', 'Naive Cop', '🐑', 'town', 'You think you are a Cop, but everyone always looks innocent to you.',
+    { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'naive' }) }),
+  R('paranoid_cop', 'Paranoid Cop', '😰', 'town', 'You think you are a Cop, but everyone always looks guilty to you.',
+    { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'paranoid' }) }),
+  R('dirty_cop', 'Dirty Cop', '🚔', 'town', 'You check one player each night, but investigators think you are Mafia.',
+    { appearsAs: 'mafia', action: A('investigate', 60, 'Dirty Cop, wake up. Who do you check?', { check: 'alignment' }) }),
+].map((r) => ({ ...r, legacy: true }));
+
+// Old ids -> merged ids, for setups saved before the merge (presets, ?roles= links, a lobby upgraded to version 10).
+// One simultaneous pass, never chained: the old `detective` becomes the Investigator while the old `cop` becomes `detective`.
+export const OLD_TO_MERGED = {
+  cop: 'detective', detective: INVESTIGATOR_ID, insane_cop: 'insane_detective', parity_cop: 'comparer',
+  confused_cop: 'confused_detective', naive_cop: 'naive_detective', paranoid_cop: 'paranoid_detective', dirty_cop: 'dirty_detective',
+};
+export const mergedRoleId = (id) => (typeof id === 'string' && Object.hasOwn(OLD_TO_MERGED, id) ? OLD_TO_MERGED[id] : id);
+// Merged ids -> the role a pinned (version 9 or older) room uses for it.
+export const MERGED_TO_LEGACY = Object.fromEntries(Object.entries(OLD_TO_MERGED).map(([o, n]) => [n, o === 'detective' ? 'detective_v1' : o]));
+export const legacyRoleId = (id) => (typeof id === 'string' && Object.hasOwn(MERGED_TO_LEGACY, id) ? MERGED_TO_LEGACY[id] : id);
+// Stored ids in a pinned room: the old exact-role Detective (`detective`) is `detective_v1` from here on. Idempotent.
+export const pinStoredId = (id) => (id === 'detective' ? 'detective_v1' : id);
+// Ids stored in a pinned room -> merged ids (used once, when that room's setup moves to version 10: a restart or a lobby upgrade).
+export const storedToMerged = (id) => (id === 'detective_v1' ? INVESTIGATOR_ID : mergedRoleId(id));
+export const SETUP_LINK_VERSION = 10; // `v=10` on a ?roles= link means its ids are already merged ids
+export const MERGE_NIGHT_VERSION = 10; // rooms at this version or later use the merged roles
+
 // Retired ids that were exact twins of another role. Old setups, saved rooms and links still load.
 export const ROLE_ALIASES = { civilian: 'villager' };
 export const resolveRoleId = (id) => (typeof id === 'string' && Object.hasOwn(ROLE_ALIASES, id) ? ROLE_ALIASES[id] : id);
@@ -147,7 +191,7 @@ export const ROLE_GROUPS = [
   { id: 'jailer', name: 'Jailer', ids: ['jailer', 'kidnapper'] },
   { id: 'drunk', name: 'Drunk', ids: ['drunk', 'hooker', 'collaborator'] },
   { id: 'veteran', name: 'Veteran', ids: ['veteran', 'sentinel', 'prepper'] },
-  { id: 'parity_cop', name: 'Parity Cop', ids: ['parity_cop', 'bookkeeper', 'oracle'] },
+  { id: 'comparer', name: 'Comparer', ids: ['comparer', 'bookkeeper', 'oracle'] },
   { id: 'tracker', name: 'Tracker', ids: ['tracker', 'shadow'] },
   { id: 'lookout', name: 'Lookout', ids: ['lookout', 'spy'] },
   { id: 'hangman', name: 'Hangman', ids: ['hangman', 'defense_attorney', 'mob_lawyer'] },
@@ -166,7 +210,7 @@ for (const g of ROLE_GROUPS) for (const id of g.ids) {
   if (g.labels?.[id]) r.variant = g.labels[id];
 }
 
-export const ROLE_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r]));
+export const ROLE_BY_ID = Object.fromEntries([...ROLES, ...LEGACY_ROLES].map((r) => [r.id, r]));
 // Alias ids resolve to the canonical role in every lookup (non-enumerable, so role lists stay clean).
 for (const [old, id] of Object.entries(ROLE_ALIASES)) Object.defineProperty(ROLE_BY_ID, old, { value: ROLE_BY_ID[id], enumerable: false });
 export const roleOf = (id) => ROLE_BY_ID[resolveRoleId(id)];
@@ -254,7 +298,7 @@ export function factionOf(roleId) {
 
 // What a player may be told the setup is: each disguised role is listed as the role it believes it is.
 // `unreliable` holds the believed ids that merged in at least one look-alike. Never exposes the real variant ids.
-export const believedId = (id) => (id === 'confused_cop' ? 'cop' : ROLE_BY_ID[id]?.seesAs || id);
+export const believedId = (id) => (id === 'confused_cop' ? 'cop' : id === 'confused_detective' ? 'detective' : ROLE_BY_ID[id]?.seesAs || id);
 export function believedSetup(roleIds) {
   const ids = roleIds.map(believedId);
   const unreliable = [...new Set(roleIds.filter((id, i) => ids[i] !== id).map(believedId))];

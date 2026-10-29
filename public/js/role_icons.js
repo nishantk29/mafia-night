@@ -1,7 +1,7 @@
 // roleId -> game-icons name (see scripts/build-assets.mjs). Icons: game-icons.net (CC BY 3.0).
 export const ROLE_ICON = {
-  villager: 'farmer', cop: 'police-badge', detective: 'sherlock-holmes', insane_cop: 'potion-of-madness',
-  parity_cop: 'scales', tracker: 'footprint', lookout: 'binoculars', coroner: 'morgue-feet',
+  villager: 'farmer', detective: 'magnifying-glass', insane_detective: 'potion-of-madness', comparer: 'scales', investigator: 'sherlock-holmes',
+  cop: 'police-badge', detective_v1: 'sherlock-holmes', insane_cop: 'potion-of-madness', parity_cop: 'scales', tracker: 'footprint', lookout: 'binoculars', coroner: 'morgue-feet',
   medium: 'ghost', doctor: 'stethoscope', bodyguard: 'sunglasses', veteran: 'brodie-helmet',
   vigilante: 'domino-mask', hunter: 'bow-arrow', bomb: 'time-bomb', jailer: 'window-bars',
   security_guard: 'guards', drunk: 'booze', mason: 'freemasonry', merlin: 'wizard-face',
@@ -17,7 +17,7 @@ export const ROLE_ICON = {
   oracle: 'tarot-02-the-high-priestess', census_taker: 'checklist', scholar: 'graduate-cap', inquisitor: 'desk-lamp',
   town_crier: 'megaphone', chairperson: 'office-chair', scribe: 'quill-ink', soothsayer: 'crystal-ball',
   archivist: 'archive-register', tipster: 'rotary-phone', nosy_neighbor: 'human-ear', sheriff: 'law-star',
-  back_alley_doctor: 'plague-doctor-profile', dirty_cop: 'banknote', peeping_tom: 'spyglass', retired_hitman: 'rocking-chair',
+  back_alley_doctor: 'plague-doctor-profile', dirty_detective: 'banknote', dirty_cop: 'banknote', peeping_tom: 'spyglass', retired_hitman: 'rocking-chair',
   doorman: 'closed-doors', trapper: 'box-trap', placebo_doctor: 'pill', saint: 'angel-wings',
   witness: 'talk', lover: 'lovers', sharpshooter: 'crosshair', consigliere: 'chess-bishop',
   spy: 'spy', shadow: 'shadow-follower', bookkeeper: 'abacus', family_doctor: 'medical-pack',
@@ -33,6 +33,7 @@ export const ROLE_ICON = {
   arsonist: 'pyromaniac', cult_seer: 'all-seeing-eye', cult_guard: 'templar-shield',
   agent: 'envelope', telepath: 'telepathy', penguin: 'penguin', caroler: 'musical-notes',
   dreamer: 'night-sleep', journalist: 'newspaper', psychic: 'psychic-waves', invisible_man: 'invisible',
+  confused_detective: 'uncertainty', naive_detective: 'delighted', paranoid_detective: 'paranoia',
   confused_cop: 'uncertainty', naive_cop: 'delighted', paranoid_cop: 'paranoia', deputy: 'revolver',
   gunsmith: 'gun-stock', blacksmith: 'blacksmith', tinkerer: 'tinker', saboteur: 'monkey-wrench',
   chef: 'chef-toque', party_host: 'party-popper', enchantress: 'crystal-wand', keymaker: 'key',

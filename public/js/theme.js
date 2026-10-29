@@ -2,7 +2,7 @@
 // on screen. It is applied to the rendered page's text (see app.js), so every screen, prompt and report
 // follows it without each template knowing about themes.
 export const THEMES = {
-  city: { label: 'Mafia', sides: 'Mafia vs Town', note: 'The Mafia, the Town, the Cop and the Doctor.' },
+  city: { label: 'Mafia', sides: 'Mafia vs Town', note: 'The Mafia, the Town, the Detective and the Doctor.' },
   village: { label: 'Werewolf', sides: 'Werewolves vs Village', note: 'The Werewolves, the Village, the Seer and the Doctor.' },
 };
 export const themeOf = (v) => (THEMES[v?.config?.theme || v?.theme] ? (v.config?.theme || v.theme) : 'city');

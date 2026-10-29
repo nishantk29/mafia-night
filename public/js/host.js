@@ -8,7 +8,7 @@ import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { nightNav } from './night-nav.js';
-import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, roleMax, MAX_PLAYERS, DEFAULT_RULES, cardInfo, LATEST_NIGHT_VERSION } from './engine.js';
+import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, roleMax, MAX_PLAYERS, DEFAULT_RULES, cardInfo, LATEST_NIGHT_VERSION, upgradeTarget } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { graveyardPanel } from './graveyard.js';
@@ -251,7 +251,7 @@ function setupChoice() {
   const cur = S.ui.setupMode;
   const opt = (v, l, d) => `<button type="button" class="seg-btn" role="radio" aria-checked="${cur === v}" tabindex="${cur === v ? 0 : -1}" data-a="setupMode" data-v="${v}"><b>${l}</b><small>${d}</small></button>`;
   return `<section class="block setup-mode"><h2 class="block-title" id="q-setup">Setup</h2>
-    <div class="seg" role="radiogroup" aria-labelledby="q-setup">${opt('simple', 'Simple', 'Mafia, Doctor, Cop, Villager')}${opt('complex', 'Complex', 'Every role, full control')}</div></section>`;
+    <div class="seg" role="radiogroup" aria-labelledby="q-setup">${opt('simple', 'Simple', 'Mafia, Doctor, Detective, Villager')}${opt('complex', 'Complex', 'Every role, full control')}</div></section>`;
 }
 
 // Simple setup: four roles with suggested counts, plus the optional playing-card key.
@@ -589,7 +589,7 @@ function liveResult(v, s, set) {
 }
 
 // Live answer for an investigator, worked out from the choices of everyone who woke earlier tonight.
-// Confused Cop: a 3D coin flip lands on the stored coin (set.flip), then the result, gesture and close-eyes cue fade in.
+// Confused Detective: a 3D coin flip lands on the stored coin (set.flip), then the result, gesture and close-eyes cue fade in.
 // set.flipAt is when the target was entered; a re-render mid-flip joins the animation where it is instead of restarting it.
 const FLIP_MS = dur(400);
 const coinAge = (set) => (animOn() && set.flipAt ? Date.now() - set.flipAt : Infinity);
@@ -682,7 +682,7 @@ function cue(v, s, num, current, alive) {
 
 // Legacy rooms (night script < latest): host-only opt-in, applied when the next night starts, never mid-step.
 function upgradeCard(v) {
-  if (v.nightVersion >= LATEST_NIGHT_VERSION || v.phase === 'lobby') return '';
+  if (v.nightVersion >= upgradeTarget(v) || v.phase === 'lobby') return '';
   const queued = !!v.upgradeNext;
   return `<section class="block upgrade-night"><h2 class="block-title">Use the new night script from next night</h2>
     <p class="callout" role="note">${ui('info')} <span>${v.nightVersion >= 2 ? 'Adds the v9 order: the Mafia pick before the Doctor and Bodyguard. A blocked player still wakes and picks. Two players with the same role each get a number. Also the v8 rules: a Doctor and Bodyguard on one target save both, used-up roles are still called, the Coroner and Psychic get less certain, and an Executioner whose target dies becomes a Jester.' : 'Dead roles are still called at night, so nobody can tell who died.'} Takes effect when the next night starts; nothing changes mid-step.</span></p>
@@ -820,8 +820,8 @@ function roleModal() {
     <div class="checks">
       ${check('nightImmune', d.nightImmune, 'Can’t be killed at night')}
       ${check('retaliate', d.retaliate, 'Kills its attacker')}
-      ${check('appearsMafia', d.appearsAs === 'mafia', 'Looks like Mafia to investigators')}
-      ${check('appearsInnocent', d.appearsAs === 'innocent', 'Looks innocent to investigators')}
+      ${check('appearsMafia', d.appearsAs === 'mafia', 'Looks like Mafia to a Detective')}
+      ${check('appearsInnocent', d.appearsAs === 'innocent', 'Looks innocent to a Detective')}
       ${d.alignment === 'mafia' ? check('meetingMafia', d.meeting === 'mafia', 'Joins the Mafia night meeting') : ''}
       ${d.alignment === 'third' ? check('jesterWin', d.sideWin === 'condemned', 'Wins if condemned') : ''}
     </div>

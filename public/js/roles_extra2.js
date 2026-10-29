@@ -28,13 +28,13 @@ export function buildExtra2(R, A) {
     R('invisible_man', 'Invisible Man', '🫥', 'town', 'Pick one player to trail. If they sit in a night meeting, you eavesdrop but hear no names.',
       { day: 'Invisible Man names a player. If that player has a night meeting, let them listen with names muted.' }),
 
-    // --- cop variants ---
-    R('confused_cop', 'Confused Cop', '😵', 'town', 'Each night you check one player, but every check is a coin flip: heads gives the TRUE result, tails gives the OPPOSITE. Needs a regular Cop in the game.',
-      { requiresPartner: 'cop', action: A('investigate', 60.5, 'Confused Cop, open your eyes. Who do you check?', { check: 'random' }) }),
-    R('naive_cop', 'Naive Cop', '🐑', 'town', 'You think you are a Cop, but everyone always looks innocent to you.',
-      { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'naive' }) }),
-    R('paranoid_cop', 'Paranoid Cop', '😰', 'town', 'You think you are a Cop, but everyone always looks guilty to you.',
-      { seesAs: 'cop', action: A('investigate', 60, 'Cop, wake up. Who do you check?', { check: 'paranoid' }) }),
+    // --- detective variants ---
+    R('confused_detective', 'Confused Detective', '😵', 'town', 'Each night you check one player, but every check is a coin flip: heads gives the TRUE result, tails gives the OPPOSITE. Needs a regular Detective in the game.',
+      { requiresPartner: 'detective', action: A('investigate', 60.5, 'Confused Detective, open your eyes. Who do you check?', { check: 'random' }) }),
+    R('naive_detective', 'Naive Detective', '🐑', 'town', 'You think you are a Detective, but everyone always looks innocent to you.',
+      { seesAs: 'detective', action: A('investigate', 60, 'Detective, wake up. Who do you check?', { check: 'naive' }) }),
+    R('paranoid_detective', 'Paranoid Detective', '😰', 'town', 'You think you are a Detective, but everyone always looks guilty to you.',
+      { seesAs: 'detective', action: A('investigate', 60, 'Detective, wake up. Who do you check?', { check: 'paranoid' }) }),
 
     // --- guns, vests and items (Host tracks) ---
     R('deputy', 'Deputy', '📛', 'town', 'You hold one secret gun to fire in daylight. Nobody learns you pulled the trigger.',
@@ -112,8 +112,8 @@ export function buildExtra2(R, A) {
     R('interceptor', 'Interceptor', '🎣', 'mafia', 'Each night you stand outside one house. You kill one of its visitors, and the rest learn who you are.',
       { meeting: 'mafia', night1: 'Interceptor: whoever visits their target tonight, the Host kills ONE of them by hand and tells the others who the Interceptor is.',
         action: A('watch', 64, 'Interceptor, wake up. Whose house do you wait outside?') }),
-    R('lawyer', 'Lawyer', '📑', 'mafia', 'Each night you clear a Mafia teammate. If a Cop looks at them, they read as innocent.',
-      { meeting: 'mafia', day: 'Lawyer names a Mafia player. If a Cop checks them tonight, report "not Mafia".' }),
+    R('lawyer', 'Lawyer', '📑', 'mafia', 'Each night you clear a Mafia teammate. If a Detective looks at them, they read as innocent.',
+      { meeting: 'mafia', day: 'Lawyer names a Mafia player. If a Detective checks them tonight, report "not Mafia".' }),
     R('paparazzi', 'Paparazzi', '📸', 'mafia', 'If you are condemned, you snap one last photo: the role of a player you name goes public.',
       { meeting: 'mafia', onCondemn: 'The Paparazzi was condemned and names one player. Reveal that player\'s role to the table, then dismiss (pick nobody).' }),
     R('paralyzer', 'Paralyzer', '🧊', 'mafia', 'Once per game, you freeze the vote so no ballots count for the day.',
