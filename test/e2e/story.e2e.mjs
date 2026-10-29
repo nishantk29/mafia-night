@@ -88,13 +88,37 @@ try {
   L.check('night opens on "Everyone", close your eyes', /Everyone/.test(st.kicker) && /close your eyes/.test(st.say), JSON.stringify(st));
   L.check('upcoming steps are named by role', st.rail.length >= 2 && st.rail.at(-1) === 'Everyone', st.rail.join(' / '));
   if (SHOTS) await host.shot(SHOTS, 'night-open-390');
+  // The dock label is never clipped: the disabled Next names the choice in full at 375, 390 and 1280 (jank audit: "ick a player or No on").
+  const labelFits = () => host.page.evaluate(() => {
+    const b = document.querySelector('.action-dock .btn.big'); if (!b) return null;
+    const r = document.createRange(); r.selectNodeContents(b); const t = r.getBoundingClientRect(); const box = b.getBoundingClientRect();
+    return { text: b.textContent.trim(), sw: b.scrollWidth, cw: b.clientWidth, textL: Math.round(t.left), textR: Math.round(t.right), boxL: Math.round(box.left), boxR: Math.round(box.right), top: Math.round(box.top), h: Math.round(box.height) };
+  });
+  const fits = (m) => !!m && m.sw <= m.cw && m.textL >= m.boxL && m.textR <= m.boxR && !m.text.includes('…');
+  let labelShots = false; let disabledAt = null;
   let shotPick = false;
   for (let i = 0; i < 30; i++) {
     st = await grab(); lines.push(st);
     if (!st.kicker) break;
+    if (await host.page.locator('.action-dock .btn.big.disabled').count()) {
+      const m = await labelFits();
+      L.check(`dock label "${m?.text}" shows in full at 390`, fits(m), JSON.stringify(m));
+      if (!labelShots) {
+        labelShots = true; disabledAt = m;
+        if (SHOTS) await host.shot(SHOTS, 'dock-label-390');
+        for (const [w, h] of [[375, 667], [1280, 800]]) {
+          await host.page.setViewportSize({ width: w, height: h }); await wait(host, 200);
+          const mm = await labelFits();
+          L.check(`dock label "${mm?.text}" shows in full at ${w}`, fits(mm), JSON.stringify(mm));
+          if (SHOTS) await host.shot(SHOTS, `dock-label-${w}`);
+        }
+        await host.page.setViewportSize({ width: 390, height: 844 }); await wait(host, 200);
+      }
+    }
     if (st.tokens && !shotPick) {
       shotPick = true;
       await host.page.locator('.st-card .st-tok:not(.is-none)').first().click(); await wait(host, 150);
+      if (disabledAt) { const on = await labelFits(); L.check('picking a player: the Next button keeps its place and size (no shift)', !!on && on.top === disabledAt.top && on.h === disabledAt.h, JSON.stringify({ off: disabledAt, on })); }
       if (SHOTS) {
         await host.shot(SHOTS, 'night-390'); await dump(host, 'night');
         await host.page.setViewportSize({ width: 375, height: 667 }); await wait(host, 200); await host.shot(SHOTS, 'night-375');
