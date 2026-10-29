@@ -14,7 +14,7 @@
 | R6 | Several Cops (or Detectives) are numbered 1..N at random, once each. The number stays for the whole game. The Say lines never name a variant (Insane, Naive, Confused...). | v7 | rules-gate: `house rule: Cops and Detectives are numbered 1..N (v7)` → `each label 1..N appears once…`, `numbers are random across games`, `stable within a game…`, `Say lines, cues and the then-lines never name a variant`, `v6 rooms do not number`. Also numbered-calls-v7, audit-v7 `Confused Cop is called exactly like the other Cops (v7)`. |
 | R7 | Pair and shared calls (Masons, Mafia, Cult, Lovers...) include the dead partners. | v3 | rules-gate: `house rule: pair and shared calls list dead partners (v3+)` → `v3…v7: Masons, Mafia and every other meeting role include the dead partner in the call`. Also night-v3 `v3 info and meeting calls are identical alive vs dead`. |
 | R8 | Living players never receive the Graveyard, including after reconnecting. Dead players and the Host do. | v3 | rules-gate: `house rule: living players never receive the Graveyard` → `messagesFor: dead players and the Host get it, living players do not, before and after reconnect`, `a living player view has no graveyard key or text, at every phase`, `pre-v3 rooms have no graveyard for anyone`. Also graveyard, worker-reconnect `Graveyard after reconnect…`. |
-| R9 | Nothing leaks to a phone: no other player's role (unless revealed on death or the game is over), result, call number, variant id, host key or token. | v1 (variant ids: v7) | rules-gate: `house rule: nothing leaks to a player phone` → `v4…v7 reveal false/true: no other role, token, key, call number or variant id on any phone, in any phase`; `a player view never shows another player's call number`. Also audit-v7 `phones never carry other players' secrets`. |
+| R9 | Nothing leaks to a phone: no other player's role (unless the host turned on "Show a player's card when they die", off by default since Oct 29 2026, or the game is over), result, call number, variant id, host key or token. | v1 (variant ids: v7) | rules-gate: `house rule: nothing leaks to a player phone` → `v4…v7 reveal false/true: no other role, token, key, call number or variant id on any phone, in any phase`; `a player view never shows another player's call number`. Also audit-v7 `phones never carry other players' secrets`. |
 | R10 | A room keeps the night version it was created with. Only starting the next night applies a host-requested upgrade. Restart and New game move it to the latest. A v1 room (no field) reads as 1 and is never rewritten. | v1 | rules-gate: `house rule: a room keeps the night version it was created with` → `new rooms get the latest version`, `v2…v6: kept through deal, night, day, condemn, kill, revive and another night`, `v2…v6: only startNight applies a pending upgrade`, `v2…v6: Restart and newGame move the room to the latest`, `a v1 room (no field) reads as 1 and is never backfilled…`, `in the lobby the upgrade applies at once…`. Also night-version-legacy, restart. |
 
 ## v9 rules (Nishant 2026-10-28, pinned by `nightVersion` 9; older rooms keep their behaviour)
@@ -115,3 +115,16 @@ All in `test/audit-v7.test.js` unless noted. Gated on v7 unless stated.
 3. Add a named test in `test/rules-gate.test.js`: `describe('house rule: <the line>')`, one test per version where it applies, plus one that shows older versions are unchanged.
 4. Add a row to this file with the exact describe/test names and the "since" version.
 5. Run `node scripts/build-deploy.mjs <out>`: it runs every test first and refuses to write the deploy file until all pass. There is no bypass.
+
+## Deaths do not reveal roles (Oct 29 2026)
+
+Nishant: "We dont reveal the role." By default a death, at night or by vote, never names a role: the morning line is
+"Everyone, open your eyes. S was killed in the night." The "Show a player's card when they die" switch in Advanced is off
+by default (`ADVANCED_DEFAULTS.cardOnDeath`, `DEFAULT_RULES.revealOnDeath`). Game over still shows every role.
+
+Rooms and phones from before the change: the old default stored `revealOnDeath: true` in every room, so it can't be told
+apart from a host's choice. Safe behaviour: a room reveals only if it carries `config.revealPolicy === 2` (`REVEAL_POLICY`,
+stamped on new rooms and when a host flips the switch with this build). Older rooms read as off after a refresh, and an old
+cached client's `revealOnDeath: true` is refused. Advanced settings saved on a phone before v2 drop their `cardOnDeath`.
+Tests: `test/no-death-reveal.test.js` (gate), the sim's reveal-off checks, `test/e2e/no-reveal.e2e.mjs` (incl. STAGE=before/after
+across a build change).

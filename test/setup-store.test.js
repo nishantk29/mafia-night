@@ -59,7 +59,7 @@ test('seating preselects from joins; offline deal config; own deck deals with th
 
 test('advanced settings: pinned at deal, old rooms get defaults, hidden setup stored', () => {
   const room = newRoom('ABCDEF', 'host');
-  assert.deepEqual(advancedOf(room), { dayTimer: false, cardOnDeath: true, hiddenSetup: false, talkStep: true });
+  assert.deepEqual(advancedOf(room), { dayTimer: false, cardOnDeath: false, hiddenSetup: false, talkStep: true });
   for (let i = 0; i < 5; i++) reduce(room, { host: true }, { type: 'addPlayer', name: `P${i}` });
   reduce(room, { host: true }, { type: 'setConfig', roles: MAFIA_PRESETS[1].mix(5), advanced: { dayTimer: true, hiddenSetup: true }, rules: { revealOnDeath: false } });
   assert.equal(advancedOf(room).hiddenSetup, true); assert.equal(advancedOf(room).cardOnDeath, false);

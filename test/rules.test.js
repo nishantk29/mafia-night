@@ -303,8 +303,12 @@ describe('House rules', () => {
     P(room, 'Cop').alive = false;
     const seen = viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop');
     assert.equal(seen.role, null);
-    room.config.rules = {};
+    room.config.rules = {}; // the default (Nishant, Oct 29): still secret
+    assert.equal(viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop').role, null);
+    room.config.rules = { revealOnDeath: true }; // the host turned it on
     assert.equal(viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop').role.id, 'cop');
+    delete room.config.revealPolicy; // a room from before the change, holding the old default
+    assert.equal(viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop').role, null);
   });
   test('start with a day: only when switched on, and never with a blind card deal', () => {
     const room = mk([['Mo', 'mafia'], ['Ann', 'villager'], ...filler(4)], { phase: 'dealt', night: 0 });

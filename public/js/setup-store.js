@@ -1,6 +1,6 @@
 // Setup carousel logic: step state, saved presets, which step is valid and why not. Pure data, no DOM.
 // Storage is passed in ({ get, set }) so tests can use a Map.
-import { SETUP_STORE_KEY, SAVED_PRESETS_KEY, ADVANCED_STORE_KEY, ADVANCED_DEFAULTS, DEFAULT_PRESET_ID, DEFAULT_OFFLINE_DEAL, MAX_SAVED_PRESETS, SETUP_STEPS, OFFLINE_STEPS } from './config-defaults.js';
+import { SETUP_STORE_KEY, SAVED_PRESETS_KEY, ADVANCED_STORE_KEY, ADVANCED_DEFAULTS, ADVANCED_SAVE_VERSION, DEFAULT_PRESET_ID, DEFAULT_OFFLINE_DEAL, MAX_SAVED_PRESETS, SETUP_STEPS, OFFLINE_STEPS } from './config-defaults.js';
 import { MAFIA_PRESETS, mafiaPresetById, inRange } from './preset-mixes.js';
 import { setupWarnings } from './engine.js';
 import { ownDeckFor, NEEDS_PRINTABLE } from './deck-key.js';
@@ -33,8 +33,13 @@ export function saveSetup(storage, roomKey, st) {
 }
 
 // ---- Advanced: saved on the phone, then sent to each room ----
-export const loadAdvanced = (storage) => ({ ...ADVANCED_DEFAULTS, ...read(storage, ADVANCED_STORE_KEY, {}) });
-export const saveAdvanced = (storage, adv) => storage.set(ADVANCED_STORE_KEY, JSON.stringify({ ...ADVANCED_DEFAULTS, ...adv }));
+export const loadAdvanced = (storage) => {
+  const saved = { ...read(storage, ADVANCED_STORE_KEY, {}) };
+  if (saved.v !== ADVANCED_SAVE_VERSION) delete saved.cardOnDeath; // an older save holds the old "on" default, never a choice
+  delete saved.v;
+  return { ...ADVANCED_DEFAULTS, ...saved };
+};
+export const saveAdvanced = (storage, adv) => storage.set(ADVANCED_STORE_KEY, JSON.stringify({ ...ADVANCED_DEFAULTS, ...adv, v: ADVANCED_SAVE_VERSION }));
 
 // ---- saved presets (this phone only) ----
 export const loadSaved = (storage) => { const l = read(storage, SAVED_PRESETS_KEY, []); return Array.isArray(l) ? l.filter((p) => p && p.id && Array.isArray(p.roles)) : []; };
