@@ -503,7 +503,9 @@ function setupFor(room) {
   const roles = room.config.roles || [];
   const ids = roles.map((id) => shownRoleId(id, room));
   const unreliable = [...new Set(roles.filter((id, i) => ids[i] !== id).map((id, i) => shownRoleId(id, room)))];
-  return { setupRoles: ids, setupUnreliable: unreliable };
+  // Hidden setup: the roles never leave the room. Phones get the player count and the rules, nothing about the mix.
+  if (advancedOf(room).hiddenSetup) return { setupRoles: [], setupUnreliable: [], setupHidden: true, rules: rulesOf(room) };
+  return { setupRoles: ids, setupUnreliable: unreliable, setupHidden: false, rules: rulesOf(room) };
 }
 
 export function viewForPlayer(room, playerId, connected = new Set()) {

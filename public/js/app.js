@@ -9,7 +9,8 @@ const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
 import { teamName } from './board.js';
-import { hostScreen, checkCardFor, staysAfterAnswer } from './host.js';
+import { hostScreen, checkCardFor } from './host.js';
+import { rolesGateKey, markRolesSeen } from './roles_sheet.js';
 import { pressNext } from './night-nav.js';
 import { worldOf, applyClosed } from './world.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
@@ -461,13 +462,13 @@ const A = {
     else {
       const need = step.targets || 1;
       const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-      if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; if (step.check === 'random') Object.assign(n.actions[key], { flip: flipCoin(), flipAt: Date.now() }); delete n.picks[key]; n.focus = staysAfterAnswer(key) ? key : null; } else n.picks[key] = next;
+      if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; if (step.check === 'random') Object.assign(n.actions[key], { flip: flipCoin(), flipAt: Date.now() }); delete n.picks[key]; n.focus = key; } else n.picks[key] = next;
     }
     S.render();
   },
   focusStep(el) { S.ui.night.focus = el.dataset.key; S.render(); },
   confirmId(el) { S.ui.night.focus = null; const key = el.dataset.key; const ids = S.ui.night.picks[key] || []; delete S.ui.night.picks[key]; send({ type: 'identifyRole', roleId: el.dataset.role, playerIds: ids }); },
-  skip(el) { S.ui.night.focus = null; S.ui.night.actions[el.dataset.key] = { targets: [] }; delete S.ui.night.picks[el.dataset.key]; S.render(); },
+  skip(el) { S.ui.night.focus = el.dataset.key; S.ui.night.actions[el.dataset.key] = { targets: [] }; delete S.ui.night.picks[el.dataset.key]; S.render(); },
   skipIdentify(el) { const n = S.ui.night; n.focus = null; delete n.picks[el.dataset.key]; send({ type: 'skipIdentify', roleId: el.dataset.role }); },
   nextStep(el) {
     if (el.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why);
@@ -476,8 +477,9 @@ const A = {
     if (r.send) return send(r.send);
     S.render(); // followCue() scrolls to the next step
   },
-  alert(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { on: el.dataset.v === '1', targets: [] }; n.focus = staysAfterAnswer(k) ? k : null; S.render(); },
-  infoDone(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { done: true }; n.focus = staysAfterAnswer(k) ? k : null; S.render(); },
+  alert(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { on: el.dataset.v === '1', targets: [] }; n.focus = k; S.render(); },
+  startCalls() { S.ui.night.opened = true; S.render(); },
+  infoDone(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { done: true }; n.focus = k; S.render(); },
   undoStep(el) { delete S.ui.night.actions[el.dataset.key]; S.ui.night.focus = el.dataset.key; S.render(); },
   // A coin flip for results that are random by design; kept with the step so the morning report says the same thing.
   coin(el) {
@@ -488,8 +490,11 @@ const A = {
   resolve() { send({ type: 'submitNight', actions: S.ui.night.actions }); },
   // day
   selCondemn(el) { S.ui.condemn = S.ui.condemn === el.dataset.id ? null : el.dataset.id; S.render(); },
-  condemn() { if (!S.ui.condemn) return; const id = S.ui.condemn; S.ui.condemn = null; buzz([30, 40, 30]); send({ type: 'condemn', playerId: id }); },
-  noCondemn() { send({ type: 'noCondemn' }); S.toast('Nobody condemned today'); },
+  dayVote() { S.ui.dayStage = { day: S.view.day, stage: 'vote' }; S.render(); },
+  condemn() { if (!S.ui.condemn) return; const id = S.ui.condemn; const name = S.view.players.find((p) => p.id === id)?.name || 'They'; S.ui.condemn = null; S.ui.dayResult = { day: S.view.day, text: `${name} was voted out` }; buzz([30, 40, 30]); send({ type: 'condemn', playerId: id }); },
+  noCondemn() { S.ui.condemn = null; S.ui.dayResult = { day: S.view.day, text: 'No one was voted out' }; send({ type: 'noCondemn' }); },
+  seeRoles() { markRolesSeen(S.view); S.render(); },
+  roleRules(el) { S.ui.rolesOpen = S.ui.rolesOpen === el.dataset.v ? null : el.dataset.v; S.render(); },
   pend(el) { send({ type: 'resolvePending', pendingId: el.dataset.pid, targetId: el.dataset.id || null }); },
   useDay(el) { send({ type: 'useDay', playerId: el.dataset.id }); },
   declare() { S.ui.declare = true; S.ui.anim = 'modal'; S.render(); },
@@ -510,7 +515,7 @@ const A = {
   menuOpen(el) { S.ui.settings = false; ({ tools: () => A.tools(), gy: () => A.openGy(), roles: () => A.openRoles() })[el.dataset.v]?.(); },
   ...HOST_HELP_ACTIONS,
   openRoles() { S.ui.roles = true; S.ui.anim = 'sheet'; S.render(); },
-  closeRoles() { S.ui.roles = false; S.render(); },
+  closeRoles() { S.ui.roles = false; S.ui.rolesOpen = null; S.render(); },
   openSettings() { S.ui.settings = true; S.ui.anim = 'modal'; S.render(); },
   closeSettings() { S.ui.settings = false; S.render(); },
   endGameAsk() { S.ui.settings = false; S.ui.endConfirm = true; S.ui.anim = 'modal'; S.render(); },

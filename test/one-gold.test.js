@@ -41,10 +41,10 @@ test('day with and without a selection, pending questions; over', () => {
   const day = { ...view, phase: 'day', day: 1, night: 1, report: null, pending: [], dayUsed: {} };
   const none = render(day, true, { condemn: null });
   check('day, no selection', none);
-  assert.equal(gold(none).length, 1);
+  assert.equal(gold(none).length, 0); // the vote button waits for a choice and says so; there is no second gold button
   const sel = render(day, true, { condemn: alive[0].id });
   check('day, selected', sel);
-  assert.match(sel, /btn big secondary[^>]*data-a="startNight"/);
+  assert.doesNotMatch(sel, /data-a="startNight"/); // the vote comes first: tap who is out, or No one
   assert.match(sel, /class="btn big\s*"[^>]*data-a="condemn"/);
   const pend = { ...day, pending: [{ id: 'q1', playerId: alive[0].id, text: 'Who?' }] };
   check('day, pending', render(pend, true, { condemn: alive[1].id }));

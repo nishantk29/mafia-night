@@ -7,7 +7,7 @@ import { SUITS, RANKS } from './engine.js';
 import { board, pc, cardName, teamName } from './board.js';
 import { ico, cardArt } from './art.js';
 import { ui } from './ui_icons.js';
-import { setupRoleList, rolesSheet, rolesButton } from './roles_sheet.js';
+import { rolesModel, rolesChip, rolesLayer } from './roles_sheet.js';
 import { graveyardPanel } from './graveyard.js';
 import { castList } from './world.js';
 import { toolsButton, toolsPanel, phaseBadge } from './tools.js';
@@ -38,16 +38,16 @@ export function playerScreen(v) {
       <p class="muted">Waiting for the Host to deal.</p><p class="meta">Room <b class="code">${esc(v.code)}</b></p></div>`;
   } else hand = playing(v);
   const dead = !me.alive && v.phase !== 'lobby';
-  const handHtml = `<section class="hand${dead ? ' is-ghost' : ''}" aria-label="Your role">${hand}${me.role ? `<p class="roles-link"><button type="button" class="linkish" data-a="openRoles">${ui('rules')} Roles in this game</button></p>` : ''}</section>`;
+  const handHtml = `<section class="hand${dead ? ' is-ghost' : ''}" aria-label="Your role">${hand}</section>`;
   const gy = !me.alive && S.graveyard ? graveyardPanel(me.id) : '';
   // The dead see the Graveyard first; the living get exactly the old layout with no graveyard markup at all.
   const top = dead && v.phase !== 'over' ? `<header class="gy-hero"><h1 class="gy-hero-title">You’re in the Graveyard</h1><p class="muted">You’re out of the game. You can still watch and talk with the other dead.</p></header>${gy}${handHtml}` : `${handHtml}${gy}`;
-  return `${appbar(esc(me.name), `${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${toolsButton()}${rolesButton()}`)}
+  return `${appbar(esc(me.name), `${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${toolsButton()}${v.phase === 'lobby' ? '' : rolesChip(rolesModel(v))}`)}
   <main class="wrap seat-view">
     ${top}
     <section class="table-side" aria-label="The table">${tableSide(v)}</section>
     <p class="leave-row"><button type="button" class="linkish" data-a="leaveGame">${ui('back')} Leave this game</button></p>
-  </main>${S.ui.tools ? toolsPanel(v, false) : ''}${S.ui.roles ? rolesSheet(setupRoleList(v.setupRoles || [], { forPlayer: true, unreliable: v.setupUnreliable || [] })) : ''}`;
+  </main>${S.ui.tools ? toolsPanel(v, false) : ''}${rolesLayer(v)}`;
 }
 
 function playing(v) {

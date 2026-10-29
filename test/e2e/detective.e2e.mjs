@@ -74,8 +74,9 @@ async function run(browser, size) {
 
   // The Host's phone: night 1, two Detectives.
   const host = await open({ who: 'host' }, () => { localStorage.clear(); localStorage.setItem('mafia.host.DETECT', 'hostkey'); });
-  await host.page.goto('http://mafia.test/#/host/DETECT'); await host.page.waitForSelector('.action-dock'); await sleep(500);
+  await host.page.goto('http://mafia.test/#/host/DETECT'); await host.page.waitForSelector('.action-dock, [data-a="seeRoles"]'); await sleep(500);
   await host.page.evaluate(() => document.querySelector('[data-a="hhSkip"]')?.click()); await sleep(200);
+  await host.page.evaluate(() => document.querySelector('[data-a="seeRoles"]')?.click()); await sleep(300); // the first look at the roles list
   await host.page.evaluate(() => [...document.querySelectorAll('.action-dock button')].find((x) => /Start night/i.test(x.textContent)).click()); await sleep(600);
   const results = []; const calls = [];
   const target = { 'Detective 1': 'Ana', 'Detective 2': 'Cal' };

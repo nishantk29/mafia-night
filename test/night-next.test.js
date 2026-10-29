@@ -40,8 +40,8 @@ for (const [mname, local, flow] of modes) {
       const page = html(view, local, ui);
       assert.doesNotMatch(page, /find every role first/i);
       assert.match(page, /data-a="nextStep"[^>]*>|aria-disabled="true"[^>]*data-a="nextStep"/);
-      if (name === 'target action') assert.match(page, /class="pk is-none"[^>]*data-a="skip"[^>]*>No one</);
-      else if (name === 'execCheck') assert.match(page, /class="pk is-none"[^>]*data-a="skip"[^>]*>Skip</);
+      if (name === 'target action') assert.match(page, /class="st-tok is-none"[^>]*data-a="skip"[\s\S]*?>No one</);
+      else if (name === 'execCheck') assert.match(page, /data-a="skip"[^>]*>Skip</);
       else assert.match(page, /data-a="alert"[^>]*data-v="0">(No|Not tonight)</);
       // pressing a disabled Next does nothing
       assert.deepEqual(Object.keys(ui.actions), []);
@@ -50,7 +50,7 @@ for (const [mname, local, flow] of modes) {
       ui.actions[s.key] = { targets: [] };
       ui.focus = null;
       assert.ok(nightNav(view, ui).open.every((o) => o.key !== s.key));
-      assert.match(html(view, local, ui), /cue-result">(Skipped|Done|No|Staying in)</);
+      assert.match(html(view, local, ui), /(picked a target|answered|woke up|shown their card)</);
       // undo removes it and reopens it
       delete ui.actions[s.key]; ui.focus = s.key;
       assert.equal(nightNav(view, ui).current.key, s.key);
@@ -78,7 +78,7 @@ for (const [mname, local, flow] of modes) {
     nav = nightNav(view, ui);
     assert.equal(nav.current.key, steps[0].key);
     assert.equal(nav.enabled, true);
-    assert.match(html(view, local, ui), new RegExp(`class="cue is-current( is-ack)?"[^>]*data-ck="${steps[0].key.replace(':', ':')}"`));
+    assert.match(html(view, local, ui), new RegExp(`class="cue is-current[^"]*"[^>]*data-ck="${steps[0].key.replace(':', ':')}"`));
   });
 }
 
@@ -140,7 +140,7 @@ test('blind identify: label names the role, count and Mafia; "No one has this ca
       assert.match(nav.short, /^Mark .* or No one$/); assert.ok(nav.short.length <= SHORT_MAX, nav.short);
       assert.equal(nav.enabled, false); assert.equal(nav.canSkip, true);
       const page = html(view, local, ui);
-      assert.match(page, new RegExp(`class="pk is-none"[^>]*data-a="skipIdentify"[^>]*data-role="${s.roleId}">No one has this card<`));
+      assert.match(page, new RegExp(`class="st-tok is-none"[^>]*data-a="skipIdentify"[^>]*data-role="${s.roleId}"[\\s\\S]*?>No one<`));
       assert.doesNotMatch(page, /find every role first/i);
     }
     // all picked -> Next, which confirms them

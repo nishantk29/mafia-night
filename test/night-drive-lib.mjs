@@ -86,7 +86,7 @@ export function playNight(room, truth, R, { local = true, render = false, stats 
     if (render) {
       const html = hostScreen(view, local);
       assert.doesNotMatch(html, NONE);
-      assert.match(html, /data-a="nextStep"/);
+      assert.match(html, /data-a="(nextStep|startCalls)"/);
     }
     let r = { };
     if (!nav.enabled) r = choose(R, view, ui, nav, truth, stats);
