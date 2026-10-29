@@ -18,7 +18,7 @@ test('no infinite or repeating animation anywhere (CSS, inline styles, JS)', () 
   }
 });
 test('the wordmark drips grow once and hold; the smoke holds its resting place (400ms budget, 2026-10-29)', () => {
-  assert.match(css, /html\[data-fx="on"\] \.dr-svg\{animation:drip calc\(320ms \* var\(--dur-scale\)\) var\(--ease-butter\) both\}/);
+  assert.match(css, /html\[data-fx="on"\] \.dr-svg\{animation:drip 320ms var\(--ease-butter\) both\}/);
   assert.doesNotMatch(css, /\booze\b/);
   assert.doesNotMatch(css, /animation:smoke\b/); // the smoke sits where the drift used to end (transform:none)
 });

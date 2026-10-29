@@ -34,17 +34,16 @@
   --f-btn-h:52px; --f-btn-h-sm:44px; --f-tap:44px; --f-header-h:56px;
 
   /* motion (Nishant, 2026-10-29): presses are snappy and nothing runs over 400ms.
-     Write durations as calc(<ms> * var(--dur-scale)); --dur-scale is 1 (on screen = as written) and reduced motion shrinks it.
-     Press feedback is never multiplied by --dur-scale. */
-  --dur-scale:1;
+     Durations are written as seen (no scale knob); reduced motion turns movement off.
+     Press feedback lands in 100-150ms. */
   --f-ease:cubic-bezier(.2,.8,.2,1);
   --f-press:120ms;                       /* press-in: 100-150ms, never scaled */
   --f-release:90ms;                      /* release: about 0.7x the press */
   --f-press-scale:.97;                   /* buttons and cards; list rows highlight instead */
   --f-press-row:rgba(255,255,255,.08);   /* list-row press highlight, layered over the row's own background */
-  --f-dur-fast:calc(160ms * var(--dur-scale));
-  --f-dur-med:calc(280ms * var(--dur-scale));
-  --f-dur-slow:calc(400ms * var(--dur-scale)); /* the ceiling: nothing runs longer */
+  --f-dur-fast:160ms;
+  --f-dur-med:280ms;
+  --f-dur-slow:400ms; /* the ceiling: nothing runs longer */
 }
 
 /* ---- buttons: exactly three looks. One primary per screen. Labels never wrap. ---- */
@@ -52,7 +51,7 @@
   min-height:var(--f-btn-h-sm);padding:0 var(--f-s5);border:2px solid var(--f-line);border-radius:var(--f-r-pill);
   background:transparent;color:var(--f-ink);font:600 var(--f-fs-md)/1.2 var(--f-ui-font);letter-spacing:0;text-transform:none;
   text-align:center;text-decoration:none;white-space:nowrap;cursor:pointer;
-  transition:background-color var(--f-release) var(--f-ease),border-color var(--f-release) var(--f-ease),transform var(--f-release) var(--f-ease)}
+  transition:transform var(--f-release) var(--f-ease)}
 .f-btn:active{transform:scale(var(--f-press-scale))}
 .f-btn--primary{min-height:var(--f-btn-h);background:var(--f-accent);border-color:var(--f-accent);color:var(--f-on-accent)}
 .f-btn--secondary{background:transparent;border-color:var(--f-line);color:var(--f-ink)}

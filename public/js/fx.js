@@ -8,9 +8,8 @@ import { ROLE_BY_ID } from './roles.js';
 import { bloodSplat } from './flair.js';
 
 const $html = document.documentElement;
-// Animation length scale (--dur-scale in styles.css), read once; every JS wait or delay tied to a CSS animation goes through dur().
-const SCALE = (typeof getComputedStyle === 'function' && parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dur-scale'))) || 1;
-export const dur = (ms) => Math.round(ms * SCALE);
+// Every JS wait or delay tied to a CSS animation goes through dur(), so the motion gate can check it stays within 400ms.
+export const dur = (ms) => Math.round(ms);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const KEY = 'mafia.anim';
 
