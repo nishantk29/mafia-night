@@ -17,7 +17,7 @@ import { animOn, dur } from './fx.js';
 import { setupRoleList, rolesSheet, rolesButton } from './roles_sheet.js';
 import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
 
-import { PRESETS } from './presets.js';
+import { setupView } from './setup-actions.js';
 import { callNum, checkCaption, balanceSplit, declareSides, SIDE_GROUPS } from './host_v2.js';
 import { qrSvg, joinUrl } from './qr.js';
 import { hostHelpButton, hostHelpOverlay, hostHelpSettingsRow } from './host_help.js';
@@ -132,84 +132,10 @@ function endGameSheet() {
 }
 
 // ---------------- lobby ----------------
-function lobby(v, local) {
-  const n = v.players.length;
-  const c = v.config;
-  const min = v.limits.min;
-  const link = joinUrl(location.origin, v.code);
-  const counts = {};
-  for (const id of c.roles) counts[id] = (counts[id] || 0) + 1;
-
-  const joinCode = local ? `<p class="callout local-note" role="note">${ui('info')} <span>Saved only in this browser. Nothing is sent online.</span></p>` : `<section class="block join-code">
-    <p class="muted">Players go to <b>${esc(joinSite())}</b> and enter</p>
-    <div class="room-code code" aria-label="Room code ${esc(v.code.split('').join(' '))}">${esc(v.code)}</div>
-    <button type="button" class="join-qr" data-a="showQr" aria-label="Join QR code for room ${esc(v.code)}. Tap to enlarge.">${qrFor(link)}</button>
-    <div class="join-actions">
-      <button type="button" class="btn ghost" data-a="copy" data-v="${esc(link)}">${ui('copy')} Copy join link</button>
-      ${typeof navigator.share === 'function' ? `<button type="button" class="btn ghost" data-a="share" data-v="${esc(link)}">Share link</button>` : ''}
-      <button type="button" class="btn ghost" data-a="showQr">${ui('expand')} Show QR full screen</button>
-    </div>
-  </section>`;
-
-  const status = (p) => (local ? '' : p.offline
-    ? `<span class="person-status" title="No phone: added by you">${ui('pencil')}</span>`
-    : `<span class="person-status ${p.connected ? 'is-on' : ''}" title="${p.connected ? 'Connected on their phone' : 'Phone not connected'}">${ui('phone')}</span>`);
-  const people = n
-    ? `<ul class="people">${v.players.map((p) => `<li class="person ${p.offline || p.connected ? '' : 'is-offline'}"><span class="person-name">${esc(p.name)}</span>${status(p)}<button type="button" class="icon-btn" data-a="rmPlayer" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">${ui('x')}</button></li>`).join('')}</ul>`
-    : empty('user', local ? 'Nobody’s here yet. Add everyone’s names below.' : 'Nobody’s here yet. Share the code, or add names for people without phones.');
-  const players = `<section class="block players">
-    <header class="block-head"><h2 class="block-title">Players</h2>${n ? `<span class="tally" data-tick="players">${plural(n, 'player')}</span>` : ''}</header>
-    ${people}
-    <label class="field"><span>${local ? 'Add players (one per line, or separated by commas)' : 'Add players without phones (one per line, or separated by commas)'}</span>
-      <textarea data-i="names" rows="2" placeholder="Sam, Priya, Jo">${esc(S.ui.draft.names || '')}</textarea></label>
-    <button type="button" class="btn ghost" data-a="addNames">${ui('plus')} Add players</button>
-    ${local && (n || c.roles.length) ? `<button type="button" class="btn ghost" data-a="resetLocal">${ui('x')} Start over with no players</button>` : ''}
-  </section>`;
-
-  // Roles: the hand you are building, then the catalogue.
-  const need = Math.max(n, min);
-  const have = c.roles.length;
-  const tallyState = have === need ? 'ok' : have < need ? 'short' : 'over';
-  // Roles stay listed at 0 (S.ui.deckShown) so the host can step them back up; cleared once setup is left.
-  for (const id of c.roles) if (!S.ui.deckShown.includes(id)) S.ui.deckShown.push(id);
-  const order = S.ui.deckShown.filter((id) => ROLE_BY_ID[id]);
-  const deckList = order.length
-    ? `<ul class="deck-list">${order.map((id) => { const r = ROLE_BY_ID[id]; if (!r) return '';
-      return `<li class="deck-item">${roleChip(r)}<span class="stepper">
-        <button type="button" class="icon-btn" data-a="subRole" data-id="${id}" aria-label="One fewer ${esc(r.name)}" ${counts[id] ? '' : 'disabled'}>${ui('minus')}</button><b class="stepper-n">${counts[id] || 0}</b>
-        <button type="button" class="icon-btn" data-a="addRole" data-id="${id}" aria-label="One more ${esc(r.name)}" ${(counts[id] || 0) >= roleMax(id) || have >= MAX_PLAYERS ? 'disabled' : ''}>${ui('plus')}</button></span></li>`; }).join('')}</ul>`
-    : '<p class="muted deck-empty">Pick a preset above, or add roles one at a time.</p>';
-  const roles = `<section class="block roles setup-roles">
-    <header class="block-head"><h2 class="block-title">Roles</h2>
-      <span class="tally" data-state="${tallyState}" aria-live="polite">${ui(tallyState === 'ok' ? 'check' : 'warning')} ${have} of ${need} roles</span></header>
-    <div class="presets" role="group" aria-label="Start from a preset">
-      ${PRESETS.map((p) => `<button type="button" class="btn ghost preset" data-a="preset" data-id="${p.id}" title="${esc(p.note)}">${esc(p.name)}</button>`).join('')}
-      <button type="button" class="btn ghost preset" data-a="suggest">${ui('sparkle')} Suggest for ${need}</button>
-    </div>
-    <div class="in-game-head"><h3 class="in-game-title">In this game</h3>${have ? '<button type="button" class="link" data-a="clearRoles">Clear</button>' : ''}</div>
-    ${deckList}${advice(c.roles, n, true)}
-    <div class="btn-row add-row">
-      <button type="button" class="btn ghost" data-a="openAddRole">${ui('plus')} Add role</button>
-      <button type="button" class="btn ghost" data-a="newRole">${ui('plus')} New role</button>
-    </div>
-  </section>`;
-
-  const simple = S.ui.setupMode === 'simple';
-  const fitMsg = simple && c.mode === 'cards' ? deckFitText(c.roles) : '';
-  const short = min - n;
-  const blocked = have === n && (setupWarnings(c.roles, n).some((w) => w.level === 'error') || !!fitMsg);
-  const label = n < min ? `Add ${plural(short, 'more player')}` : have < n ? `Pick ${plural(n - have, 'more role')}` : have > n ? `Remove ${plural(have - n, 'role')}` : blocked ? (fitMsg ? 'Lower a count first' : 'Fix the setup above first') : 'Deal roles';
-  const ready = n >= min && have === n && !blocked;
-  return {
-    body: simple
-      ? `${joinCode}${players}${setupChoice()}${simplePanel(v, local, need, fitMsg)}`
-      : `${joinCode}${players}${setupChoice()}${roles}${dealSetup(c, local)}${gameStyle(c, local)}`,
-    dock: btn('big', 'deal', label, { on: ready }),
-  };
-}
+function lobby(v, local) { return setupView(v, local); }
 
 // The role library: a searchable bottom sheet grouped by side. Tiles keep the addRole / subRole / info hooks.
-function addRoleSheet(v) {
+export function addRoleSheet(v) {
   const counts = {};
   for (const id of v.config.roles) counts[id] = (counts[id] || 0) + 1;
   const custom = loadLibrary().map((x) => ROLE_BY_ID[x.id] || x);
@@ -244,157 +170,6 @@ function addRoleSheet(v) {
       <p class="muted search-empty" hidden>No roles match that search.</p></div>
     <button type="button" class="btn big add-role-done" data-a="closeAddRole">Done</button>
   </div></div>`;
-}
-
-// Simple or Complex, the first question of setup.
-function setupChoice() {
-  const cur = S.ui.setupMode;
-  const opt = (v, l, d) => `<button type="button" class="seg-btn" role="radio" aria-checked="${cur === v}" tabindex="${cur === v ? 0 : -1}" data-a="setupMode" data-v="${v}"><b>${l}</b><small>${d}</small></button>`;
-  return `<section class="block setup-mode"><h2 class="block-title" id="q-setup">Setup</h2>
-    <div class="seg" role="radiogroup" aria-labelledby="q-setup">${opt('simple', 'Simple', 'Mafia, Doctor, Detective, Villager')}${opt('complex', 'Complex', 'Every role, full control')}</div></section>`;
-}
-
-// Simple setup: four roles with suggested counts, plus the optional playing-card key.
-function simplePanel(v, local, need, fitMsg) {
-  const c = v.config;
-  const counts = countsOf(c.roles);
-  const sug = simpleCounts(need);
-  const have = c.roles.length;
-  const tallyState = have === need ? 'ok' : have < need ? 'short' : 'over';
-  const rows = SIMPLE_ROLES.map((r) => `<li class="deck-item">${roleChip(ROLE_BY_ID[r.id])}<span class="stepper">
-      <button type="button" class="icon-btn" data-a="simpleStep" data-id="${r.id}" data-v="-1" aria-label="One fewer ${r.name}">${ui('minus')}</button><b class="stepper-n">${counts[r.id]}</b>
-      <button type="button" class="icon-btn" data-a="simpleStep" data-id="${r.id}" data-v="1" aria-label="One more ${r.name}">${ui('plus')}</button></span></li>`).join('');
-  const cards = c.mode === 'cards';
-  const key = cards && !fitMsg && have ? `<ul class="card-key">${simpleCardKey(c.roles).map((k) => `<li><b>${k.name}</b> ${k.cards.map((id) => cardInfo(id).label).join(' ')}</li>`).join('')}</ul>` : '';
-  const flow = cards ? `<div class="followup"><h3 class="followup-q" id="q-flow">How does each player find out their role?</h3>${choices('q-flow', 'cardFlow', c.cardFlow, [
-    { v: 'blind', icon: 'eye', rec: true, title: 'They check the card key', desc: 'Each player finds their card on the key. You learn who’s who on night 1.' },
-    local ? { v: 'claim', icon: 'pencil', title: 'You enter each player’s card', desc: 'Players show you their card in private and you record it.' }
-      : { v: 'claim', icon: 'phone', title: 'They enter their card on their phone', desc: 'Each player taps their card on their own phone. You see every role right away.' },
-  ])}</div>` : '';
-  const toggle = local ? '' : `<button type="button" class="rule" role="switch" aria-checked="${cards}" data-a="simpleCards">
-      <span class="rule-text"><span class="rule-title">Use playing cards</span><span class="rule-desc">Deal from a normal deck. The app shows which card is which role.</span></span>
-      <span class="switch" aria-hidden="true"><i></i></span></button>`;
-  return `<section class="block roles simple-roles">
-    <header class="block-head"><h2 class="block-title">Roles</h2>
-      <span class="tally" data-state="${tallyState}">${ui(tallyState === 'ok' ? 'check' : 'warning')} ${have} of ${need} roles</span></header>
-    <div class="btn-row"><button type="button" class="btn ${have ? 'ghost' : ''}" data-a="simpleSuggest">${ui('sparkle')} Suggest for ${need} players</button></div>
-    <p class="muted">Suggested: ${SIMPLE_ROLES.map((r) => `${sug[r.id]} ${r.name}`).join(', ')}.</p>
-    <ul class="deck-list">${rows}</ul>
-    ${advice(c.roles, v.players.length)}
-    <div class="rules">${toggle}</div>
-    ${fitMsg ? `<p class="callout is-warn" role="note">${ui('warning')} <span>${esc(fitMsg)}</span></p>` : ''}${key}${flow}
-  </section>`;
-}
-
-// "How do players get their roles?" A guided choice (DESIGN.md section 9).
-function choices(qid, key, cur, opts) {
-  return `<div class="choices" role="radiogroup" aria-labelledby="${qid}">${opts.map((o) => { const on = cur === o.v;
-    return `<button type="button" class="choice" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-a="cfg" data-k="${key}" data-v="${o.v}">
-      <span class="choice-mark" aria-hidden="true"></span>
-      <span class="choice-icon">${ui(o.icon)}</span>
-      <span class="choice-text"><span class="choice-title">${o.title}${o.rec ? ' <span class="choice-tag">Recommended</span>' : ''}</span>
-        <span class="choice-desc">${o.desc}</span></span>
-    </button>`; }).join('')}</div>`;
-}
-function dealSetup(c, local) {
-  const flow = choices('q-flow', 'cardFlow', c.cardFlow, [
-    { v: 'blind', icon: 'eye', rec: true, title: 'They check the card key',
-      desc: 'You show the key to the table and each player finds their card. You learn who’s who on night 1 as each role wakes.' },
-    local
-      ? { v: 'claim', icon: 'pencil', title: 'You enter each player’s card',
-        desc: 'Players show you their card in private and you record it. You know every role before night 1.' }
-      : { v: 'claim', icon: 'phone', title: 'They enter their card on their phone',
-        desc: 'Each player taps their card on their own phone and sees their role in private. You see every role right away.' },
-  ]);
-  const open = !!S.ui.dealMore;
-  const keyNow = c.deckStyle === 'fixed' ? 'same every game' : 'new every game';
-  const more = `<button type="button" class="disclosure" aria-expanded="${open}" aria-controls="more-deck" data-a="toggleUi" data-k="dealMore">
-      ${ui('caret-down', open ? 'is-open' : '')} More card options <span class="disclosure-value">Card key: ${keyNow}</span></button>
-    <div class="disclosure-body" id="more-deck" ${open ? '' : 'hidden'}>
-      <h3 class="followup-q" id="q-key">Which card stands for which role?</h3>
-      ${choices('q-key', 'deckStyle', c.deckStyle, [
-        { v: 'random', icon: 'convert', rec: true, title: 'A new key every game',
-          desc: 'Cards are matched to roles at random each deal, so nobody remembers last game’s key.' },
-        { v: 'fixed', icon: 'cards', title: 'The same key every game',
-          desc: 'Each role keeps its usual card, such as the ace of spades for Mafia. Handy if your group plays often.' },
-      ])}
-    </div>`;
-  if (local) {
-    return `<section class="block deal-setup">
-      <p class="deal-fixed">${ui('cards')} You’ll hand out card codes and run the game from this device.</p>
-      <p class="deal-switch muted">Want everyone to get their role on their own phone? <button type="button" class="linkish" data-a="hostLive">Host a game with a room code instead</button></p>
-      <div class="followup followup--top">
-        <h3 class="followup-q" id="q-flow">How does each player find out their role?</h3>
-        ${flow}${more}
-      </div>
-    </section>`;
-  }
-  return `<section class="block deal-setup">
-    <h2 class="block-title" id="q-mode">How do players get their roles?</h2>
-    ${choices('q-mode', 'mode', c.mode, [
-      { v: 'app', icon: 'phone', rec: true, title: 'On their phones',
-        desc: 'Everyone joins with the room code and sees their role in private.' },
-      { v: 'cards', icon: 'cards', title: 'With a card key',
-        desc: 'You hand out card codes. The app tells you which code is which role.' },
-    ])}
-    ${c.mode === 'cards' ? `<div class="followup">
-      <h3 class="followup-q" id="q-flow">How does each player find out their role?</h3>
-      ${flow}${more}
-    </div>` : ''}
-  </section>`;
-}
-
-// Mafia or Werewolf words, and house rules. data-raw: the theme layer must not rename these labels.
-const RULES = [
-  ['revealOnDeath', 'Show a player’s role when they die', 'Off: roles stay secret until the game ends.'],
-  ['selfProtect', 'Doctors can protect themselves', 'Off: protectors must pick someone else.'],
-  ['firstNightKill', 'Kills on the first night', 'Off: on night 1 the Mafia only meet each other.'],
-  ['dayStart', 'Start with a day', 'Everyone talks and votes before the first night.'],
-];
-function gameStyle(c, local) {
-  const rules = { ...DEFAULT_RULES, ...(c.rules || {}) };
-  const blind = (local || c.mode === 'cards') && c.cardFlow === 'blind';
-  const changed = RULES.filter(([k]) => rules[k] !== DEFAULT_RULES[k]).length;
-  const open = !!S.ui.rulesOpen;
-  return `<section class="block game-style" data-raw>
-    <h2 class="block-title" id="q-theme">Mafia or Werewolf?</h2>
-    ${choices('q-theme', 'theme', THEMES[c.theme] ? c.theme : 'city', Object.entries(THEMES).map(([v, t]) => ({ v, icon: v === 'village' ? 'wolf' : 'fedora', title: t.label, desc: `${t.note} Same roles and rules, different names.` })))}
-    <button type="button" class="disclosure" aria-expanded="${open}" aria-controls="house-rules" data-a="toggleUi" data-k="rulesOpen">
-      ${ui('caret-down', open ? 'is-open' : '')} House rules <span class="disclosure-value">${changed ? `${changed} changed` : 'Standard'}</span></button>
-    <div class="disclosure-body rules" id="house-rules" ${open ? '' : 'hidden'}>
-      ${RULES.map(([k, title, desc]) => {
-        const off = k === 'dayStart' && blind;
-        return `<button type="button" class="rule" role="switch" aria-checked="${rules[k] && !off}" data-a="rule" data-k="${k}" ${off ? 'aria-disabled="true" data-why="With a blind card deal, night 1 is when you learn who is who."' : ''}>
-          <span class="rule-text"><span class="rule-title">${title}</span><span class="rule-desc">${off ? 'Not with a blind card deal: night 1 is when you learn who is who.' : desc}</span></span>
-          <span class="switch" aria-hidden="true"><i></i></span></button>`;
-      }).join('')}
-    </div>
-  </section>`;
-}
-
-// Warnings about the role mix, shown under the hand being built.
-function advice(roleIds, n, split = false) {
-  if (!roleIds.length) return '';
-  const ws = setupWarnings(roleIds, n);
-  const b = balanceOf(roleIds);
-  // The meter runs from -15 (Mafia) to +15 (Town); the marker sits at the setup's score.
-  const pos = Math.max(0, Math.min(100, 50 + (b.score / 15) * 50));
-  const sp = balanceSplit(roleIds);
-  const seg = (k, l) => (sp[k] ? `<i class="split-seg is-${k}" style="flex-grow:${sp[k]}" aria-hidden="true"></i>` : '');
-  const splitMeter = `<div class="balance balance-split" data-strength="${b.strength}" data-verdict="${b.verdict}">
-    <div class="split-bar" role="img" aria-label="Town ${sp.town}, Mafia ${sp.mafia}, Neutral ${sp.neutral}">${seg('town')}${seg('mafia')}${seg('neutral')}</div>
-    <p class="split-legend"><span class="is-town">Town ${sp.town}</span><span class="is-mafia">Mafia ${sp.mafia}</span><span class="is-neutral">Neutral ${sp.neutral}</span></p>
-    <p class="balance-text">${esc(b.text)}</p>
-    ${b.strength === 'even' ? '' : `<button type="button" class="btn ghost" data-a="rebalance">${ui('shuffle')} Balance it for me</button>`}
-  </div>`;
-  const meter = split ? splitMeter : `<div class="balance" data-strength="${b.strength}" data-verdict="${b.verdict}">
-    <div class="balance-head"><span class="balance-title">Balance</span><span class="balance-text">${esc(b.text)}</span></div>
-    <div class="balance-bar" role="meter" aria-valuemin="-15" aria-valuemax="15" aria-valuenow="${b.score}" aria-label="Balance: ${esc(b.text)}">
-      <span class="balance-end">Mafia</span><span class="balance-track"><i class="balance-mid"></i><i class="balance-dot" style="--p:${pos.toFixed(1)}"></i></span><span class="balance-end">Town</span></div>
-    ${b.strength === 'even' ? '' : `<button type="button" class="btn ghost" data-a="rebalance">${ui('shuffle')} Balance it for me</button>`}
-  </div>`;
-  const icon = { error: 'warning', warn: 'warning', tip: 'info' };
-  return `${meter}${ws.length ? `<ul class="advice">${ws.map((w) => `<li class="note advice-${w.level} ${w.level === 'tip' ? '' : 'is-warn'}">${ui(icon[w.level])} ${esc(w.text)}</li>`).join('')}</ul>` : ''}`;
 }
 
 // Steps that get a live result, and checks that are a coin flip by design.

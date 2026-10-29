@@ -9,6 +9,7 @@ import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId, legacyRoleId, pinStoredId, storedToMerged } from './roles.js';
 import { roleGuide } from './role_guide.js';
 import { ROOM_MODES, CARD_FLOWS } from './modes.js';
+import { ADVANCED_DEFAULTS } from './config-defaults.js';
 
 export const DOT_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white'];
 const DEFAULT_LEGEND = {
@@ -180,6 +181,10 @@ export function reduce(room, actor, a) {
       }
       if (typeof a.sharedBoard === 'boolean') c.sharedBoard = a.sharedBoard;
       if (a.theme && THEMES[a.theme]) c.theme = a.theme;
+      if (a.advanced && typeof a.advanced === 'object') { // day timer and hidden setup; "show card on death" is the revealOnDeath rule below
+        c.advanced = { ...(c.advanced || {}) };
+        for (const k of ['dayTimer', 'hiddenSetup']) if (typeof a.advanced[k] === 'boolean') c.advanced[k] = a.advanced[k];
+      }
       if (a.rules && typeof a.rules === 'object') {
         c.rules = rulesOf(room);
         for (const k of Object.keys(DEFAULT_RULES)) if (typeof a.rules[k] === 'boolean') c.rules[k] = a.rules[k];
@@ -377,6 +382,8 @@ export function reduce(room, actor, a) {
 }
 
 // Validates the setup and deals (app mode: roles to phones; cards mode: builds the deck).
+// Advanced settings as the room sees them: a room made before they existed gets the defaults (card on death = its current rule).
+export const advancedOf = (room) => ({ ...ADVANCED_DEFAULTS, cardOnDeath: rulesOf(room).revealOnDeath, ...(['dealt', 'night', 'day', 'over'].includes(room?.phase) && room.dealtAdvanced ? room.dealtAdvanced : room?.config?.advanced || {}) });
 function dealNow(room) {
   const err = (e) => ({ error: e });
   const n = room.players.length;
@@ -386,6 +393,7 @@ function dealNow(room) {
   if (!needsMafia) return err('Add at least one Mafia-aligned role.');
   const fatal = setupWarnings(room.config.roles, n).find((w) => w.level === 'error');
   if (fatal) return err(fatal.text);
+  room.dealtAdvanced = undefined; room.dealtAdvanced = advancedOf(room); // pinned for this game: rooms already dealt keep what they were dealt with
   if (room.config.mode === 'app') {
     const map = dealRoles(room.config.roles, room.players.map((p) => p.id));
     for (const p of room.players) p.roleId = map[p.id];
@@ -453,7 +461,7 @@ export function viewForHost(room, connected = new Set()) {
   const over = room.phase === 'over';
   return {
     story: storyOf(room),
-    kind: 'host', code: room.code, gameNo: room.gameNo || 1, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: room.config,
+    kind: 'host', code: room.code, gameNo: room.gameNo || 1, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: room.config, advanced: advancedOf(room),
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
