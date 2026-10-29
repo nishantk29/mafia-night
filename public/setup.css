@@ -110,3 +110,20 @@ html[data-fx="off"] .setup-track{transition:none}
 @keyframes setup-fade{from{opacity:0}to{opacity:1}}
 @media (min-width:768px){.setup-viewport{padding:0 var(--s2)}}
 .key-row.a-mafia .mix-ico{color:var(--mafia)}.key-row.a-town .mix-ico{color:var(--town)}.key-row.a-third .mix-ico{color:var(--third)}
+.sum-h{font-size:1rem;margin:var(--s4) 0 var(--s2)}
+/* Home (item 5 mockup): three plain rows, one gold primary in the dock. */
+.home .path-list{list-style:none;margin:var(--s4) 0;padding:0;display:grid}
+.home .path-list .path{background:none;border:0;border-bottom:1px solid var(--rule);border-radius:0;padding:0;box-shadow:none;overflow:visible;animation:none}
+.home .path-list .path::before,.home .path-list .path::after{content:none}
+.home .path-row{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:var(--s3);width:100%;min-height:64px;padding:var(--s3) 0;cursor:pointer;color:inherit}
+.home .path-row:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
+.home .path-row::-webkit-details-marker{display:none}.home summary.path-row{list-style:none}
+.home .path-text{flex:1;display:flex;flex-direction:column;gap:2px}
+.home .path-list .path-title{font-family:inherit;text-transform:none;letter-spacing:0;font-weight:600;font-size:1.125rem;line-height:1.3;max-width:none}
+.home .path-text .muted{font-size:1rem}
+.home .path-ico{width:22px;height:22px;flex:0 0 22px;color:var(--smoke)}
+.home .path-go{width:18px;height:18px;transform:rotate(-90deg);color:var(--smoke)}
+.home details[open] .path-go{transform:rotate(0)}
+.home .path-join .join-row{padding:0 0 var(--s3)}
+.home .resume-row{margin:0 0 var(--s3)}
+.home-cta{background:linear-gradient(to bottom,transparent,var(--room) 35%);padding-top:var(--s5,24px)}

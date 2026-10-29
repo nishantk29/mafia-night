@@ -1,13 +1,13 @@
 // Setup carousel logic: step state, saved presets, which step is valid and why not. Pure data, no DOM.
 // Storage is passed in ({ get, set }) so tests can use a Map.
-import { SETUP_STORE_KEY, SAVED_PRESETS_KEY, ADVANCED_STORE_KEY, ADVANCED_DEFAULTS, DEFAULT_PRESET_ID, DEFAULT_OFFLINE_DEAL, MAX_SAVED_PRESETS } from './config-defaults.js';
+import { SETUP_STORE_KEY, SAVED_PRESETS_KEY, ADVANCED_STORE_KEY, ADVANCED_DEFAULTS, DEFAULT_PRESET_ID, DEFAULT_OFFLINE_DEAL, MAX_SAVED_PRESETS, SETUP_STEPS, OFFLINE_STEPS } from './config-defaults.js';
 import { MAFIA_PRESETS, mafiaPresetById, inRange } from './preset-mixes.js';
 import { setupWarnings } from './engine.js';
 import { ownDeckFor, NEEDS_PRINTABLE } from './deck-key.js';
 
 export const STEPS = {
-  host: [['players', 'Players'], ['preset', 'Preset'], ['seating', 'Seating'], ['deal', 'Deal']],
-  local: [['players', 'Players'], ['preset', 'Roles'], ['cards', 'Cards']],
+  host: ['players', 'preset', 'seating', 'deal'].map((k, i) => [k, SETUP_STEPS[i]]),
+  local: ['players', 'preset', 'cards'].map((k, i) => [k, OFFLINE_STEPS[i]]),
 };
 export const stepsOf = (local) => (local ? STEPS.local : STEPS.host);
 

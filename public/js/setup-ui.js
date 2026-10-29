@@ -15,7 +15,7 @@ import { stepsOf, stepProblem, presetOf, seatingOf, counts, savedAsPreset } from
 const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 const DIFF = { Beginner: 1, Classic: 2, Veteran: 3, Saved: 0 };
 const NEXT_LABEL = { players: 'Next: Pick roles', preset: 'Next: Seating', seating: 'Next: Review' };
-const HEADINGS = { players: 'Who’s playing?', preset: 'Pick roles', seating: 'How is everyone playing?', deal: 'Ready?', cards: 'How do you want to deal roles?' };
+const HEADINGS = { players: 'Who’s playing?', preset: 'Pick roles', seating: 'How is everyone playing?', deal: 'Ready to deal?', cards: 'How do you want to deal roles?' };
 
 // ---- small pieces ----
 const diffDots = (d) => (DIFF[d] ? `<span class="diff" aria-hidden="true">${[1, 2, 3].map((i) => `<i class="${i <= DIFF[d] ? 'on' : ''}"></i>`).join('')}</span>` : '');
@@ -66,7 +66,7 @@ export function dock(c) {
   const p = stepProblem(c.key, c);
   const fixes = p ? ` ${p.fixes.map((f) => `<button type="button" class="linkish" data-a="${f.a}" ${f.v != null ? `data-v="${f.v}"` : ''}>${esc(f.label)}</button>`).join('')}` : '';
   const why = p ? `<p class="dock-why" id="setup-why">${esc(p.reason)}${fixes}</p>` : '';
-  const label = last ? 'Deal roles' : (local && c.key === 'preset' ? 'Next: How to deal' : NEXT_LABEL[c.key]);
+  const label = last ? `Deal ${c.n} role${c.n === 1 ? '' : 's'}` : (local && c.key === 'preset' ? 'Next: How to deal' : NEXT_LABEL[c.key]);
   const a = last ? 'setupDeal2' : 'setupNext';
   const next = `<button type="button" class="btn big ${p ? 'disabled' : ''}" data-a="${a}" ${p ? `aria-disabled="true" aria-describedby="setup-why" data-why="${esc(p.reason)}"` : ''}>${label}</button>`;
   return `${why}<div class="dock-row">${st.step > 0 ? `<button type="button" class="btn ghost dock-back" data-a="setupBack">Back</button>` : ''}${next}</div>`;
@@ -91,12 +91,13 @@ function playersCard({ v, local, n }) {
     <p class="callout local-note" role="note">${ui('info')} <span>Names are saved only on this device.</span></p>`;
 }
 
+const firstLine = (t = '') => (t.match(/^[^.!?]*[.!?]/) || [t])[0];
 function presetCard({ preset, st, n, min, roles, local }) {
   const hidden = preset.hiddenSetup;
   const showMix = roles.length ? roles : shownMix(preset, Math.max(n, min));
   const miss = st.source === 'custom' ? '' : misfitLine(preset, n);
   const name = st.source === 'custom' ? 'Your own mix' : preset.name;
-  const rows = counts(showMix).map(([id, cnt]) => `<li class="mix-row"><span class="mix-n">${cnt}</span><span class="mix-ico a-${ROLE_BY_ID[id]?.alignment || 'town'}">${ico(ROLE_BY_ID[id])}</span><span class="mix-name">${esc(ROLE_BY_ID[id]?.name || id)}</span></li>`).join('');
+  const rows = counts(showMix).map(([id, cnt]) => `<li class="mix-row"><span class="mix-n">${cnt}</span><span class="mix-ico a-${ROLE_BY_ID[id]?.alignment || 'town'}">${ico(ROLE_BY_ID[id])}</span><span class="mix-name">${esc(ROLE_BY_ID[id]?.name || id)}${hidden ? '' : `<small>${esc(firstLine(ROLE_BY_ID[id]?.blurb))}</small>`}</span></li>`).join('');
   return `<article class="preset-pick ${miss ? 'is-misfit' : ''}"><div class="pp-head"><h3 class="pp-name">${esc(name)}</h3>${st.source === 'preset' && preset.recommended ? '<span class="badge">Recommended</span>' : preset.saved ? '<span class="badge">★ Saved</span>' : ''}</div>
     <p class="pp-vibe">${esc(st.source === 'custom' ? `Edited from ${preset.name}.` : preset.vibe)}</p>
     <p class="pp-meta">${esc(rangeText(preset, n))} ${diffDots(preset.difficulty)}</p>
@@ -153,7 +154,10 @@ function dealCard({ v, n, preset, st, adv, roles }) {
   const row = (label, value, step) => `<li class="sum-row"><span class="sum-l">${label}</span><b class="sum-v">${esc(value)}</b><button type="button" class="linkish" data-a="setupGo" data-v="${step}" aria-label="Edit ${label.toLowerCase()}">Edit</button></li>`;
   const open = !!S.ui.setup?.advOpen;
   const sw = (k, title, desc) => `<button type="button" class="rule" role="switch" aria-checked="${!!adv[k]}" data-a="setupAdv" data-k="${k}"><span class="rule-text"><span class="rule-title">${title}</span><span class="rule-desc">${desc}</span></span><span class="switch" aria-hidden="true"><i></i></span></button>`;
-  return `<ul class="sum-list">${row('Players', String(n), 0)}${row('Preset', pname, 1)}${row('Seating', seat, 2)}</ul>
+  const names = v.players.map((p) => p.name); const who = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
+  const local = v.players.filter((p) => p.offline).length; const seatV = seatingOf(st, v.players) === 'own' ? seat : `${seat}: ${local} on this phone`;
+  return `<ul class="sum-list">${row('Players', n ? `${n}: ${who}` : '0', 0)}${row('Preset', pname, 1)}${row('Seating', seatV, 2)}</ul>
+    ${preset.hiddenSetup || adv.hiddenSetup ? '' : `<h3 class="sum-h">Roles in this game</h3>${iconRow(roles, 8)}`}
     <button type="button" class="disclosure" aria-expanded="${open}" aria-controls="adv-body" data-a="setupAdvOpen">${ui('caret-down', open ? 'is-open' : '')} Advanced <span class="disclosure-value">Optional</span></button>
     <div class="disclosure-body rules" id="adv-body" ${open ? '' : 'hidden'}>
       ${sw('dayTimer', 'Day timer', 'Off: the table talks as long as it likes.')}

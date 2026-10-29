@@ -165,14 +165,15 @@ function home() {
       <p class="lede">Night falls. Pick how your table plays.</p>
     </div>
     <div class="home-paths">
-      <section class="path path-host"><h2 class="path-title">Host on phones</h2>
-        <p class="muted">Everyone joins with a code. You run the night.</p>
-        ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a><button type="button" class="resume-x" data-a="forgetRoom" data-k="mafia.host.${esc(c)}" aria-label="Forget room ${esc(c)}">${ui('x')}</button></p>`).join('')}</section>
-      <section class="path path-join"><h2 class="path-title">Join a game</h2>
-        <div class="join-row"><label class="field"><span>Code from the host</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
-        <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
-        ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a><button type="button" class="resume-x" data-a="forgetRoom" data-k="mafia.player.${esc(c)}" aria-label="Forget room ${esc(c)}">${ui('x')}</button></p>`).join('')}</section>
-      <section class="path path-local"><a class="path-row" href="#/local"><span><b class="path-title">Play offline</b><span class="muted">One phone. Our cards, your own deck, or no cards.</span></span>${ui('caret-down')}</a></section>
+      <ul class="path-list" aria-label="How do you want to play?">
+        <li class="path path-host"><button type="button" class="path-row" data-a="hostRow">${ui('phone', 'path-ico')}<span class="path-text"><b class="path-title">Host on phones</b><span class="muted">Everyone joins with a code. You run the night.</span></span>${ui('caret-down', 'path-go')}</button>
+          ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a><button type="button" class="resume-x" data-a="forgetRoom" data-k="mafia.host.${esc(c)}" aria-label="Forget room ${esc(c)}">${ui('x')}</button></p>`).join('')}</li>
+        <li class="path path-join"><details ${S.ui.draft.joinCode || playCodes.length ? 'open' : ''}><summary class="path-row">${ui('expand', 'path-ico')}<span class="path-text"><b class="path-title">Join a game</b><span class="muted">Got a code from the host?</span></span>${ui('caret-down', 'path-go')}</summary>
+          <div class="join-row"><label class="field"><span>Code from the host</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
+          <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
+          ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a><button type="button" class="resume-x" data-a="forgetRoom" data-k="mafia.player.${esc(c)}" aria-label="Forget room ${esc(c)}">${ui('x')}</button></p>`).join('')}</details></li>
+        <li class="path path-local"><a class="path-row" href="#/local">${ui('cards', 'path-ico')}<span class="path-text"><b class="path-title">Play offline</b><span class="muted">One phone. Our cards, your own deck, or no cards.</span></span>${ui('caret-down', 'path-go')}</a></li>
+      </ul>
       <a class="home-rules" href="#/faq"><span><b>Rules &amp; FAQ</b><small>Roles, play modes and tricky calls.</small></span>${ui('caret-down')}</a>
       ${suggestions()}
       <section class="home-how"><h2 class="home-how-title">How to Play</h2>
@@ -381,6 +382,7 @@ const A = {
     if (el) el.value = ''; S.ui.draft.gyText = '';
     setTimeout(scrollGraveyard, 0);
   },
+  hostRow() { return A.hostLive(); },
   async hostLive() {
     leaveField();
     const res = await fetch('/api/create', { method: 'POST' }).then((r) => r.json()).catch(() => null);
