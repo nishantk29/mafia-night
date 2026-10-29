@@ -113,3 +113,12 @@ test('copy lint: the talk step wording is plain, with no em dashes', async () =>
   const lines = [TALK_TODO, talkUpText, 'Talk it out', 'Skip the talk', 'Skipped the talk', 'Next: Talk it out', talkDoneText({ timed: true, startedAt: NOW - 5 * MIN, now: NOW }), talkBody({ timed: true, minutes: 5, left: 0 }).replace(/<[^>]+>/g, ' ')];
   for (const l of lines) { assert.deepEqual(lintCopy(l), [], l); assert.doesNotMatch(l, /[—–]/, l); }
 });
+
+test('after the vote the next night shows once: as the current card, not again as an upcoming row', () => {
+  const v = viewForHost(dayRoom());
+  const before = dayModel(v, { stage: 'vote' }, true, NOW);
+  assert.deepEqual(before.upcoming.filter((u) => u.key === 'night').map((u) => u.name), [`Night ${v.night + 1}`]);
+  const after = dayModel(v, { stage: 'vote', result: 'Ben was voted out' }, true, NOW);
+  assert.equal(after.stage, 'night'); assert.equal(after.button.label, `Start night ${v.night + 1}`);
+  assert.equal(after.upcoming.filter((u) => u.key === 'night').length, 0, after.upcoming.map((u) => u.name).join(' / '));
+});

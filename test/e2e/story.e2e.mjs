@@ -169,6 +169,8 @@ try {
   await host.page.waitForFunction(() => /Start night 2/.test(document.querySelector('.action-dock .btn.big')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
   const after = await host.page.evaluate(() => ({ rail: [...document.querySelectorAll('.st-line')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()), btn: document.querySelector('.action-dock .btn.big')?.textContent.trim() }));
   L.check('the vote collapses and Start night 2 is next', after.rail.some((r) => /was voted out/.test(r)) && /Start night 2/.test(after.btn), JSON.stringify(after));
+  const n2 = await host.page.evaluate(() => (document.querySelector('.st-rail')?.textContent.match(/Night 2/g) || []).length);
+  L.check('after the vote "Night 2" shows once on the timeline', n2 === 1, String(n2));
 
   // ---- hidden setup ----
   const hid = await table(true);
