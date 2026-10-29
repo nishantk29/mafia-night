@@ -164,3 +164,5 @@ html[data-fx="off"] .setup-track{transition:none}
 .pass-hint{display:flex;align-items:center;gap:var(--s2);margin:var(--s3) 0 0;font-size:1rem;color:var(--smoke);align-self:flex-start}.pass-hint svg{width:22px;height:22px;flex:none}
 .pass-look .pass-dock{margin-top:auto}
 .gone{display:grid;gap:var(--s3);padding-block:var(--s6)}
+/* Programmatic focus on the pass headings moves screen readers, not a visible ring (keyboard focus still shows on controls). */
+.pass [tabindex="-1"]:focus{outline:none}
