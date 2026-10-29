@@ -54,7 +54,7 @@
 .setup-choice{display:flex;align-items:flex-start;gap:var(--s3);min-height:44px;width:100%;text-align:left;padding:var(--s3) var(--s4);background:var(--panel);border:1.5px solid var(--rule);border-radius:var(--r-row);color:var(--candle);font:inherit;cursor:pointer}
 .setup-choice[aria-checked="true"]{border-color:var(--brass);background:var(--panel-2)}
 .setup-choice .choice-mark{flex:none;width:20px;height:20px;margin-top:2px;border-radius:50%;border:2px solid var(--rule-strong)}
-.setup-choice[aria-checked="true"] .choice-mark{border-color:var(--brass);background:radial-gradient(var(--brass) 45%,transparent 50%)}
+.setup-choice[aria-checked="true"] .choice-mark{border-color:var(--brass);background:var(--brass);box-shadow:inset 0 0 0 4px var(--panel)}
 .setup-choice .choice-text{display:flex;flex-direction:column;gap:2px}.setup-choice b{font-size:1.0625rem}.setup-choice small{color:var(--smoke);font-size:.9375rem}
 .sum-list{list-style:none;margin:0 0 var(--s3);display:grid}
 .sum-row{display:flex;align-items:center;gap:var(--s3);min-height:52px;border-bottom:1px solid var(--rule)}

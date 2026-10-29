@@ -2,12 +2,13 @@
 // Layout (DESIGN.md 6.2): app bar, then a console with the game pane and a side (table, who is who, log).
 // Phones show one pane at a time via the tab bar; tablets show game + side switch; wide screens show everything.
 import { castList } from './world.js';
-import { S, esc, initial, loadLibrary } from './state.js';
+import { S, esc, initial, loadLibrary, store } from './state.js';
+import { loadDayStage } from './day-talk.js';
 import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY_ID, groupAlsoText } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { nightModel, dayModel, card, timeline, tokens, stepBody } from './host-timeline.js';
+import { nightModel, dayModel, card, timeline, tokens, stepBody, talkBody, TALK_TODO } from './host-timeline.js';
 import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, roleMax, MAX_PLAYERS, DEFAULT_RULES, cardInfo, LATEST_NIGHT_VERSION, upgradeTarget } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
@@ -406,8 +407,9 @@ function upgradeCard(v) {
 
 // ---------------- day ----------------
 function day(v) {
-  const stageOf = S.ui.dayStage?.day === v.day ? S.ui.dayStage.stage : undefined;
-  const m = dayModel(v, { stage: stageOf, sel: S.ui.condemn, result: S.ui.dayResult?.day === v.day ? S.ui.dayResult.text : '' }, v.config.rules?.revealOnDeath !== false);
+  if (!S.ui.dayStage) { const saved = loadDayStage(store, v.code, v.gameNo, v.day); if (saved) S.ui.dayStage = saved; } // a refresh mid-talk comes back to the step
+  const ds = S.ui.dayStage?.day === v.day ? S.ui.dayStage : {};
+  const m = dayModel(v, { stage: ds.stage, minutes: ds.minutes, startedAt: ds.startedAt, talkDone: ds.talkDone, sel: S.ui.condemn, result: S.ui.dayResult?.day === v.day ? S.ui.dayResult.text : '' }, v.config.rules?.revealOnDeath !== false);
   const { rep, alive } = m;
   const pend = v.pending.map((p) => `<section class="cue is-current pending"><div class="cue-body">
       <span class="meta">${esc(pname(v, p.playerId))}</span><p class="say">${esc(p.text)}</p>
@@ -418,6 +420,8 @@ function day(v) {
   if (m.stage === 'morning') {
     const said = v.story?.morning?.say || `The sun is up. ${rep.deaths.length ? `${names2(rep.deaths.map((d) => d.id))} did not survive the night.` : 'Nobody died last night.'}`;
     current = card({ kicker: 'Morning', key: 'morning', say: said, todo: 'Read this out, then tap Next.' });
+  } else if (m.stage === 'talk') {
+    current = card({ kicker: 'Talk', key: 'talk', say: 'Talk it out', todo: TALK_TODO, body: talkBody(m.talk) });
   } else if (m.stage === 'vote') {
     const sel = m.sel;
     current = card({ kicker: 'Vote', key: 'vote', say: m.say, todo: 'Tap who’s out.', dead: 'A tie? Tap No one, or vote again.',
@@ -435,7 +439,7 @@ function day(v) {
   const body = `<header class="phase-head"><h2 class="phase-title">Day ${v.day}</h2></header>${upgradeCard(v)}${pend}
     <ol class="cues one st-rail" data-night>${m.done.map((d) => `<li class="st-line is-done" data-sk="${d.key}"><span class="st-dot" aria-hidden="true"></span><span class="st-tick" aria-hidden="true">${ui('check')}</span><span class="st-text">${esc(d.text)}</span></li>`).join('')}${current}${m.upcoming.map((u) => `<li class="st-line is-next" data-sk="${u.key}"><span class="st-dot" aria-hidden="true"></span><span class="st-text">${esc(u.name)}</span></li>`).join('')}</ol>${priv}`;
   const b = m.button;
-  return { body, dock: btn(b.enabled && b.action === 'startNight' ? 'big secondary' : 'big', b.action, b.label, { on: b.enabled && !(b.action !== 'startNight' && b.action !== 'dayVote' && v.pending.length), why: v.pending.length ? 'Answer the questions above first' : b.why }) };
+  return { body, dock: btn(b.enabled && b.action === 'startNight' ? 'big secondary' : 'big', b.action, b.label, { on: b.enabled && !(!['startNight', 'dayVote', 'dayTalk'].includes(b.action) && v.pending.length), why: v.pending.length ? 'Answer the questions above first' : b.why }) };
 }
 
 // ---------------- over ----------------

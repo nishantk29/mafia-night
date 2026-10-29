@@ -7,7 +7,7 @@ import { dealt, hostScreen, S, ok, freshUi, host } from './night-drive-lib.mjs';
 const gold = (html) => [...html.matchAll(/<button[^>]*class="btn big([^"]*)"[^>]*>/g)]
   .filter((m) => !/disabled|danger|ghost|secondary/.test(m[1]) && !/aria-disabled|\sdisabled[\s>]/.test(m[0]));
 const check = (name, html) => assert.ok(gold(html).length <= 1, `${name}: ${gold(html).map((m) => m[0]).join(' | ')}`);
-const render = (view, local = true, ui = {}) => { Object.assign(S.ui, { night: null, condemn: null, ...ui }); return hostScreen(view, local); };
+const render = (view, local = true, ui = {}) => { Object.assign(S.ui, { night: null, condemn: null, dayStage: { day: 1, stage: 'vote' }, ...ui }); return hostScreen(view, local); };
 
 test('lobby and dealt screens', () => {
   const room = newRoom('NN', 'k');
@@ -49,6 +49,7 @@ test('day with and without a selection, pending questions; over', () => {
   const pend = { ...day, pending: [{ id: 'q1', playerId: alive[0].id, text: 'Who?' }] };
   check('day, pending', render(pend, true, { condemn: alive[1].id }));
   check('day, pending, none', render(pend, true, { condemn: null }));
+  for (const stage of ['talk', 'morning']) check(`day, ${stage}`, render(stage === 'morning' ? { ...day, report: { night: 1, deaths: [], info: [], saves: [], conversions: [], notes: [] } } : day, true, { dayStage: { day: 1, stage, startedAt: Date.now() } }));
   const over = { ...view, phase: 'over', winner: { side: 'town' }, winners: [], night: 1, day: 1 };
   const end = render(over);
   assert.match(end, /data-a="restart"/);

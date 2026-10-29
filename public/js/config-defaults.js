@@ -21,3 +21,7 @@ export const DAY_SAYS = { vote: 'On three, point at who you want out.' }; // the
 export const ALLOW_SEAT_TAKEOVER = true; // true: the host can release a seat so someone takes it over on their own phone by joining with the seat's name, and can pull a dropped player's seat onto this phone. false: seats stay where they are.
 export const PASS_STORE_KEY = 'mafia.pass.v1'; // per room on the host phone: which local seats have looked at their card this game (ids only, never a role)
 export const PASS_HOLD_MAX_MS = 3000; // the pass card hides itself after this long even if still held (same for every seat and role)
+export const TALK_MINUTES = 5; // the day "Talk it out" step: starting countdown when the Day timer is on
+export const TALK_MIN = 1; // shortest talk, in minutes (the quick -1 stops here)
+export const TALK_MAX = 15; // longest talk, in minutes (the quick +1 stops here)
+export const TALK_STORE_KEY = 'mafia.talk.v1'; // this phone's current day step, so a refresh mid-talk comes back to it
