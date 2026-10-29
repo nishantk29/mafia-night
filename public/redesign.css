@@ -29,7 +29,7 @@ html{background:#0B0B0D;hyphens:manual}
 .wm-drips{position:absolute;inset:0;pointer-events:none}
 .dr-svg{position:absolute;display:block;overflow:visible;transform-origin:50% 0;will-change:transform}
 .wm-blood .dr{fill:var(--blood,#B3121F)}
-html[data-fx="on"] .dr-svg{animation:drip calc(1.6s * var(--dur-scale)) var(--ease-butter) both,ooze calc(7s * var(--dur-scale)) ease-in-out calc(calc(1.6s * var(--dur-scale)) + var(--i) * calc(.45s * var(--dur-scale))) infinite}
+html[data-fx="on"] .dr-svg{animation:drip calc(1.6s * var(--dur-scale)) var(--ease-butter) both,ooze calc(7s * var(--dur-scale)) ease-in-out calc(calc(1.6s * var(--dur-scale)) + var(--i) * calc(.45s * var(--dur-scale))) 1}
 html[data-fx="on"] .dr-svg:nth-child(3n){animation-delay:calc(.5s * var(--dur-scale)),calc(2s * var(--dur-scale))}
 @keyframes drip{from{transform:scaleY(0);opacity:0}25%{opacity:1}}
 @keyframes ooze{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.06)}}
@@ -55,8 +55,10 @@ html[data-fx="on"] .knife.is-new{will-change:transform;animation:knife-in calc(.
 .bg-art .smoke{position:absolute;left:-30%;top:10%;width:160%;height:70%;opacity:.55;background:radial-gradient(40% 50% at 30% 50%,rgba(255,244,230,.07),transparent 70%),radial-gradient(34% 44% at 70% 40%,rgba(179,18,31,.12),transparent 70%)}
 .bg-art .skyline{position:absolute;left:0;right:0;bottom:0;height:clamp(150px,34vh,340px);background:repeat-x bottom/auto 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 200' preserveAspectRatio='none'%3E%3Cg fill='%23141217'%3E%3Cpath d='M0 200V120h30V90h24v40h20V70h36v60h18V100h30V60l14-10 14 10v70h26V110h34V80h22v50h28V95h30v40h20V75h36v125z'/%3E%3C/g%3E%3Cg fill='%23ffd36b' opacity='.55'%3E%3Crect x='38' y='100' width='4' height='6'/%3E%3Crect x='94' y='86' width='4' height='6'/%3E%3Crect x='104' y='96' width='4' height='6'/%3E%3Crect x='214' y='78' width='4' height='6'/%3E%3Crect x='304' y='92' width='4' height='6'/%3E%3Crect x='392' y='102' width='4' height='6'/%3E%3Crect x='470' y='86' width='4' height='6'/%3E%3Crect x='540' y='84' width='4' height='6'/%3E%3C/g%3E%3C/svg%3E");opacity:.9}
 .bg-art .moon{position:absolute;right:9%;top:9%;width:clamp(70px,9vw,130px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 38% 38%,#fff1d8,#d8c6a6 62%,#a8977a);box-shadow:0 0 60px 10px rgba(255,236,200,.12);opacity:.85}
-html[data-fx="on"] .bg-art .smoke{animation:smoke calc(46s * var(--dur-scale)) linear infinite alternate}
-@keyframes smoke{to{transform:translate3d(18%,0,0)}}
+/* the smoke drifts in once and settles where it rests (no looping motion: Nishant, Oct 28 11:09 PM ET); that resting place is
+   also what reduced motion and effects off show */
+html[data-fx="on"] .bg-art .smoke{animation:smoke calc(46s * var(--dur-scale)) cubic-bezier(.2,.6,.3,1) 1 both}
+@keyframes smoke{from{transform:translate3d(18%,0,0)}to{transform:none}}
 html[data-shell="host"] .bg-art .moon,html[data-shell="player"] .bg-art .moon{opacity:.4}
 @media (max-width:767px){.bg-art .moon{opacity:.55}}
 
