@@ -9,7 +9,7 @@ import { THEMES } from './theme.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId, legacyRoleId, pinStoredId, storedToMerged } from './roles.js';
 import { roleGuide } from './role_guide.js';
 import { ROOM_MODES, CARD_FLOWS } from './modes.js';
-import { ADVANCED_DEFAULTS } from './config-defaults.js';
+import { ADVANCED_DEFAULTS, ALLOW_SEAT_TAKEOVER } from './config-defaults.js';
 
 export const DOT_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white'];
 const DEFAULT_LEGEND = {
@@ -104,6 +104,9 @@ export function reduce(room, actor, a) {
 
   // ---- anyone ----
   if (t === 'join') {
+    // Taking over a released seat: the same name, on a new phone, in any phase. The seat keeps its secret; the old token stops working.
+    const open = ALLOW_SEAT_TAKEOVER && room.players.find((p) => p.open && !p.offline && p.name.toLowerCase() === cleanName(a.name).toLowerCase());
+    if (open) { open.open = false; open.token = rid(12); return { ok: true, data: { playerId: open.id, token: open.token } }; }
     if (room.phase !== 'lobby') return err('The game has already started.');
     const r = addPlayer(room, a.name, false);
     return r.error ? r : { ok: true, data: { playerId: r.player.id, token: r.player.token } };
@@ -162,6 +165,16 @@ export function reduce(room, actor, a) {
       const [p] = room.players.splice(i, 1);
       room.players.splice(to, 0, p);
       return { ok: true };
+    }
+    case 'seatWhere': { // move a seat to this phone (local), or release it for takeover by someone's own phone; the seat keeps its secret, the old token stops working
+      const p = playerById(room, a.playerId);
+      if (!p) return err('Bad player.');
+      if (a.where === 'local') { p.offline = true; p.open = false; p.token = rid(12); return { ok: true }; }
+      if (a.where === 'open') {
+        if (!ALLOW_SEAT_TAKEOVER) return err('Seats can’t be released here.');
+        p.offline = false; p.open = true; p.token = rid(12); return { ok: true };
+      }
+      return err('Bad seat.');
     }
     case 'renamePlayer': {
       const p = playerById(room, a.playerId); const n = cleanName(a.name);
@@ -442,7 +455,8 @@ export const justEnded = (phaseBefore, room) => phaseBefore !== 'over' && room.p
 export function messagesFor(room, att, connected = new Set(), announce = false) {
   if (!att?.who) return [];
   const host = att.who === 'host';
-  const out = [{ type: 'view', view: host ? viewForHost(room, connected) : viewForPlayer(room, att.playerId, connected) }];
+  const moved = !host && !!playerById(room, att.playerId)?.offline; // a socket still holding a seat that now plays on the host phone gets nothing of it
+  const out = [{ type: 'view', view: host ? viewForHost(room, connected) : moved ? { kind: 'gone' } : viewForPlayer(room, att.playerId, connected) }];
   if (announce && room.phase === 'over') out.push(gameOverEvent(room, host ? null : att.playerId));
   if (canSeeGraveyard(room, att)) out.push({ type: 'graveyard', entries: room.graveyard || [] });
   return out;
@@ -471,7 +485,7 @@ export function viewForHost(room, connected = new Set()) {
     story: storyOf(room),
     kind: 'host', code: room.code, gameNo: room.gameNo || 1, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: { ...room.config, rules: rulesOf(room) }, advanced: advancedOf(room), // effective rules: an old room's stored reveal:true reads as off
     players: room.players.map((p) => ({
-      id: p.id, name: p.name, offline: p.offline, connected: p.offline || connected.has(p.id), alive: p.alive,
+      id: p.id, name: p.name, offline: p.offline, open: !!p.open, connected: p.offline || (!p.open && connected.has(p.id)), alive: p.alive,
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,
       deathCause: p.deathCause || null, roleHidden: !!p.roleHidden, convertedFrom: p.convertedFrom || null, becameJester: !!p.becameJester, jesterSeen: !!p.jesterSeen,
     })),
@@ -519,7 +533,7 @@ function setupFor(room) {
 export function viewForPlayer(room, playerId, connected = new Set()) {
   registerRoles(room.config.customRoles);
   const me = playerById(room, playerId);
-  if (!me) return { kind: 'gone' };
+  if (!me || me.open) return { kind: 'gone' }; // a released seat: an old phone still holding it sees nothing (a seat moved to the host phone is handled in messagesFor)
   const over = room.phase === 'over';
   const real = me.roleId && ROLE_BY_ID[me.roleId];
   const jester = !!me.becameJester && !!me.jesterSeen && real?.id === 'executioner'; // v8: told at night, so the phone card follows

@@ -12,12 +12,15 @@ const CASES = [1, 2, 3].flatMap((k) => [false, true].map((godfather) => ({
 })));
 // A hidden setup (Advanced) is one more case: the phones carry no role ids, so shuffling secrets can't move a view.
 CASES.push({ k: 1, godfather: false, hidden: true, roles: ['mafia', 'mafia', 'doctor', 'detective', 'villager', 'villager', 'villager', 'villager', 'jester', 'villager'] });
+// Mixed seating: the first four seats join on their own phones, the rest are seats on the host phone; one phone seat is later moved to the host phone.
+CASES.push({ k: 1, godfather: false, mixed: true, roles: ['mafia', 'mafia', 'doctor', 'detective', 'villager', 'villager', 'villager', 'villager', 'jester', 'villager'] });
 const asActor = (id) => (id === 'host' ? HOST : { playerId: id });
 const alive = (room) => room.players.filter((p) => p.alive);
 
 function setup(c) {
   const room = newRoom('INV', 'hostkey');
-  reduce(room, HOST, { type: 'addPlayers', names: c.roles.map((_, i) => `P${i}`) });
+  const names = c.roles.map((_, i) => `P${i}`);
+  if (c.mixed) { for (const n of names.slice(0, 4)) reduce(room, { anon: true }, { type: 'join', name: n }); reduce(room, HOST, { type: 'addPlayers', names: names.slice(4) }); reduce(room, HOST, { type: 'seatWhere', playerId: room.players[3].id, where: 'local' }); } else reduce(room, HOST, { type: 'addPlayers', names });
   reduce(room, HOST, { type: 'setConfig', mode: 'app', roles: c.roles, ...(c.hidden ? { advanced: { hiddenSetup: true } } : {}) });
   const d = reduce(room, HOST, { type: 'deal' }); if (d.error) throw new Error(`deal refused: ${d.error}`);
   return room;

@@ -86,8 +86,8 @@ export function dayModel(view, uiDay = {}, revealCard = true, now = Date.now()) 
   if (stage === 'vote' && !uiDay.result) {
     if (sel && sel !== 'none' && revealCard) upcoming.push({ key: 'reveal', name: `${name(sel)} shows their card` });
   }
-  upcoming.push({ key: 'night', name: `Night ${view.night + 1}` });
   const voted = !!uiDay.result;
+  if (!voted) upcoming.push({ key: 'night', name: `Night ${view.night + 1}` }); // after the vote the night is the current card
   const minutes = clampMinutes(uiDay.minutes ?? TALK_MINUTES);
   const talk = { timed, minutes, left: timed ? talkLeft({ minutes, startedAt: uiDay.startedAt }, now) : null };
   return { stage: voted ? 'night' : stage, rep, alive, sel, done, upcoming, voted, say: DAY_SAYS.vote, talk, talkOn,

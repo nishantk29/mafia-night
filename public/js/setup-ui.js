@@ -10,6 +10,7 @@ import { MAFIA_PRESETS, inRange, misfitLine } from './preset-mixes.js';
 import { HIDDEN_SETUP_SHOWS_BALANCE } from './config-defaults.js';
 import { OFFLINE_DEALS } from './modes.js';
 import { ownDeckFor, KEY, CORE_KEY, EXTRA_KEY, NEEDS_PRINTABLE } from './deck-key.js';
+import { seatRows } from './seating.js';
 import { stepsOf, stepProblem, presetOf, seatingOf, counts, savedAsPreset } from './setup-store.js';
 
 const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
@@ -86,8 +87,8 @@ function playersCard({ v, local, n }) {
   const anyPhone = !local && v.players.some((p) => !p.offline && p.connected);
   return `${local ? '' : `<p class="room-chip">${ui('expand')} <span>Players join with code <b class="code">${esc(v.code)}</b></span><button type="button" class="linkish" data-a="showQr">Show QR</button></p>`}
     <div class="tally-row"><b data-tick="players">${plural(n, 'player')}</b>${anyPhone ? `<span class="legend-phone">${ui('phone')} joined on their own phone</span>` : ''}</div>
-    ${n ? `<ul class="chips">${chips}</ul>` : `<p class="muted setup-empty">${local ? 'Nobody’s here yet. Add everyone’s names below.' : 'Nobody’s here yet. Share the code, or add names for people without phones.'}</p>`}
-    <form class="add-name" data-a-submit="addNames"><input class="add-input" data-i="names" id="add-name" placeholder="Add a name" aria-label="Add a name" autocomplete="off" enterkeyhint="done" value="${esc(S.ui.draft.names || '')}"><button type="button" class="btn ghost" data-a="addNames">Add</button></form>
+    ${n ? (local ? `<ul class="chips">${chips}</ul>` : seatRows(v)) : `<p class="muted setup-empty">${local ? 'Nobody’s here yet. Add everyone’s names below.' : 'Nobody’s here yet. Share the code, or add names for people without phones.'}</p>`}
+    <form class="add-name" data-a-submit="addNames"><input class="add-input" data-i="names" id="add-name" placeholder="Add a name" aria-label="Add a name" autocomplete="off" enterkeyhint="done" value="${esc(S.ui.draft.names || '')}"><button type="button" class="btn ghost" data-a="addNames">${local ? 'Add' : 'Seat on this phone'}</button></form>
     <p class="callout local-note" role="note">${ui('info')} <span>Names are saved only on this device.</span></p>`;
 }
 
@@ -114,9 +115,17 @@ const SEATS = [
 ];
 function seatingCard({ v, st }) {
   const cur = seatingOf(st, v.players);
-  const phones = v.players.filter((p) => !p.offline).length;
+  const byName = v.players.filter((p) => p.offline); const phones = v.players.filter((p) => !p.offline);
+  const list = (l) => l.map((p) => esc(p.name)).join(', ');
+  let more = '';
+  if (cur === 'own' && byName.length) {
+    more = `<p class="callout is-warn" role="note">${ui('warning')} <span>${list(byName)} ${byName.length === 1 ? 'was' : 'were'} added by name and ${byName.length === 1 ? 'has' : 'have'} no phone. When you deal, ${byName.length === 1 ? 'they look' : 'each looks'} on this phone.</span></p>
+      <div class="btn-row"><button type="button" class="btn ghost" data-a="setupSeating" data-v="mixed">Seat on this phone</button><button type="button" class="linkish" data-a="setupGo" data-v="0">Back to Players</button></div>`;
+  } else if (cur === 'one' && phones.length) {
+    more = `<p class="callout" role="note">${ui('info')} <span>${list(phones)} joined on ${phones.length === 1 ? 'their own phone' : 'their own phones'}. When you deal, ${phones.length === 1 ? 'that seat moves' : 'those seats move'} to this phone.</span></p>`;
+  }
   return `<div class="setup-choices" role="radiogroup" aria-labelledby="setup-h">${SEATS.map(([id, t, d]) => `<button type="button" class="setup-choice" role="radio" aria-checked="${cur === id}" tabindex="${cur === id ? 0 : -1}" data-a="setupSeating" data-v="${id}"><span class="choice-mark" aria-hidden="true"></span><span class="choice-text"><b>${t}</b><small>${d}</small></span></button>`).join('')}</div>
-    <p class="muted">${plural(phones, 'player')} joined on their own phone. ${plural(v.players.length - phones, 'player')} added by name.</p>`;
+    <p class="muted">${plural(phones.length, 'player')} joined on their own phone. ${plural(byName.length, 'player')} on this phone.</p>${more}`;
 }
 
 function cardsCard({ st, roles, n }) {
@@ -155,7 +164,7 @@ function dealCard({ v, n, preset, st, adv, roles }) {
   const open = !!S.ui.setup?.advOpen;
   const sw = (k, title, desc) => `<button type="button" class="rule" role="switch" aria-checked="${!!adv[k]}" data-a="setupAdv" data-k="${k}"><span class="rule-text"><span class="rule-title">${title}</span><span class="rule-desc">${desc}</span></span><span class="switch" aria-hidden="true"><i></i></span></button>`;
   const names = v.players.map((p) => p.name); const who = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
-  const local = v.players.filter((p) => p.offline).length; const seatV = seatingOf(st, v.players) === 'own' ? seat : `${seat}: ${local} on this phone`;
+  const local = v.players.filter((p) => p.offline).length; const sk = seatingOf(st, v.players); const seatV = sk === 'own' && !local ? seat : sk === 'one' ? `${seat}: all ${n} on this phone` : `${seat}: ${local} on this phone`;
   return `<ul class="sum-list">${row('Players', n ? `${n}: ${who}` : '0', 0)}${row('Preset', pname, 1)}${row('Seating', seatV, 2)}</ul>
     ${preset.hiddenSetup || adv.hiddenSetup ? '' : `<h3 class="sum-h">Roles in this game</h3>${iconRow(roles, 8)}`}
     <button type="button" class="disclosure" aria-expanded="${open}" aria-controls="adv-body" data-a="setupAdvOpen">${ui('caret-down', open ? 'is-open' : '')} Advanced <span class="disclosure-value">Optional</span></button>

@@ -19,6 +19,9 @@ import { rolesModel, rolesChip, rolesLayer, rolesGateOpen } from './roles_sheet.
 import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
 
 import { setupView } from './setup-actions.js';
+import { passLayer, passPanel, seatSheet } from './seating.js';
+import { activePass, passSeen } from './seating-actions.js';
+import { maskedLocal } from './seat-model.js';
 import { callNum, checkCaption, balanceSplit, declareSides, SIDE_GROUPS } from './host_v2.js';
 import { qrSvg, joinUrl } from './qr.js';
 import { hostHelpButton, hostHelpOverlay, hostHelpSettingsRow } from './host_help.js';
@@ -44,6 +47,8 @@ export function hostScreen(v, local) {
   const title = local ? 'On this device<span class="appbar-sub">Private to this device</span>' : `<button type="button" class="appbar-code" data-a="showCode" aria-label="Room code ${esc(v.code.split('').join(' '))}. Tap to show the code full screen">${ui('expand')}<b class="code">${esc(v.code)}</b></button>`;
   const [picon, plabel] = v.phase === 'night' ? ['moon', `Night ${v.night}`] : v.phase === 'day' ? ['sun', `Day ${v.day}`] : PHASE[v.phase];
   if (v.phase !== 'lobby') S.ui.deckShown = [];
+  const ps = activePass(v);
+  if (ps && !rolesGateOpen(v)) return passLayer(v, ps); // a seat on this phone is looking: nothing else on screen
   if (rolesGateOpen(v)) return rolesLayer(v); // the first look at the setup comes before the console, so it holds the one gold button
   const { body, dock, bar = '' } = ({ lobby, dealt, night, day, over })[v.phase](v, local);
   const tabs = [['game', 'Game'], ['table', 'Table'], ['log', 'Log']];
@@ -67,7 +72,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${rolesLayer(v)}${S.ui.addRole && v.phase === 'lobby' ? addRoleSheet(v) : ''}${S.ui.settings ? settingsSheet() : ''}${hostHelpOverlay(v)}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${rolesLayer(v)}${S.ui.seatSheet ? seatSheet(v, S.ui.seatSheet) : ''}${S.ui.addRole && v.phase === 'lobby' ? addRoleSheet(v) : ''}${S.ui.settings ? settingsSheet() : ''}${hostHelpOverlay(v)}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
@@ -190,12 +195,10 @@ function dealt(v, local) {
   const back = `<button type="button" class="btn ghost back-setup" data-a="undeal">${ui('back')} Back to setup</button>`;
   const stack = (main) => `<div class="dock-stack">${back}${main}</div>`;
   if (!cards) {
-    const noPhone = v.players.filter((p) => p.offline && p.roleId);
     return {
-      body: `<header class="phase-head"><h2 class="phase-title">Roles are on everyone’s phones</h2>
-        <p class="muted">Ask everyone to check their role in private, then start the first night.</p></header>
-        ${noPhone.length ? `<section class="whisper"><h3 class="whisper-title">${ui('ear')} Tell these players their role in private</h3>
-          ${noPhone.map((p) => `<div class="whisper-item"><b>${esc(p.name)}</b> ${roleChip(ROLE_BY_ID[p.roleId])}</div>`).join('')}</section>` : ''}`,
+      body: `<header class="phase-head"><h2 class="phase-title">${v.players.every((p) => p.offline) ? 'Roles are dealt' : 'Roles are on everyone’s phones'}</h2>
+        <p class="muted">${v.players.every((p) => p.offline) ? 'Pass this phone so each player looks in private, then start the first night.' : 'Ask everyone to check their role in private, then start the first night.'}</p></header>
+        ${passPanel(v, passSeen(v))}`,
       dock: stack(firstStart(v)),
     };
   }
@@ -462,10 +465,10 @@ function tablePane(v) {
 function roster(v) {
   const lobbyPhase = v.phase === 'lobby';
   const rows = v.players.map((p) => {
-    const r = p.roleId ? ROLE_BY_ID[p.roleId] : null;
+    const r = p.roleId && !maskedLocal(v, p) ? ROLE_BY_ID[p.roleId] : null;
     return `<li><button type="button" class="rrow ${r ? `a-${r.alignment}` : ''} ${p.alive ? '' : 'is-dead'}" data-a="seat" data-id="${p.id}">
       <span class="rrow-glyph">${r ? ico(r) : initial(p.name)}</span><span class="rrow-name">${esc(p.name)}</span>
-      ${r ? `<span class="rrow-role">${esc(r.name)}</span>` : lobbyPhase ? '' : '<span class="rrow-role is-unknown">Not known yet</span>'}
+      ${r ? `<span class="rrow-role">${esc(r.name)}</span>` : lobbyPhase ? '' : `<span class="rrow-role is-unknown">${p.roleId ? 'Hidden for now' : 'Not known yet'}</span>`}
       ${p.note ? `<span class="rrow-note">${esc(p.note)}</span>` : ''}
       ${p.alive ? '' : `<span class="rrow-mark" aria-label="dead">${ui('skull')}</span>`}
       <span class="seat-dots">${(p.tags || []).map((t) => `<i class="dot d-${t}"></i>`).join('')}</span></button></li>`;
