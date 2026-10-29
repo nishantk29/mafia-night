@@ -5,6 +5,8 @@ import { registerRoles, ROLE_BY_ID } from './roles.js';
 import { rebalance, DEFAULT_RULES, flipCoin } from './engine.js';
 import { themeOf, themeText, themeDom } from './theme.js';
 import { TOOL_ACTIONS, tickTools } from './tools.js';
+import { TALK_MINUTES } from './config-defaults.js';
+import { clampMinutes, talkDoneText, saveDayStage } from './day-talk.js';
 const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.me?.name].filter(Boolean);
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
@@ -490,7 +492,13 @@ const A = {
   resolve() { send({ type: 'submitNight', actions: S.ui.night.actions }); },
   // day
   selCondemn(el) { S.ui.condemn = S.ui.condemn === el.dataset.id ? null : el.dataset.id; S.render(); },
-  dayVote() { S.ui.dayStage = { day: S.view.day, stage: 'vote' }; S.render(); },
+  dayTalk() { setDayStage({ stage: 'talk', minutes: TALK_MINUTES, startedAt: Date.now() }); },
+  talkAdj(el) { const d = S.ui.dayStage; if (d?.stage === 'talk') setDayStage({ ...d, minutes: clampMinutes(d.minutes + Number(el.dataset.v)) }); },
+  talkSkip() { setDayStage({ stage: 'vote', talkDone: talkDoneText({ skipped: true }) }); },
+  dayVote() { // the Next from the talk step: the minutes used go into the timeline
+    const d = S.ui.dayStage?.day === S.view.day ? S.ui.dayStage : null;
+    setDayStage(d?.stage === 'talk' ? { stage: 'vote', talkDone: talkDoneText({ timed: !!S.view.advanced?.dayTimer, startedAt: d.startedAt, now: Date.now() }) } : { stage: 'vote' });
+  },
   condemn() { if (!S.ui.condemn) return; const id = S.ui.condemn; const name = S.view.players.find((p) => p.id === id)?.name || 'They'; S.ui.condemn = null; S.ui.dayResult = { day: S.view.day, text: `${name} was voted out` }; buzz([30, 40, 30]); send({ type: 'condemn', playerId: id }); },
   noCondemn() { S.ui.condemn = null; S.ui.dayResult = { day: S.view.day, text: 'No one was voted out' }; send({ type: 'noCondemn' }); },
   seeRoles() { markRolesSeen(S.view); S.render(); },
@@ -545,6 +553,10 @@ const A = {
   pickCard(el) { S.ui.claim = el.dataset.v; S.ui.claimSuit = suitOf(el.dataset.v); S.render(); },
   claim() { if (S.ui.claim) send({ type: 'claimCard', card: S.ui.claim }); },
 };
+// The day step on the Host's phone, saved so a refresh comes back to it.
+function setDayStage(next) {
+  S.ui.dayStage = { ...next, day: S.view.day }; saveDayStage(store, S.view.code, S.view.gameNo, S.ui.dayStage); S.render();
+}
 Object.assign(A, TOOL_ACTIONS, SETUP_ACTIONS);
 wireSetupGestures();
 setInterval(tickTools, 500);

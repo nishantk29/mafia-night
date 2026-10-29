@@ -18,3 +18,7 @@ export const ROLES_BLURB_MAX = 70; // longest one-line summary in the Roles list
 export const ROLES_GATE_KEY = 'mafia.rolesSeen.v1'; // per phone: which games already showed "Roles in this game" before the first look at a role
 export const NIGHT_PICK_COLLAPSE = { target: 'picked a target', answer: 'answered', info: 'woke up', identify: 'was identified', show: 'was shown their card' }; // what a done step says: a role and a verb, never a name
 export const DAY_SAYS = { vote: 'On three, point at who you want out.' }; // the line read before the day vote
+export const TALK_MINUTES = 5; // the day "Talk it out" step: starting countdown when the Day timer is on
+export const TALK_MIN = 1; // shortest talk, in minutes (the quick -1 stops here)
+export const TALK_MAX = 15; // longest talk, in minutes (the quick +1 stops here)
+export const TALK_STORE_KEY = 'mafia.talk.v1'; // this phone's current day step, so a refresh mid-talk comes back to it
