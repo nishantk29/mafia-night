@@ -2,7 +2,7 @@
 import {
   FULL_DECK, roleMax, MIN_PLAYERS, MAX_PLAYERS, suggestRoles, dealRoles, buildDeckMap, isCard, shuffle, randInt,
   applyWinChecks, playerById, nightScript, resolveNight, isBlind, unidentifiedSlots, finalizeBlind, condemn, resolvePending, killPlayer, log, finalWinners, stalemateOf,
-  setupWarnings, DEFAULT_RULES, rulesOf, hasGraveyard, upgradeTarget, hasMergedDetective,
+  setupWarnings, DEFAULT_RULES, REVEAL_POLICY, rulesOf, hasGraveyard, upgradeTarget, hasMergedDetective,
   hasStoryScript, hasNightOnlyChecks, assignCallNumbers, callNumbers, hasNumberedCalls, shownRoleId, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
@@ -24,7 +24,7 @@ export function newRoom(code, hostKey) {
   return {
     code, hostKey, created: Date.now(),
     nightVersion: LATEST_NIGHT_VERSION, // the Godfather shows as a Villager to the Detective (6), investigator results only at night (5), dead roles are still called at night (2), the Host's steps look the same alive or dead (3), the Host script (4); rooms stored without this field are version 1 (see engine nightVersion)
-    config: { theme: 'city', rules: { ...DEFAULT_RULES }, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
+    config: { theme: 'city', rules: { ...DEFAULT_RULES }, revealPolicy: REVEAL_POLICY, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
     players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
   };
@@ -201,6 +201,10 @@ export function reduce(room, actor, a) {
       if (a.rules && typeof a.rules === 'object') {
         c.rules = rulesOf(room);
         for (const k of Object.keys(DEFAULT_RULES)) if (typeof a.rules[k] === 'boolean') c.rules[k] = a.rules[k];
+        if (a.rules.revealOnDeath === true) { // only a client that knows the new default may turn reveal on; an old cached build's "true" is its old default
+          if (a.revealPolicy === REVEAL_POLICY) c.revealPolicy = REVEAL_POLICY; else c.rules.revealOnDeath = false;
+        }
+        if (a.rules.revealOnDeath === false) c.revealPolicy = REVEAL_POLICY;
       }
       return { ok: true };
     }
@@ -479,7 +483,7 @@ export function viewForHost(room, connected = new Set()) {
   const over = room.phase === 'over';
   return {
     story: storyOf(room),
-    kind: 'host', code: room.code, gameNo: room.gameNo || 1, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: room.config, advanced: advancedOf(room),
+    kind: 'host', code: room.code, gameNo: room.gameNo || 1, nightVersion: room.nightVersion || 1, upgradeNext: room.upgradeNext || null, phase: room.phase, day: room.day, night: room.night, config: { ...room.config, rules: rulesOf(room) }, advanced: advancedOf(room), // effective rules: an old room's stored reveal:true reads as off
     players: room.players.map((p) => ({
       id: p.id, name: p.name, offline: p.offline, open: !!p.open, connected: p.offline || (!p.open && connected.has(p.id)), alive: p.alive,
       roleId: p.roleId, card: p.card, tags: p.tags, note: p.note, target: p.target || null,

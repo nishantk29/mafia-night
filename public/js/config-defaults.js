@@ -2,7 +2,8 @@
 export const DEFAULT_PRESET_ID = 'speakeasy'; // preselected on the Presets page
 export const ROOM_CODE_STEP = 1; // the room code chip + QR sit on carousel step 1 (Players)
 export const SETUP_STEPS = ['Players', 'Preset', 'Seating', 'Deal'];
-export const ADVANCED_DEFAULTS = { dayTimer: false, cardOnDeath: true, hiddenSetup: false }; // cardOnDeath true = current live behaviour
+export const ADVANCED_DEFAULTS = { dayTimer: false, cardOnDeath: false, hiddenSetup: false }; // cardOnDeath off (Nishant, Oct 29): deaths never name a role unless the host turns it on; game over shows all
+export const ADVANCED_SAVE_VERSION = 2; // Advanced saved before v2 had cardOnDeath:true by default, so its cardOnDeath is ignored
 export const HIDDEN_SETUP_SHOWS_BALANCE = true; // hidden setups still show "At least 1 Mafia, Mafia fewer than Town"
 export const SETUP_STORE_KEY = 'mafia.setup.v1';
 export const SAVED_PRESETS_KEY = 'mafia.presets.saved.v1';

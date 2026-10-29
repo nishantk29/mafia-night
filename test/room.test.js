@@ -579,7 +579,7 @@ describe('secrecy: viewForPlayer', () => {
   });
 
   test('dead non-hidden players\' roles are visible (real role, even for seesAs roles)', () => {
-    const { room } = game9();
+    const { room } = game9(); room.config.rules.revealOnDeath = true; // the host turned "show card on death" on
     P(room, 'Mill').alive = false; P(room, 'Mill').deathCause = 'condemned';
     P(room, 'Mob').alive = false; P(room, 'Mob').deathCause = 'condemned';
     const v = viewForPlayer(room, pid(room, 'Cara'));

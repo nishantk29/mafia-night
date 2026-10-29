@@ -2,7 +2,7 @@
 import { S, esc, store, loadLibrary, saveLibrary, buzz } from './state.js';
 import { newRoom, reduce, viewForHost, migrateRoleIds } from './room.js';
 import { registerRoles, ROLE_BY_ID } from './roles.js';
-import { rebalance, DEFAULT_RULES, flipCoin } from './engine.js';
+import { rebalance, DEFAULT_RULES, REVEAL_POLICY, flipCoin } from './engine.js';
 import { themeOf, themeText, themeDom } from './theme.js';
 import { TOOL_ACTIONS, tickTools } from './tools.js';
 import { TALK_MINUTES } from './config-defaults.js';
@@ -454,7 +454,7 @@ const A = {
   upgradeNight(el) { send({ type: 'upgradeNight', off: el.dataset.off === '1' }); },
   startNight() { S.ui.condemn = null; send({ type: 'startNight' }); },
   startDay() { send({ type: 'startDay' }); },
-  rule(el) { if (el.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why); const k = el.dataset.k; const cur = { ...DEFAULT_RULES, ...(S.view?.config?.rules || {}) }; send({ type: 'setConfig', rules: { [k]: !cur[k] } }); },
+  rule(el) { if (el.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why); const k = el.dataset.k; const cur = { ...DEFAULT_RULES, ...(S.view?.config?.rules || {}) }; send({ type: 'setConfig', rules: { [k]: !cur[k] }, revealPolicy: REVEAL_POLICY }); },
   // custom role editor
   newRole() { S.ui.draft.role = { alignment: 'town', action: { type: '' } }; S.ui.modal = 'role'; S.ui.anim = 'modal'; S.render(); },
   closeModal() { S.ui.modal = null; S.render(); },

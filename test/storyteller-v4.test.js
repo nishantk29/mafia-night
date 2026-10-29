@@ -86,7 +86,17 @@ describe('stepScript', () => {
 });
 
 describe('morningAnnouncement', () => {
-  const base = () => mk([['Mob', 'mafia'], ['Doc', 'doctor'], ['Cop', 'cop'], ['Vic', 'villager'], ['Two', 'villager'], ['Jan', 'janitor']], 1);
+  const plain = () => mk([['Mob', 'mafia'], ['Doc', 'doctor'], ['Cop', 'cop'], ['Vic', 'villager'], ['Two', 'villager'], ['Jan', 'janitor']], 1);
+  const base = () => { const room = plain(); room.config.rules.revealOnDeath = true; return room; }; // the host turned "show card on death" on
+  test('default (Nishant, Oct 29): a death never names the role', () => {
+    const room = plain(); const rep = resolveNight(room, { 'meeting:mafia': { targets: ['pDoc'], on: true } });
+    assert.equal(morningAnnouncement(room, rep).say, 'Everyone, open your eyes. Doc was killed in the night.');
+  });
+  test('a room made before the default changed (stored reveal:true, no stamp) does not reveal', () => {
+    const room = base(); delete room.config.revealPolicy;
+    const rep = resolveNight(room, { 'meeting:mafia': { targets: ['pDoc'], on: true } });
+    assert.equal(morningAnnouncement(room, rep).say, 'Everyone, open your eyes. Doc was killed in the night.');
+  });
   const act = (room, key, ...targets) => ({ [key]: { targets, on: true } });
   test('one death reveals the role', () => {
     const room = base(); const rep = resolveNight(room, act(room, 'meeting:mafia', 'pVic'));

@@ -13,7 +13,7 @@ const nm = (i) => `Nm${String.fromCharCode(97 + i)}z`;
 function mk(roles, { hidden = false, reveal = true } = {}) {
   const room = newRoom('PANEL', 'hostkey');
   reduce(room, HOST, { type: 'addPlayers', names: roles.map((_, i) => nm(i)) });
-  reduce(room, HOST, { type: 'setConfig', mode: 'app', roles, advanced: { hiddenSetup: hidden }, rules: { revealOnDeath: reveal } });
+  reduce(room, HOST, { type: 'setConfig', mode: 'app', roles, advanced: { hiddenSetup: hidden }, rules: { revealOnDeath: reveal }, revealPolicy: 2 });
   const d = reduce(room, HOST, { type: 'deal' }); if (d.error) throw new Error(d.error);
   return room;
 }
