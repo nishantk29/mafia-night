@@ -1577,7 +1577,7 @@ html,body{overflow-x:clip}
   .appbar-tools{padding:0;width:40px;justify-content:center}
   .appbar-tools.is-running{width:auto;padding:0 var(--s2)}
   .appbar-title{font-size:var(--fs-sm)}
-  .appbar-sub{font-size:11px;overflow:visible;text-overflow:clip;white-space:nowrap}
+  .appbar-sub{font-size:13px;overflow:visible;text-overflow:clip;white-space:nowrap}
 }
 
 /* ---------- Graveyard chat (v3 rooms): the dead and the Host only ---------- */
