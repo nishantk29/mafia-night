@@ -26,7 +26,10 @@ export function stepKey() {
 // face, the column slides and springs). Elsewhere paint() runs at once and `.step-in` replays the same slide in CSS.
 let last = null;
 export function step(paint) {
-  const key = stepKey(); const changed = last !== null && key !== last; last = key;
+  const key = stepKey();
+  // The room's first view replacing the "connecting" placeholder is the same screen arriving, not a new step: no second slide.
+  const settling = last !== null && last.endsWith(':wait') && last.split(':')[0] === key.split(':')[0];
+  const changed = last !== null && key !== last && !settling; last = key;
   if (!changed || !animOn()) return paint();
   if (hasVT()) {
     $html.dataset.vt = '1';

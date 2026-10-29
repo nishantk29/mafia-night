@@ -48,3 +48,9 @@ test('partitions: divider tokens, no white-alpha rules, whole-pixel borders', ()
     assert.doesNotMatch(c, /(border|outline)[\w-]*:\s*(0?\.5|1\.5)px/, f);
   }
 });
+
+test('the room view replacing the connecting placeholder does not start a second slide', () => {
+  const m = read('js/motion.js');
+  assert.match(m, /settling = last !== null && last\.endsWith\(':wait'\)/);
+  assert.match(m, /changed = last !== null && key !== last && !settling/);
+});
