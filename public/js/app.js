@@ -210,6 +210,8 @@ function applyRoleSearch() {
   document.querySelectorAll('.role-group').forEach((g) => { // a group shows while any of its variants match, and opens to show them
     const any = !!g.querySelector('.role-tile:not([hidden])'); g.hidden = !any; if (q && any) g.open = true;
   });
+  // Type and team sections hide while none of their roles match, so a search never leaves a bare heading.
+  document.querySelectorAll('.add-role-list .tg-sub, .add-role-list .side-group').forEach((sec) => { sec.hidden = !sec.querySelector('.role-tile:not([hidden])'); });
   const none = document.querySelector('.search-empty');
   if (none) none.hidden = !(tiles.length && !shown);
 }

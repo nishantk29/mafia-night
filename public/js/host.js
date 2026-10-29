@@ -23,6 +23,7 @@ import { passLayer, passPanel, seatSheet } from './seating.js';
 import { activePass, passSeen } from './seating-actions.js';
 import { maskedLocal } from './seat-model.js';
 import { callNum, checkCaption, balanceSplit, declareSides, SIDE_GROUPS } from './host_v2.js';
+import { byTeamType } from './role-types.js';
 import { qrSvg, joinUrl } from './qr.js';
 import { hostHelpButton, hostHelpOverlay, hostHelpSettingsRow } from './host_help.js';
 
@@ -167,13 +168,15 @@ export function addRoleSheet(v) {
       <summary><span class="role-glyph">${ico(e.variants[0])}</span><span class="role-name">${esc(e.group.name)}<small class="role-also">${aliasLine(e)}</small></span>${total ? `<span class="role-count" aria-hidden="true">${total}</span>` : ''}</summary>
       <div class="role-variants">${e.variants.map((r) => tile(r, true)).join('')}</div></details>`;
   };
-  const groups = SIDE_GROUPS.map(([k, label]) => [k, label, ROLES.filter((r) => r.alignment === k)]).concat(custom.length ? [['custom', 'Yours', custom]] : []);
+  const inGame = (t) => v.config.roles.filter((id) => (ROLE_BY_ID[id]?.alignment || 'town') === t).length;
+  const teams = byTeamType(ROLES, (r) => r.alignment);
   return `<div class="sheet-bg" data-a="closeAddRole"><div class="sheet add-role-sheet is-entering" role="dialog" aria-modal="true" aria-labelledby="addrole-title" data-stop>
     <div class="sheet-grab"></div>
     <div class="sheet-head"><h2 class="sheet-title" id="addrole-title">Add role</h2><button type="button" class="icon-btn x-btn" data-a="closeAddRole" aria-label="Close">${ui('x')}</button></div>
-    <label class="search-field">${ui('search')}<input class="search" data-i="search" placeholder="Search roles" aria-label="Search roles" value="${esc(S.ui.search)}"></label>
-    <div class="add-role-list">${groups.map(([k, label, list]) => `<section class="side-group" data-side="${k}"><h3 class="side-title ${k === 'custom' ? '' : `a-${k}`}">${label}</h3>
-      <div class="role-grid">${pickerEntries(list).map(entry).join('')}</div></section>`).join('')}
+    <div class="add-role-top"><label class="search-field">${ui('search')}<input class="search" data-i="search" placeholder="Search roles" aria-label="Search roles" value="${esc(S.ui.search)}"></label></div>
+    <div class="add-role-list">${teams.map((g) => `<section class="side-group tg a-${g.team}" data-side="${g.team}" data-team="${g.team}"><h3 class="tg-h"><span class="tg-name">${g.title}</span><span class="tg-n">${inGame(g.team) ? `${inGame(g.team)} in game` : ''}</span></h3>
+      ${g.types.map((x) => `<div class="tg-sub" data-team="${g.team}" data-type="${esc(x.type)}"><h4 class="tg-type">${x.type}</h4><div class="role-grid">${pickerEntries(x.items).map(entry).join('')}</div></div>`).join('')}</section>`).join('')}
+      ${custom.length ? `<section class="side-group" data-side="custom"><h3 class="side-title">Yours</h3><div class="role-grid">${pickerEntries(custom).map(entry).join('')}</div></section>` : ''}
       <p class="muted search-empty" hidden>No roles match that search.</p></div>
     <button type="button" class="btn big add-role-done" data-a="closeAddRole">Done</button>
   </div></div>`;

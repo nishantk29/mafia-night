@@ -7,10 +7,11 @@ import { roleGuide } from './role_guide.js';
 import { DEFAULT_RULES } from './engine.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
+import { TYPE_ORDER, typeOf, TEAM_TITLE } from './role-types.js';
 import { S, esc, store } from './state.js';
 import { HIDDEN_SETUP_SHOWS_BALANCE, HIDDEN_CHIP_LABEL, ROLES_BLURB_MAX, ROLES_GATE_KEY } from './config-defaults.js';
 
-const TEAMS = [['town', 'town', 'Town'], ['mafia', 'mafia', 'Mafia'], ['third', 'third', 'On their own']];
+const TEAMS = [['town', 'town', 'Town'], ['mafia', 'mafia', 'Mafia'], ['third', 'third', TEAM_TITLE.third]];
 const teamKey = (r) => { const t = r.faction || r.alignment; return t === 'town' || t === 'mafia' ? t : 'third'; };
 
 // Roles grouped by team with counts. roleIds are already what the holder believes (see believedSetup for the host).
@@ -69,7 +70,7 @@ function row(x, openId, rules) {
       <span class="rs-n" aria-label="${x.count} in this game">${x.count}</span></button>${open ? rulesBlock(x.id, rules) : ''}</li>`;
 }
 
-const groups = (list, openId, rules) => list.map((g) => `<section class="rs-group a-${g.team}" data-team="${g.team}"><h3 class="rs-team">${esc(g.title)}, ${g.total}</h3><ul class="rs-list">${g.roles.map((x) => row(x, openId, rules)).join('')}</ul></section>`).join('');
+const groups = (list, openId, rules) => list.map((g) => `<section class="rs-group tg a-${g.team}" data-team="${g.team}"><h3 class="tg-h"><span class="tg-name">${esc(g.title)}</span><span class="tg-n">${g.total}</span></h3>${TYPE_ORDER[g.team].map((ty) => [ty, g.roles.filter((x) => typeOf(ROLE_BY_ID[x.id]) === ty)]).filter(([, l]) => l.length).map(([ty, l]) => `<div class="tg-sub" data-team="${g.team}" data-type="${ty}"><h4 class="tg-type">${ty}</h4><ul class="rs-list">${l.map((x) => row(x, openId, rules)).join('')}</ul></div>`).join('')}</section>`).join('');
 
 function hiddenBody(m) {
   const balance = HIDDEN_SETUP_SHOWS_BALANCE ? `<li><b>At least 1 Mafia</b><span>Mafia are always fewer than Town.</span></li>` : '';
