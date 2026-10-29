@@ -18,3 +18,6 @@ export const ROLES_BLURB_MAX = 70; // longest one-line summary in the Roles list
 export const ROLES_GATE_KEY = 'mafia.rolesSeen.v1'; // per phone: which games already showed "Roles in this game" before the first look at a role
 export const NIGHT_PICK_COLLAPSE = { target: 'picked a target', answer: 'answered', info: 'woke up', identify: 'was identified', show: 'was shown their card' }; // what a done step says: a role and a verb, never a name
 export const DAY_SAYS = { vote: 'On three, point at who you want out.' }; // the line read before the day vote
+export const ALLOW_SEAT_TAKEOVER = true; // true: the host can release a seat so someone takes it over on their own phone by joining with the seat's name, and can pull a dropped player's seat onto this phone. false: seats stay where they are.
+export const PASS_STORE_KEY = 'mafia.pass.v1'; // per room on the host phone: which local seats have looked at their card this game (ids only, never a role)
+export const PASS_HOLD_MAX_MS = 3000; // the pass card hides itself after this long even if still held (same for every seat and role)

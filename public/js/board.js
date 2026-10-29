@@ -2,6 +2,7 @@
 // Also the seat sheet (host only) and small shared bits: role chips and playing-card indices.
 import { S, esc, initial } from './state.js';
 import { ROLE_BY_ID } from './roles.js';
+import { maskedLocal, whereOf } from './seat-model.js';
 import { DOT_COLORS } from './room.js';
 import { cardInfo } from './engine.js';
 import { ico } from './art.js';
@@ -49,7 +50,7 @@ export function board(view, host) {
     const th = (2 * Math.PI * i) / Math.max(n, 1) - Math.PI / 2;
     const x = 50 + 41 * Math.cos(th);
     const y = 50 + 41 * Math.sin(th);
-    const r = host && p.roleId ? ROLE_BY_ID[p.roleId] : null;
+    const r = host && p.roleId && !maskedLocal(view, p) ? ROLE_BY_ID[p.roleId] : null;
     const team = r ? ` a-${r.alignment}` : '';
     const dots = host ? (p.tags || []).map((t) => `<i class="dot d-${t}"></i>`).join('') : '';
     const me = !host && view.me?.id === p.id;
@@ -61,7 +62,7 @@ export function board(view, host) {
       <span class="seat-name">${esc(p.name)}</span>${dots ? `<span class="seat-dots">${dots}</span>` : ''}${p.alive ? '' : `<span class="seat-mark">${ui('skull')}</span>`}</${tag}>`;
   }).join('');
   const rows = ps.map((p, i) => {
-    const r = host && p.roleId ? ROLE_BY_ID[p.roleId] : null;
+    const r = host && p.roleId && !maskedLocal(view, p) ? ROLE_BY_ID[p.roleId] : null;
     const dots = host ? (p.tags || []).map((t) => `<i class="dot d-${t}"></i>`).join('') : '';
     const inner = `<span class="seatrow-n">${i + 1}</span><span class="seatrow-glyph">${r ? ico(r) : initial(p.name)}</span>
       <span class="seatrow-name">${esc(p.name)}</span>${r ? `<span class="seatrow-role">${esc(r.name)}</span>` : ''}${p.alive ? '' : `<span class="seat-mark" aria-label="dead">${ui('skull')}</span>`}${dots ? `<span class="seat-dots">${dots}</span>` : ''}`;
@@ -88,17 +89,18 @@ export function legend(view) {
 export function sheet(view) {
   const p = view.players.find((x) => x.id === S.ui.sheet);
   if (!p) return '';
-  const r = p.roleId ? ROLE_BY_ID[p.roleId] : null;
+  const masked = maskedLocal(view, p); // a seat on this phone shows its role only through the pass flow
+  const r = p.roleId && !masked ? ROLE_BY_ID[p.roleId] : null;
   const L = view.config.legend;
   const n = view.players.length; const seatNo = view.players.indexOf(p) + 1;
   const roleOptions = [`<option value="">No role yet</option>`].concat(
-    Object.values(ROLE_BY_ID).sort((a, b) => a.name.localeCompare(b.name)).map((x) => `<option value="${x.id}" ${x.id === p.roleId ? 'selected' : ''}>${esc(x.name)}</option>`)).join('');
+    Object.values(ROLE_BY_ID).sort((a, b) => a.name.localeCompare(b.name)).map((x) => `<option value="${x.id}" ${x.id === p.roleId && !masked ? 'selected' : ''}>${esc(x.name)}</option>`)).join('');
   const entering = S.ui.anim === 'sheet' ? ' is-entering' : '';
   return `<div class="sheet-bg" data-a="closeSheet"><div class="sheet${entering}" data-stop="1" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
     <div class="sheet-grab" aria-hidden="true"></div>
     <header class="sheet-head"><h2 class="sheet-title" id="sheet-title">${esc(p.name)}</h2>${p.alive ? '' : `<span class="pill dead">${ui('skull')} Dead</span>`}
       <button type="button" class="icon-btn x-btn" data-a="closeSheet" aria-label="Close">${ui('x')}</button></header>
-    <div class="sheet-meta">${r ? roleChip(r) : '<span class="meta">Role not known yet</span>'}${p.card ? `<span class="meta">Card ${esc(cardText(p.card))}</span>` : ''}${p.convertedFrom ? `<span class="meta">Converted from ${esc(ROLE_BY_ID[p.convertedFrom]?.name || p.convertedFrom)}</span>` : ''}</div>
+    <div class="sheet-meta">${r ? roleChip(r) : `<span class="meta">${masked ? 'Role shows only when this seat looks' : 'Role not known yet'}</span>`}${p.card ? `<span class="meta">Card ${esc(cardText(p.card))}</span>` : ''}${p.convertedFrom ? `<span class="meta">Converted from ${esc(ROLE_BY_ID[p.convertedFrom]?.name || p.convertedFrom)}</span>` : ''}</div>
     <h3 class="sheet-sub">Markers</h3>
     <div class="dots-edit">${DOT_COLORS.map((c) => `<button type="button" class="dotbtn" aria-pressed="${p.tags.includes(c)}" data-a="tag" data-id="${p.id}" data-c="${c}"><i class="dot d-${c}"></i><span>${esc(L[c])}</span></button>`).join('')}</div>
     <label class="field"><span>Note</span><input data-i="note" data-id="${p.id}" maxlength="80" value="${esc(p.note)}" placeholder="For example: claimed Doctor on day 1"></label>
@@ -108,6 +110,7 @@ export function sheet(view) {
     <div class="btn-row">
       ${p.alive ? `<button type="button" class="btn ghost" data-a="killp" data-id="${p.id}">${ui('skull')} Eliminate ${esc(p.name)}</button>` : `<button type="button" class="btn" data-a="revive" data-id="${p.id}">Bring ${esc(p.name)} back</button>`}
       <button type="button" class="btn ghost" data-a="rename" data-id="${p.id}">${ui('pencil')} Rename</button>
+      ${whereOf(p) === 'dropped' ? `<button type="button" class="btn ghost" data-a="seatPull" data-id="${p.id}">${ui('phone')} Move to this phone</button>` : ''}
     </div>
   </div></div>`;
 }

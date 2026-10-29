@@ -18,6 +18,9 @@ import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
 import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn, restartIn } from './fx.js';
 import { gameOverEvent, isNewGame } from './room.js';
+import { SEAT_ACTIONS } from './seating-actions.js';
+import { seatingOf } from './setup-store.js';
+import { passReveal, goneScreen } from './seating.js';
 import { SETUP_ACTIONS, syncSetup, afterSetupPaint, markCustom, setupDealProblem, wireSetupGestures } from './setup-actions.js';
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
@@ -47,6 +50,7 @@ const hold = createHold((on) => {
     s.classList.toggle('is-open', on);
     s.querySelectorAll('.rcard, .secret-rest').forEach((el) => { if (on) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', 'true'); el.toggleAttribute('inert', !on); });
   });
+  passReveal(on);
   if (on) buzz(12);
 });
 const endHold = (all) => { if (all) hold.cancel(); else hold.release(); if (pendingRender && !drag) setTimeout(() => S.render(), 0); };
@@ -102,6 +106,7 @@ function paintScreen() {
   applyRoleSearch();
   afterRender();
   const focusMoved = afterSetupPaint($app);
+  if (S.ui.focusPass) { S.ui.focusPass = false; $app.querySelector('.pass-name, .pass-top')?.focus({ preventScroll: true }); }
   followCue();
   if (opened === 'restart') restartIn();
   gameAwake((S.mode === 'host' || S.mode === 'local') && ['dealt', 'night', 'day'].includes(S.view?.phase));
@@ -145,6 +150,7 @@ function screen() {
   if (S.mode === 'host') return banner + (S.view ? hostScreen(S.view, false) : connecting('Connecting to your room…'));
   if (S.mode === 'play') {
     if (S.view?.kind === 'player') return banner + playerScreen(S.view);
+    if (S.view?.kind === 'gone') return goneScreen();
     if (store.get(`mafia.player.${S.code}`)) return connecting('Connecting to the room…');
     return joinForm(S.code);
   }
@@ -412,7 +418,12 @@ const A = {
   roleTeam(el) { S.ui.roleTeam = el.dataset.v; S.render(); },
   info(el) { if ($tip.dataset.for === el.dataset.id && $tip.classList.contains('on')) hideTip(); else showTip(el); },
   deal() { syncLibrary(); send({ type: 'deal' }); },
-  setupDeal2(el) { const p = setupDealProblem(); if (p) return S.toast(p.reason); A.deal(); },
+  setupDeal2(el) {
+    const p = setupDealProblem(); if (p) return S.toast(p.reason);
+    // One phone: every seat plays here, so seats on their own phones move to this phone before the roles are dealt.
+    if (S.mode === 'host' && seatingOf(S.ui.setup, S.view.players) === 'one') for (const q of S.view.players) if (!q.offline) send({ type: 'seatWhere', playerId: q.id, where: 'local' });
+    A.deal();
+  },
   undeal() { send({ type: 'undeal' }); },
   showKey() { S.ui.showKey = true; S.ui.anim = 'modal'; S.render(); },
   closeCheck() { S.ui.checkCard = null; S.render(); },
@@ -545,7 +556,7 @@ const A = {
   pickCard(el) { S.ui.claim = el.dataset.v; S.ui.claimSuit = suitOf(el.dataset.v); S.render(); },
   claim() { if (S.ui.claim) send({ type: 'claimCard', card: S.ui.claim }); },
 };
-Object.assign(A, TOOL_ACTIONS, SETUP_ACTIONS);
+Object.assign(A, TOOL_ACTIONS, SETUP_ACTIONS, SEAT_ACTIONS);
 wireSetupGestures();
 setInterval(tickTools, 500);
 
@@ -639,13 +650,15 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
-    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.addRole || S.ui.modal || S.ui.sheet || S.ui.setup?.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.addRole || S.ui.modal || S.ui.sheet || S.ui.setup?.sheet || S.ui.seatSheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
     if (hostHelpOpen()) { S.ui.hhWalk ? A.hhSkip() : A.closeHostHelp(); return; }
     if (S.ui.roles) { A.closeRoles(); return; }
     if (S.ui.gy) { A.closeGy(); return; }
     if (S.ui.showKey) { A.hideKey(); return; }
     if (S.ui.tools) { A.closeTools(); return; }
     if (S.ui.addRole) { A.closeAddRole(); return; }
+    if (S.ui.seatSheet) { A.seatClose(); return; }
+    if (S.ui.pass?.id && S.ui.pass.stage && (S.mode === 'host' || S.mode === 'local')) { A.passSkip(); return; }
     if (S.ui.setup?.sheet) { A.setupSheetClose(); return; }
     if (S.ui.showCode) { A.hideCode(); return; }
     if (S.ui.showQr) { A.hideQr(); return; }
@@ -688,6 +701,7 @@ document.addEventListener('input', (ev) => {
   if (i === 'names') S.ui.draft.names = el.value;
   else if (i === 'gyText') S.ui.draft.gyText = el.value;
   else if (i === 'presetName') S.ui.draft.presetName = el.value;
+  else if (i === 'seatName') S.ui.draft.seatName = el.value;
   else if (i === 'joinName') S.ui.draft.joinName = el.value;
   else if (i === 'joinCode') S.ui.draft.joinCode = el.value.toUpperCase();
   else if (i === 'search') { S.ui.search = el.value; applyRoleSearch(); }
