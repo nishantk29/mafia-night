@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "test": "node --test \"test/**/*.test.js\"",
+    "e2e": "node test/e2e/multi-phone.e2e.mjs",
     "deploy": "wrangler deploy",
     "assets": "node scripts/build-assets.mjs",
     "art:brief": "node scripts/art-brief.mjs",
