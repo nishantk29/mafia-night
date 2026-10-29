@@ -297,7 +297,9 @@ function night(v) {
   const cur = m.card?.step;
   const fix = !b.enabled && cur ? `<p class="dock-why">${esc(b.why)} <button type="button" class="linkish" data-a="${cur.kind === 'identify' ? 'skipIdentify' : 'skip'}" data-key="${esc(cur.key)}" data-role="${esc(cur.roleId || '')}">Skip this step</button></p>` : '';
   const label = m.idle || b.action === 'resolve' ? `${ui('sun')} ${b.label}` : b.label;
-  const dock = `${fix}${btn('big', b.action === 'startCalls' ? 'startCalls' : 'nextStep', label, { on: b.enabled, why: b.why || b.label, attrs: `data-left="${m.nav.open.length}" aria-label="${esc(m.nav.enabled ? b.label : b.why)}" title="${esc(b.label)}"` })}`;
+  const next = btn('big', b.action === 'startCalls' ? 'startCalls' : 'nextStep', label, { on: b.enabled, why: b.why || b.label, attrs: `data-left="${m.nav.open.length}" aria-label="${esc(m.nav.enabled ? b.label : b.why)}" title="${esc(b.label)}"` });
+  // The reason and Skip sit above a full-width Next, so the short label is never squeezed (it was clipped at 390).
+  const dock = fix ? `<div class="dock-stack">${fix}${next}</div>` : next;
   const bar = total ? `<div class="night-progress" role="progressbar" aria-label="Night progress" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${finished}"><i style="--p:${(finished / total).toFixed(3)}"></i></div>` : '';
   return { body: body + checkOverlay(v), dock, bar };
 }
