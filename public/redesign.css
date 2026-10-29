@@ -215,12 +215,12 @@ h3,.appbar-title,.faq-q summary,.home-how h3,.role-name{font-family:var(--font-d
 .appbar-code .code{font-size:.95rem;letter-spacing:.04em}
 @media (max-width:480px){.appbar-code{font-size:.7rem}.appbar-code .code{font-size:.82rem;letter-spacing:.02em}}
 
-/* ---- arriving from the hub (HANDOFF-SPEC.md, game end): the logo starts at the handoff pose, then morphs into place ----
-   The inline script in <head> adds html.hub-in; the one at the end of <body> sets the pose, then html.hub-go plays it out. */
-html.hub-in .wordmark{transform-origin:50% 50%;will-change:transform}
-html.hub-in .wrap.home > :not(.home-hero),html.hub-in .home-hero > :not(.wordmark),html.hub-in .bg-art{opacity:0}
-html.hub-go .wordmark{transform:none!important;transition:transform calc(.45s * var(--dur-scale)) var(--ease-butter)}
-html.hub-go .wrap.home > :not(.home-hero),html.hub-go .home-hero > :not(.wordmark),html.hub-go .bg-art{animation:hub-fade calc(.45s * var(--dur-scale)) var(--ease-butter) both}
+/* ---- arriving from the hub (game end of the handoff): ONE opacity fade of the page, 150ms base (300ms at --dur-scale 2).
+   Nothing moves: the wordmark no longer flies in from the handoff pose (Nishant, Oct 28: "That logo moving on game night is
+   kinda janky"), and the first-load rise of the home cards is skipped so the fade is the only motion. html.hub-in is set by
+   the inline script in <head>, never under reduced motion or with effects off, and stays for the page's life so nothing replays. */
+html.hub-in #app,html.hub-in .bg-art{animation:hub-fade calc(.15s * var(--dur-scale)) var(--ease-butter) both}
+html.hub-in .home-intro .home-paths > *{animation:none}
 @keyframes hub-fade{from{opacity:0}to{opacity:1}}
 
 /* Roles in this game sheet */
