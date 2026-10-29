@@ -31,8 +31,15 @@ try {
   for (const n of NAMES) {
     const p = await phone(browser, srv.base, n); all.push(p); players.push(p);
     await p.goto('/#/join/' + code);
-    await p.page.locator('[data-i="joinName"]').fill(n);
-    await p.page.locator('[data-i="joinName"]').press('Enter');
+    // The join form renders before the room socket is open; a name sent then only gets "Not connected to the room yet"
+    // (by design). So wait for the form and retry until it is gone (live run, Oct 28: 0/5 joined without this; locally
+    // 1 run in 5 lost one name).
+    const input = p.page.locator('[data-i="joinName"]');
+    await input.waitFor({ timeout: 10000 });
+    for (let i = 0; i < 3 && (await input.count()); i++) {
+      await input.fill(n).catch(() => {}); await input.press('Enter').catch(() => {});
+      await input.waitFor({ state: 'detached', timeout: 4000 }).catch(() => {});
+    }
   }
   await host.page.waitForFunction((ns) => ns.every((n) => document.body.innerText.includes(n)), NAMES, { timeout: 15000 }).catch(() => {});
   const seen = await host.page.evaluate((ns) => ns.filter((n) => document.body.innerText.includes(n)).length, NAMES);
