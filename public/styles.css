@@ -66,8 +66,8 @@
 
   /* motion */
   --ease-out:cubic-bezier(.22,1,.36,1); --ease-in-out:var(--ease-out);
-  --dur-scale:2;
-  --t-press:calc(90ms * var(--dur-scale)); --t-open:calc(220ms * var(--dur-scale)); --t-enter:calc(90ms * var(--dur-scale)); --t-reveal:calc(360ms * var(--dur-scale));
+  --dur-scale:1; /* nothing runs over 400ms; presses are never scaled (Nishant, 2026-10-29) */
+  --t-press:var(--f-release); --t-open:calc(400ms * var(--dur-scale)); --t-enter:calc(180ms * var(--dur-scale)); --t-reveal:calc(400ms * var(--dur-scale));
   --ease-spring:cubic-bezier(.2,.8,.2,1); /* plain decelerate, no overshoot (deslop 2026-10-29) */
 
   /* chrome */
@@ -210,7 +210,7 @@ html[data-shell="host"] .console{padding-bottom:calc(var(--tabbar-h) + var(--doc
   font:700 var(--fs-md)/1.2 var(--font-ui);text-align:center;text-decoration:none;cursor:pointer;
   transition:background-color var(--t-press),border-color var(--t-press),transform var(--t-press)}
 .btn .ui-ico{width:20px;height:20px;vertical-align:0}
-.btn:active{transform:translateY(1px)}
+.btn:active{transform:scale(var(--f-press-scale))}
 .btn.ghost{background:transparent;color:var(--candle);border-color:var(--rule-strong)}
 .btn.danger{background:var(--mafia);border-color:var(--mafia);color:var(--on-brass)}
 .btn.ghost.danger{background:transparent;color:var(--mafia);border-color:var(--mafia)}
@@ -374,7 +374,7 @@ html[data-shell="host"] .console{padding-bottom:calc(var(--tabbar-h) + var(--doc
   .choice:hover .choice-mark{border-color:var(--smoke)}
   .choice[aria-checked="true"]:hover .choice-mark{border-color:var(--brass)}
 }
-.choice:active{transform:translateY(1px)}
+.choice:active{background-image:linear-gradient(var(--f-press-row),var(--f-press-row))}
 .followup{margin:var(--s2) 0 0 27px;padding:var(--s3) 0 var(--s2) var(--s5);border-left:2px solid var(--brass);max-width:calc(40rem - 27px)}
 .followup-q{font-family:var(--font-ui);font-weight:700;font-size:var(--fs-lg);line-height:1.25;color:var(--candle);margin:0 0 var(--s3)}
 .followup > .choices{max-width:none}
@@ -512,7 +512,7 @@ section.cue::before{display:none}
 .cue-body .pk{background:var(--panel)}
 .pk[aria-pressed="true"]{background:var(--card);color:var(--card-ink);border-color:var(--card);font-weight:700;box-shadow:var(--lift-1)}
 @media (hover:hover){.pk:not([aria-pressed="true"]):hover{border-color:var(--brass)}}
-.pk:active{transform:translateY(1px)}
+.pk:active{transform:scale(var(--f-press-scale))}
 .pk.is-none{border-style:dashed;background:transparent;color:var(--muted,inherit)}
 .cue-body .pk.is-none{background:transparent}
 
@@ -579,7 +579,7 @@ section.cue::before{display:none}
 .seat.is-dead .seat-name{color:var(--felt-muted);font-weight:500;text-decoration:line-through;text-decoration-thickness:1px}
 .seat.is-selected .seat-card{outline:2px solid var(--brass);outline-offset:3px;box-shadow:var(--lamp)}
 @media (hover:hover){.seat:hover .seat-card{background-color:var(--panel-2)} .seat.is-dead:hover .seat-card{opacity:.8}}
-.seat:active .seat-card{transform:translateY(1px)}
+.seat:active .seat-card{transform:scale(var(--f-press-scale))}
 .board[data-density="md"] .seat-name{font-size:var(--fs-sm)}
 .board[data-density="sm"] .seat-name,.board[data-density="xs"] .seat-name{font-size:var(--fs-xs)}
 .board[data-density="sm"] .seat-mark,.board[data-density="xs"] .seat-mark{width:20px;height:20px;top:-6px;right:-6px}
@@ -740,7 +740,7 @@ section.cue::before{display:none}
 .rcard.is-unflipping .rcard-inner{animation:rc-unflip var(--t-open) var(--ease-in-out) both}
 .rcard.is-flipping .rcard-front::after{content:"";position:absolute;inset:-10% 0;z-index:3;pointer-events:none;
   background:linear-gradient(115deg, transparent 35%, rgba(247,213,138,.26) 50%, transparent 65%);
-  animation:rc-glint calc(200ms * var(--dur-scale)) var(--ease-out) calc(var(--t-reveal) - calc(200ms * var(--dur-scale))) both}
+  animation:rc-glint calc(400ms * var(--dur-scale)) var(--ease-out) calc(var(--t-reveal) - calc(400ms * var(--dur-scale))) both}
 @keyframes rc-flip{0%{transform:rotateY(180deg) scale(.94)}55%{transform:rotateY(-10deg) translateZ(50px) scale(1.06)}80%{transform:rotateY(3deg) translateZ(20px) scale(1.02)}100%{transform:rotateY(0deg) scale(1)}}
 @keyframes rc-pop{0%{transform:rotateY(180deg) translateY(30px) scale(.7);opacity:0}60%{transform:rotateY(180deg) translateY(-6px) scale(1.07);opacity:1}100%{transform:rotateY(180deg) scale(1);opacity:1}}
 @keyframes rc-unflip{from{transform:rotateY(0deg)}to{transform:rotateY(180deg)}}
@@ -817,7 +817,7 @@ section.cue::before{display:none}
 /* ================================================================ tooltip */
 #tip{position:fixed;z-index:80;max-width:320px;padding:var(--s3) var(--s4);border-radius:var(--r-tag);background:var(--panel-2);border:1px solid var(--rule-strong);
   box-shadow:var(--lift-2);font-size:var(--fs-sm);line-height:1.45;color:var(--candle);opacity:0;pointer-events:none;transform:translateY(4px);
-  transition:opacity calc(120ms * var(--dur-scale)),transform calc(120ms * var(--dur-scale))}
+  transition:opacity calc(240ms * var(--dur-scale)),transform calc(240ms * var(--dur-scale))}
 #tip.on{opacity:1;transform:none}
 #tip .tip-h{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s2)}
 #tip .tip-h .ico{width:24px;height:24px;color:var(--team,var(--brass))}
@@ -1126,14 +1126,14 @@ html.is-seat-dragging,html.is-seat-dragging *{cursor:grabbing!important}
    buttons, heavy type, springy presses. Liquid Glass only on overlays, sheets and the main action.
    ====================================================================================== */
 .btn{min-height:56px;padding:0 26px;border-radius:var(--r-pill);font-weight:800;box-shadow:0 4px 0 var(--brass-lo);
-  transition:background-color var(--t-press),border-color var(--t-press),transform calc(220ms * var(--dur-scale)) var(--ease-spring)}
-.btn:active{transform:translateY(3px) scale(.96)}
+  transition:background-color var(--t-press),border-color var(--t-press),transform var(--f-release) var(--ease-spring)}
+.btn:active{transform:scale(var(--f-press-scale))}
 .btn.ghost{box-shadow:none;border-width:2px}
 .btn.danger{box-shadow:0 4px 0 var(--card-red)}
 .btn.ghost.danger,.btn.disabled,.btn[aria-disabled="true"]{box-shadow:none}
 .btn.big{min-height:64px;font-size:var(--fs-lg)}
-.pk{min-height:52px;border-radius:var(--r-pill);border-width:2px;font-weight:700;transition:background-color var(--t-press),color var(--t-press),transform calc(220ms * var(--dur-scale)) var(--ease-spring)}
-.pk:active{transform:scale(.94)}
+.pk{min-height:52px;border-radius:var(--r-pill);border-width:2px;font-weight:700;transition:background-color var(--t-press),color var(--t-press),transform var(--f-release) var(--ease-spring)}
+.pk:active{transform:scale(var(--f-press-scale))}
 .pk[aria-pressed="true"]{transform:scale(1.04)}
 .mini,.pill,.phase-badge{font-weight:800}
 .sheet{border-radius:32px 32px 0 0}
@@ -1153,7 +1153,7 @@ html[data-phase="night"] .pane-game .phase-head{background:var(--town)}
 .vote-row{border-radius:var(--r-panel);padding:var(--s2) var(--s2) var(--s2) var(--s4);border-width:2px}
 .vote-n{font:800 var(--fs-2xl)/1 var(--font-display)}
 .appbar-timer{font-family:var(--font-display);font-size:1.25em;font-weight:800}
-.is-tick{display:inline-block;animation:fx-tick calc(360ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
+.is-tick{display:inline-block;animation:fx-tick calc(400ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
 @keyframes fx-tick{0%{transform:translateY(55%) scale(.7);opacity:0}100%{transform:none;opacity:1}}
 
 /* the main action: big, at the bottom, in thumb reach; frosted so the page shows through */
@@ -1165,16 +1165,16 @@ html[data-phase="night"] .pane-game .phase-head{background:var(--town)}
 .anim-toggle[aria-checked="true"]{color:var(--on-brass);background:var(--brass)}
 .reveal-rows .arow{animation:fx-row var(--t-enter) var(--ease-out) both}
 .reveal-rows .arow:nth-child(2){animation-delay:0ms}
-.reveal-rows .arow:nth-child(3){animation-delay:calc(8ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(4){animation-delay:calc(16ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(5){animation-delay:calc(24ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(6){animation-delay:calc(32ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(7){animation-delay:calc(40ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(8){animation-delay:calc(48ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(9){animation-delay:calc(56ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(10){animation-delay:calc(64ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(11){animation-delay:calc(72ms * var(--dur-scale))}
-.reveal-rows .arow:nth-child(12){animation-delay:calc(80ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(3){animation-delay:calc(16ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(4){animation-delay:calc(32ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(5){animation-delay:calc(48ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(6){animation-delay:calc(64ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(7){animation-delay:calc(80ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(8){animation-delay:calc(96ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(9){animation-delay:calc(112ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(10){animation-delay:calc(128ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(11){animation-delay:calc(144ms * var(--dur-scale))}
+.reveal-rows .arow:nth-child(12){animation-delay:calc(160ms * var(--dur-scale))}
 @keyframes fx-row{0%{transform:translateY(12px);opacity:0}100%{transform:none;opacity:1}}
 
 /* ---------------------------------------------------------------- glass */
@@ -1196,38 +1196,39 @@ html[data-phase="night"] .pane-game .phase-head{background:var(--town)}
 html[data-noblur="1"] .glass{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(37,28,22,.96)}
 html[data-noblur="1"] .glass::after{display:none}
 
-/* ---------------------------------------------------------------- effects layer (fx.js) */
+/* ---------------------------------------------------------------- effects layer (fx.js)
+   Each overlay ends by 400ms (Nishant's motion budget, 2026-10-29); js/fx.js waits match. */
 #fx{position:fixed;inset:0;z-index:70;pointer-events:none;overflow:hidden}
 .fx-scene{position:absolute;inset:0;pointer-events:none}
 .fx-scene::before{content:"";position:absolute;inset:0;opacity:0;will-change:opacity}
 @keyframes fx-wash{0%{opacity:0}30%,65%{opacity:1}100%{opacity:0}}
 /* night falls: dusk wash, moon drops in, stars twinkle on */
-.fx-night::before{background:radial-gradient(120% 90% at 50% 0,#243456,#0A0F1E 72%);animation:fx-wash calc(560ms * var(--dur-scale)) var(--ease-out) both}
-.fx-moon{position:absolute;top:14%;left:50%;width:min(34vw,150px);margin-left:calc(min(34vw,150px) / -2);animation:fx-moon calc(560ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
+.fx-night::before{background:radial-gradient(120% 90% at 50% 0,#243456,#0A0F1E 72%);animation:fx-wash calc(400ms * var(--dur-scale)) var(--ease-out) both}
+.fx-moon{position:absolute;top:14%;left:50%;width:min(34vw,150px);margin-left:calc(min(34vw,150px) / -2);animation:fx-moon calc(400ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
 .fx-moon svg{display:block;width:100%;height:auto;filter:drop-shadow(0 0 18px rgba(241,230,210,.55))}
 @keyframes fx-moon{0%{transform:translateY(-70%) scale(.6);opacity:0}30%{transform:scale(1.08);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:translateY(10%);opacity:0}}
 .fx-star{position:absolute;width:14px;height:14px;background:#F7D58A;opacity:0;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);
-  animation:fx-star calc(360ms * var(--dur-scale)) var(--ease-out) var(--d) both;will-change:transform,opacity}
+  animation:fx-star calc(257ms * var(--dur-scale)) var(--ease-out) var(--d) both;will-change:transform,opacity}
 @keyframes fx-star{0%{opacity:0;transform:scale(0) rotate(0)}35%{opacity:1;transform:scale(var(--s)) rotate(40deg)}100%{opacity:0;transform:scale(calc(var(--s) * .7)) rotate(80deg)}}
 /* day breaks: warm wash, sun bursts up, rays fan out */
-.fx-day::before{background:radial-gradient(circle at 50% 38%,rgba(255,226,140,.9),rgba(224,174,82,.4) 45%,transparent 78%);animation:fx-wash calc(560ms * var(--dur-scale)) var(--ease-out) both}
+.fx-day::before{background:radial-gradient(circle at 50% 38%,rgba(255,226,140,.9),rgba(224,174,82,.4) 45%,transparent 78%);animation:fx-wash calc(400ms * var(--dur-scale)) var(--ease-out) both}
 .fx-sun,.fx-v-sun::before{content:"";position:absolute;left:50%;top:38%;width:min(40vw,170px);aspect-ratio:1;margin:calc(min(40vw,170px) / -2) 0 0 calc(min(40vw,170px) / -2);border-radius:50%;
-  background:radial-gradient(circle,#FFF4C2 0 38%,#F7D58A 62%,#E0AE52);animation:fx-sun calc(560ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
+  background:radial-gradient(circle,#FFF4C2 0 38%,#F7D58A 62%,#E0AE52);animation:fx-sun calc(400ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
 @keyframes fx-sun{0%{transform:scale(.2);opacity:0}35%{transform:scale(1.18);opacity:1}65%{transform:scale(1);opacity:1}100%{transform:scale(1.1);opacity:0}}
 .fx-rays,.fx-v-sun::after{content:"";position:absolute;left:50%;top:38%;width:130vmax;height:130vmax;margin:-65vmax 0 0 -65vmax;
   background:repeating-conic-gradient(rgba(247,213,138,.6) 0 6deg,transparent 6deg 18deg);
   -webkit-mask:radial-gradient(circle,#000,transparent 55%);mask:radial-gradient(circle,#000,transparent 55%);
-  animation:fx-rays calc(560ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
+  animation:fx-rays calc(400ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
 @keyframes fx-rays{0%{transform:scale(.15) rotate(0);opacity:0}30%{opacity:1}100%{transform:scale(1) rotate(28deg);opacity:0}}
 
 /* pop-out reveal: a glass card springs out, a stamp slams on it */
 .fx-out{display:grid;place-items:center}
-.fx-out::before{background:rgba(8,5,3,.5);animation:fx-wash calc(560ms * var(--dur-scale)) var(--ease-out) both}
+.fx-out::before{background:rgba(8,5,3,.5);animation:fx-wash calc(400ms * var(--dur-scale)) var(--ease-out) both}
 .fx-in{position:relative;width:min(86vw,340px);perspective:900px}
-.fx-out .fx-in{animation:fx-spring-out calc(560ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
+.fx-out .fx-in{animation:fx-spring-out calc(400ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
 @keyframes fx-spring-out{0%{transform:scale(.3) rotateX(38deg);opacity:0}24%{transform:scale(1.13) rotateX(-6deg);opacity:1}38%{transform:scale(.97) rotateX(2deg)}52%,82%{transform:scale(1);opacity:1}100%{transform:scale(.94) translateY(-16px);opacity:0}}
 .fx-card,.fx-v-card{display:grid;justify-items:center;gap:var(--s2);padding:30px 22px 26px;border-radius:32px;text-align:center;
-  transform:rotateX(calc(var(--ty,0) * -7deg)) rotateY(calc(var(--tx,0) * 9deg));transition:transform calc(160ms * var(--dur-scale)) var(--ease-out)}
+  transform:rotateX(calc(var(--ty,0) * -7deg)) rotateY(calc(var(--tx,0) * 9deg));transition:transform calc(114ms * var(--dur-scale)) var(--ease-out)}
 .fx-out.is-vote .fx-card{--tint:var(--brass)}
 .fx-out.is-night .fx-card{--tint:var(--mafia)}
 .fx-pop-ico .ui-ico{width:56px;height:56px;vertical-align:0;color:var(--candle)}
@@ -1235,33 +1236,33 @@ html[data-noblur="1"] .glass::after{display:none}
 .fx-pop-why{font-size:var(--fs-lg);font-weight:700;color:var(--candle)}
 .fx-pop-role{margin-top:var(--s1);padding:4px 16px;border-radius:var(--r-pill);background:var(--candle);color:var(--card-ink);font-weight:800;font-size:var(--fs-md)}
 .fx-stamp{position:absolute;top:14px;right:10px;padding:2px 10px;border:3px solid var(--mafia);border-radius:8px;color:var(--mafia);background:rgba(27,20,16,.55);
-  font:800 var(--fs-md)/1.2 var(--font-display);text-transform:uppercase;letter-spacing:.06em;transform:rotate(-8deg);animation:fx-slam calc(320ms * var(--dur-scale)) var(--ease-out) calc(240ms * var(--dur-scale)) both;will-change:transform,opacity}
+  font:800 var(--fs-md)/1.2 var(--font-display);text-transform:uppercase;letter-spacing:.06em;transform:rotate(-8deg);animation:fx-slam calc(229ms * var(--dur-scale)) var(--ease-out) calc(171ms * var(--dur-scale)) both;will-change:transform,opacity}
 @keyframes fx-slam{0%{transform:rotate(-8deg) scale(2.8);opacity:0}60%{transform:rotate(-8deg) scale(.9);opacity:1}100%{transform:rotate(-8deg) scale(1);opacity:1}}
 .is-restarting{animation:restart-in var(--t-enter) var(--ease-out) both}
 @keyframes restart-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.fx-shake{animation:fx-shake calc(320ms * var(--dur-scale)) var(--ease-out) both}
+.fx-shake{animation:fx-shake calc(229ms * var(--dur-scale)) var(--ease-out) both}
 @keyframes fx-shake{0%,100%{transform:none}15%{transform:translate(-5px,2px)}30%{transform:translate(4px,-2px)}45%{transform:translate(-3px,1px)}60%{transform:translate(2px,-1px)}}
 
 /* particles: at most 18 per burst, all on transform + opacity, removed with their parent */
 .fx-burst{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none}
 .fx-p{position:absolute;left:-5px;top:-7px;width:10px;height:14px;border-radius:2px;background:var(--c);opacity:0;
-  animation:fx-p calc(480ms * var(--dur-scale)) var(--ease-out) var(--d) both;will-change:transform,opacity}
+  animation:fx-p calc(343ms * var(--dur-scale)) var(--ease-out) var(--d) both;will-change:transform,opacity}
 .fx-burst.is-sparks .fx-p{width:8px;height:8px;border-radius:50%;top:-4px;left:-4px}
 @keyframes fx-p{0%{opacity:1;transform:translate(0,0) rotate(0) scale(.4)}70%{opacity:1}100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + 60px)) rotate(var(--r)) scale(1)}}
 
 /* victory card: every screen at once, springs out and stays until closed */
 .fx-victory{position:absolute;inset:0;z-index:1;pointer-events:auto;display:grid;place-items:center;padding:var(--s4);overflow:auto;
-  background:rgba(8,5,3,.92);animation:rc-fade calc(200ms * var(--dur-scale)) var(--ease-out) both}
+  background:rgba(8,5,3,.92);animation:rc-fade calc(143ms * var(--dur-scale)) var(--ease-out) both}
 .fx-victory.is-town{--tint:var(--brass);background:linear-gradient(180deg,rgba(35,52,88,.95),rgba(125,86,30,.95))}
 .fx-victory.is-mafia{--tint:var(--mafia);background:radial-gradient(120% 80% at 50% 30%,rgba(122,31,38,.96),rgba(18,4,10,.97))}
 .fx-victory.is-third{--tint:var(--third);background:linear-gradient(180deg,rgba(36,20,72,.96),rgba(14,8,32,.97))}
 .fx-victory.is-none{--tint:var(--smoke)}
-.fx-victory .fx-in{width:min(92vw,400px);animation:fx-spring-stay calc(400ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
+.fx-victory .fx-in{width:min(92vw,400px);animation:fx-spring-stay calc(286ms * var(--dur-scale)) var(--ease-out) both;will-change:transform,opacity}
 @keyframes fx-spring-stay{0%{transform:scale(.3) rotateX(38deg);opacity:0}38%{transform:scale(1.1) rotateX(-5deg);opacity:1}60%{transform:scale(.97) rotateX(2deg)}100%{transform:scale(1);opacity:1}}
 .fx-v-sun{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .fx-victory:not(.is-town) .fx-v-sun{display:none}
 .fx-v-ico .ui-ico{width:64px;height:64px;vertical-align:0;color:var(--tint)}
-.fx-v-you{font:800 clamp(3rem,17vw,5rem)/.95 var(--font-display);animation:fx-slam-flat calc(320ms * var(--dur-scale)) var(--ease-out) calc(240ms * var(--dur-scale)) both;will-change:transform,opacity}
+.fx-v-you{font:800 clamp(3rem,17vw,5rem)/.95 var(--font-display);animation:fx-slam-flat calc(229ms * var(--dur-scale)) var(--ease-out) calc(171ms * var(--dur-scale)) both;will-change:transform,opacity}
 .fx-v-you.is-win{color:var(--brass-hi)}
 .fx-v-you.is-loss{color:var(--smoke)}
 @keyframes fx-slam-flat{0%{transform:scale(2.6) rotate(-6deg);opacity:0}60%{transform:scale(.92) rotate(-6deg);opacity:1}100%{transform:scale(1) rotate(-3deg);opacity:1}}
@@ -1271,7 +1272,7 @@ html[data-noblur="1"] .glass::after{display:none}
 
 
 /* pointer / device tilt on the role card (set by fx.js, no idle loop) */
-.rcard[data-tilt]{transform:perspective(1400px) rotateX(calc(var(--ty,0) * -5deg)) rotateY(calc(var(--tx,0) * 7deg));transition:transform calc(160ms * var(--dur-scale)) var(--ease-out)}
+.rcard[data-tilt]{transform:perspective(1400px) rotateX(calc(var(--ty,0) * -5deg)) rotateY(calc(var(--tx,0) * 7deg));transition:transform calc(320ms * var(--dur-scale)) var(--ease-out)}
 
 /* animations off (host toggle) or reduced motion: everything lands in its final state */
 html[data-fx="off"] *,html[data-fx="off"] *::before,html[data-fx="off"] *::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important}
@@ -1330,15 +1331,15 @@ html[data-phase="night"] .pane-game .phase-head{background:#17317E}
 
 /* lift on press: one transform */
 .block,.whisper,.guide,.path,.wrap.faq > .faq-group{transform:perspective(900px) translateY(var(--lift,0px)) rotateX(var(--rx,calc(var(--ogy,0) * -4deg))) rotateY(var(--ry,calc(var(--ogx,0) * 5deg)));
-  transition:transform calc(360ms * var(--dur-scale)) var(--ease-out);touch-action:pan-y}
-.block[data-tilting],.whisper[data-tilting],.guide[data-tilting],.path[data-tilting]{transition:transform calc(90ms * var(--dur-scale)) linear}
-.block:active,.whisper:active,.guide:active,.path:active{--lift:-3px}
+  transition:transform calc(400ms * var(--dur-scale)) var(--ease-out),scale var(--f-release) var(--ease-out);touch-action:pan-y}
+.block[data-tilting],.whisper[data-tilting],.guide[data-tilting],.path[data-tilting]{transition:transform calc(180ms * var(--dur-scale)) linear,scale var(--f-release) var(--ease-out)}
+.block:active,.whisper:active,.guide:active,.path:active{scale:var(--f-press-scale)}
 
 /* the main action: a big full-width pill, fixed at the bottom. No glass here. */
 .action-dock{background:linear-gradient(to bottom,transparent,var(--room) 42%);padding:var(--s5) 16px var(--s3)}
 .action-dock .btn.big{min-height:72px;border-radius:var(--r-pill);font-size:clamp(1.4rem,6vw,1.85rem);font-weight:900;background:var(--brass);color:var(--on-brass);
   border:0;box-shadow:0 8px 0 var(--brass-lo),0 18px 24px -10px rgba(0,0,0,.7)}
-.action-dock .btn.big:active{transform:translateY(5px) scale(.98);box-shadow:0 3px 0 var(--brass-lo)}
+.action-dock .btn.big:active{transform:scale(var(--f-press-scale));box-shadow:0 3px 0 var(--brass-lo)}
 .action-dock .btn.big.disabled,.action-dock .btn.big[aria-disabled="true"]{background:var(--panel-2);color:var(--smoke);border:2px dashed var(--rule-strong);box-shadow:none}
 .wrap.join .btn.big,.card-picker .btn.big{position:sticky;bottom:max(14px,env(safe-area-inset-bottom));z-index:5;min-height:72px;font-weight:900;font-size:clamp(1.4rem,6vw,1.85rem)}
 .tabbar{background:var(--room);border-top:1px solid var(--rule)}
@@ -1411,7 +1412,7 @@ html[data-fx="off"] .block,html[data-fx="off"] .whisper,html[data-fx="off"] .gui
 
 /* home: Rules & FAQ link card, then the How to Play card (Mafia palette: dark link, red steps) */
 .home-rules{display:flex;align-items:center;gap:var(--s4);width:100%;min-height:72px;padding:var(--s3) var(--s4);border-radius:var(--r-row);background:var(--panel);color:var(--candle);text-align:left;text-decoration:none;transition:transform var(--t-press) var(--ease-out)}
-.home-rules:active{transform:scale(.98)}
+.home-rules:active{transform:scale(var(--f-press-scale))}
 .home-rules>span{flex:1;min-width:0}
 .home-rules b{display:block;font-family:var(--font-display);font-size:var(--fs-lg);font-weight:800;letter-spacing:-.015em}
 .home-rules small{display:block;margin-top:2px;font-size:var(--fs-sm);font-weight:500;color:var(--smoke);line-height:1.35}
@@ -1435,7 +1436,7 @@ html[data-fx="off"] .block,html[data-fx="off"] .whisper,html[data-fx="off"] .gui
 /* follow-up: flat pills (no bottom lip anywhere; pressed state is transform only) */
 .btn,.btn.big,.btn.danger,.btn.big.danger,.modal-foot .btn:not(.ghost),.action-dock .btn.big,.fx-victory .btn.big{box-shadow:none}
 .action-dock .btn.big:active,.btn.big:active{box-shadow:none}
-.action-dock .btn.big:active{transform:scale(.97)}
+.action-dock .btn.big:active{transform:scale(var(--f-press-scale))}
 
 /* join row: input and button share one height and one pill language */
 .join-row{align-items:flex-end}
@@ -1445,7 +1446,7 @@ html[data-fx="off"] .block,html[data-fx="off"] .whisper,html[data-fx="off"] .gui
 
 /* home link: bold with a drawn arrow instead of an underline */
 .path-link{text-decoration:none;font-weight:800;gap:var(--s2)}
-.path-link::after{content:"";flex:none;width:.5em;height:.5em;border:solid currentColor;border-width:2.5px 2.5px 0 0;transform:rotate(45deg) translate(-1px,1px);transition:transform calc(200ms * var(--dur-scale)) var(--ease-out)}
+.path-link::after{content:"";flex:none;width:.5em;height:.5em;border:solid currentColor;border-width:2.5px 2.5px 0 0;transform:rotate(45deg) translate(-1px,1px);transition:transform calc(400ms * var(--dur-scale)) var(--ease-out)}
 @media (hover:hover){.path-link:hover::after{transform:rotate(45deg) translate(1px,-1px)}}
 
 /* hero card back: flat graphic block */
@@ -1465,7 +1466,7 @@ html[data-fx="off"] .block,html[data-fx="off"] .whisper,html[data-fx="off"] .gui
 .coin-tails{transform:rotateY(180deg);background:var(--brass-hi)}
 .coin-label{margin:0;font-weight:800;color:var(--brass-hi)}
 .cue-after{grid-column:1/-1;min-width:0;display:grid;gap:var(--s2)}
-.coin-after.is-waiting,.coin-label.is-waiting{opacity:0;animation:coinfade calc(200ms * var(--dur-scale)) var(--ease-out) forwards}
+.coin-after.is-waiting,.coin-label.is-waiting{opacity:0;animation:coinfade calc(400ms * var(--dur-scale)) var(--ease-out) forwards}
 @keyframes coinflip{from{transform:rotateY(0)}to{transform:rotateY(var(--coin-end))}}
 @keyframes coinfade{to{opacity:1}}
 @media (prefers-reduced-motion:reduce){
@@ -1500,9 +1501,9 @@ html[data-vt] .pane-game,html[data-vt] #app > main.wrap{view-transition-name:ste
 html[data-vt] .rcard,html[data-vt] .waiting .rcard-back{view-transition-name:role-card}
 html[data-vt] .home-rules,html[data-vt] .wrap.faq > .phase-title{view-transition-name:rules-card}
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
-::view-transition-old(step){animation:vt-out calc(50ms * var(--dur-scale)) var(--ease-out) both}
+::view-transition-old(step){animation:vt-out calc(100ms * var(--dur-scale)) var(--ease-out) both}
 ::view-transition-new(step){animation:vt-in var(--t-enter) var(--ease-out) both}
-::view-transition-group(role-card),::view-transition-group(rules-card){animation-duration:calc(520ms * var(--dur-scale));animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+::view-transition-group(role-card),::view-transition-group(rules-card){animation-duration:calc(400ms * var(--dur-scale));animation-timing-function:cubic-bezier(.2,.8,.2,1)}
 ::view-transition-group(step),::view-transition-group(root){animation-duration:var(--t-enter);animation-timing-function:cubic-bezier(.2,.8,.2,1)}
 @keyframes vt-out{to{opacity:0;transform:translateX(-8px)}}
 @keyframes vt-in{from{opacity:0;transform:translateX(16px)}}
@@ -1510,8 +1511,8 @@ html[data-vt] .home-rules,html[data-vt] .wrap.faq > .phase-title{view-transition
 @keyframes step-in{from{opacity:0;transform:translateX(16px)}}
 
 /* night rail: a finished step fills its connector from the top and its marker springs */
-.cue.is-fill::before{transform-origin:top;animation:rail-fill calc(360ms * var(--dur-scale)) var(--ease-out) both}
-.cue.is-fill .cue-n{animation:rail-pop calc(360ms * var(--dur-scale)) var(--ease-out) both}
+.cue.is-fill::before{transform-origin:top;animation:rail-fill calc(400ms * var(--dur-scale)) var(--ease-out) both}
+.cue.is-fill .cue-n{animation:rail-pop calc(400ms * var(--dur-scale)) var(--ease-out) both}
 @keyframes rail-fill{from{transform:scaleY(0)}}
 @keyframes rail-pop{from{transform:scale(.6)}}
 
@@ -1629,7 +1630,7 @@ html[data-fx="off"] .check-card{animation:none}
 
 /* player v2 */
 /* World: night and day are a change of place, not a badge. Layers cross-fade by opacity only (2x slow); same layout both ways. */
-html[data-world] body::before,html[data-world] body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity calc(900ms * var(--dur-scale)) var(--ease-out,ease)}
+html[data-world] body::before,html[data-world] body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity calc(400ms * var(--dur-scale)) var(--ease-out,ease)}
 html[data-world="night"] body::before{opacity:1;background:
   radial-gradient(circle at 82% 9%,rgba(232,236,255,.95) 0 14px,rgba(190,205,255,.28) 15px 46px,transparent 90px),
   radial-gradient(ellipse at 50% 38%,transparent 35%,rgba(0,0,6,.78) 100%),
@@ -1651,7 +1652,7 @@ html[data-fx="off"][data-world] body::before,html[data-fx="off"][data-world] bod
 
 /* End screen: one heading, then the cast one by one. */
 .win-wait{margin-top:var(--s2)}
-.cast-list{--cast-step:calc(8ms * var(--dur-scale));list-style:none;margin:0;padding:0}
+.cast-list{--cast-step:calc(14ms * var(--dur-scale));list-style:none;margin:0;padding:0}
 .cast-row{display:flex;align-items:center;gap:var(--s2) var(--s3);min-height:56px;padding:var(--s2) 0;border-bottom:1px solid var(--divider)}
 .cast-row:last-child{border-bottom:0}
 .cast-row .arow-name{flex:1;min-width:0}

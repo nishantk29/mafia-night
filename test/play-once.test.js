@@ -17,11 +17,10 @@ test('no infinite or repeating animation anywhere (CSS, inline styles, JS)', () 
     assert.doesNotMatch(src, /iterations\s*:\s*(Infinity|[2-9]|\d{2,})/, f);
   }
 });
-test('the wordmark drips ooze once and the smoke drifts once, both ending on their resting pose', () => {
-  assert.match(css, /,ooze calc\(7s \* var\(--dur-scale\)\) ease-in-out calc\([^;]*\) 1\}/);
-  assert.match(css, /@keyframes ooze\{0%,100%\{transform:scaleY\(1\)\}/); // ends at full length, as the drip leaves it
-  assert.match(css, /html\[data-fx="on"\] \.bg-art \.smoke\{animation:smoke calc\(46s \* var\(--dur-scale\)\) cubic-bezier\(\.2,\.6,\.3,1\) 1 both\}/);
-  assert.match(css, /@keyframes smoke\{from\{transform:translate3d\(18%,0,0\)\}to\{transform:none\}\}/); // settles where it rests
+test('the wordmark drips grow once and hold; the smoke holds its resting place (400ms budget, 2026-10-29)', () => {
+  assert.match(css, /html\[data-fx="on"\] \.dr-svg\{animation:drip calc\(320ms \* var\(--dur-scale\)\) var\(--ease-butter\) both\}/);
+  assert.doesNotMatch(css, /\booze\b/);
+  assert.doesNotMatch(css, /animation:smoke\b/); // the smoke sits where the drift used to end (transform:none)
 });
 test('reduced motion and effects off show that final frame with no motion', () => {
   assert.match(css, /@media \(prefers-reduced-motion:reduce\)\{[^@]*\.dr-svg,\.knife,\.bg-art \.smoke,[^{]*\{animation:none!important\}/);

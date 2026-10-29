@@ -15,8 +15,8 @@ test('a repaint notes the entrances on screen and settles them (no replay on soc
   assert.match(read('sw.js'), /'\/js\/settle\.js'/);
 });
 
-test('entrance timing is --t-enter: 90ms x --dur-scale 2 = 180ms', () => {
-  assert.match(read('styles.css'), /--t-enter:calc\(90ms \* var\(--dur-scale\)\)/);
+test('entrance timing is --t-enter: 180ms (x --dur-scale 1)', () => {
+  assert.match(read('styles.css'), /--t-enter:calc\(180ms \* var\(--dur-scale\)\)/);
   const all = CSS.map(read).join('\n');
   for (const sel of ['.sheet.is-entering{animation:sheet-up var(--t-enter)', '::view-transition-new(step){animation:vt-in var(--t-enter)', '.step-in{animation:step-in var(--t-enter)', '.hw-card{min-height:11em;animation:hw-in var(--t-enter)', '.check-card{animation:check-fade var(--t-enter)', 'transition:transform var(--t-enter)'])
     assert.ok(all.includes(sel), sel);

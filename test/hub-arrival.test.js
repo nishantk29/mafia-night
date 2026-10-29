@@ -12,8 +12,8 @@ test('the arrival is a single opacity fade of the page, <= 300 ms at --dur-scale
   const fades = hubRules.filter((r) => /animation:/.test(r.body) && !/animation:none/.test(r.body));
   assert.equal(fades.length, 1, JSON.stringify(fades));
   assert.match(fades[0].sel, /^html\.hub-in #app,html\.hub-in \.bg-art$/);
-  const m = fades[0].body.match(/animation:hub-fade calc\(([\d.]+)s \* var\(--dur-scale\)\)/);
-  assert.ok(m && +m[1] * scale * 1000 <= 300, fades[0].body);
+  const m = fades[0].body.match(/animation:hub-fade calc\(([\d.]+)(m?s) \* var\(--dur-scale\)\)/);
+  assert.ok(m && +m[1] * (m[2] === 's' ? 1000 : 1) * scale <= 300, fades[0].body);
   assert.match(css, /@keyframes hub-fade\{from\{opacity:0\}to\{opacity:1\}\}/);
   assert.doesNotMatch(fades[0].body, /infinite/);
 });
