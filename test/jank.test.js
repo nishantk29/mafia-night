@@ -54,3 +54,7 @@ test('the room view replacing the connecting placeholder does not start a second
   assert.match(m, /settling = last !== null && last\.endsWith\(':wait'\)/);
   assert.match(m, /changed = last !== null && key !== last && !settling/);
 });
+
+test('callouts use the divider token, not the .36 white family line', () => {
+  assert.match(read('redesign.css'), /\.callout\{[^}]*border:1px solid var\(--divider-strong\)/);
+});
