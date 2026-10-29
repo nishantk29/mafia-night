@@ -49,9 +49,8 @@ try {
 
   // Suggested roles, then deal.
   await skipWalk(host);
-  await host.page.locator('[data-a="simpleSuggest"],[data-a="suggest"]').first().click();
-  const deal = host.page.locator('[data-a="deal"]');
-  await deal.click();
+  for (let i = 0; i < 3; i++) { await host.page.locator('.action-dock [data-a="setupNext"]').click(); await host.page.waitForTimeout(150); }
+  await host.page.locator('.action-dock [data-a="setupDeal2"]').click();
   for (const p of players) await p.page.locator('.hand').first().waitFor({ timeout: 15000 }).catch(() => {});
   const hands = await Promise.all(players.map((p) => p.page.locator('.hand').count()));
   L.check('every player phone shows its hand after the deal', hands.every((n) => n > 0), hands.join(','));
@@ -76,8 +75,9 @@ try {
   await skipWalk(solo);
   await solo.page.locator('[data-i="names"]').fill('Ana, Ben, Cal, Dee, Eve, Fay');
   await solo.page.locator('[data-a="addNames"]').click();
-  await solo.page.locator('[data-a="simpleSuggest"],[data-a="suggest"]').first().click();
-  await solo.page.locator('[data-a="deal"]').click();
+  await solo.page.locator('#add-name').blur().catch(() => {});
+  for (let i = 0; i < 2; i++) { await solo.page.locator('.action-dock [data-a="setupNext"]').click(); await solo.page.waitForTimeout(150); }
+  await solo.page.locator('.action-dock [data-a="setupDeal2"]').click();
   L.check('single-device mode deals', !(await solo.page.locator('[data-a="deal"]').count()) || !/Deal/.test(await solo.text().then((t) => t.slice(0, 40))), (await solo.text()).slice(0, 60));
   await checkPhones(L, [solo], 'single device');
 } catch (e) {

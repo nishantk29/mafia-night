@@ -40,6 +40,9 @@ export const SIMPLE_CARDS = {
   villager: ['2', '3', '4', '5', '6', '7', '8', '9', '10'].flatMap((r) => ['S', 'H', 'D', 'C'].map((s) => r + s)),
 };
 
+// Fixed cards for the extra roles on the "own deck" key (deck-key.js has the same table in display form): one card each.
+export const EXTRA_CARDS = { hooker: ['QS'], godfather: ['QC'], jester: ['JH'], killer: ['JD'], bodyguard: ['AH'], vigilante: ['AD'] };
+
 // What a role stands for, in words, for the host.
 export const SIMPLE_CARD_TEXT = {
   mafia: 'Black Aces, then black Kings, then black Jacks',
@@ -65,9 +68,10 @@ export function deckFitText(roleIds) {
 
 // [{card, roleId}], one card per role slot, in the same shape as the engine's buildDeckMap.
 export function simpleDeckMap(roleIds) {
-  const used = { mafia: 0, doctor: 0, detective: 0, villager: 0 };
+  const used = {};
   return roleIds.map((roleId) => {
-    const list = SIMPLE_CARDS[roleId];
+    const list = SIMPLE_CARDS[roleId] || EXTRA_CARDS[roleId];
+    used[roleId] ||= 0;
     if (!list) throw new Error(`Not a Simple role: ${roleId}`);
     const card = list[used[roleId]++];
     if (!card) throw new Error('Too many of one role for a single deck');

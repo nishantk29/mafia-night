@@ -39,11 +39,12 @@ async function run(browser, dev) {
   const dockAfter = await page.evaluate(() => getComputedStyle(document.querySelector('.action-dock')).display);
   check(`${tag}: Deal roles button back after typing`, dockAfter !== 'none', `display ${dockAfter}`);
   await page.evaluate(() => document.querySelector('[data-a="addNames"]').click()); await sleep(300);
-  await page.evaluate(() => document.querySelector('[data-a="simpleSuggest"],[data-a="suggest"]')?.click()); await sleep(300);
+  // Setup carousel (item 8): Players -> Roles -> How to deal; the last step's dock button deals.
+  for (let i = 0; i < 2; i++) { await page.evaluate(() => document.querySelector('[data-a="setupNext"]')?.click()); await sleep(350); }
   // Deal from the bottom of the page.
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await sleep(200);
   const yBefore = await page.evaluate(() => window.scrollY);
-  await page.evaluate(() => document.querySelector('[data-a="deal"]').click()); await sleep(500);
+  await page.evaluate(() => document.querySelector('[data-a="setupDeal2"],[data-a="deal"]').click()); await sleep(500);
   const y1 = await page.evaluate(() => window.scrollY);
   check(`${tag}: card key opens at the top after Deal roles`, yBefore > 0 && y1 === 0, `scrolled ${yBefore} -> ${y1}`);
   // Start night 1 from the bottom.
