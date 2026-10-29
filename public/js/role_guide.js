@@ -27,7 +27,7 @@ const DO = {
 const LEARN = {
   investigate: (a) => (a.check === 'role' ? 'The Host silently shows you their role.'
     : a.check === 'parity' ? 'The Host silently signals whether those two are on the same side.'
-      : 'The Host silently signals whether they look like Mafia.'),
+      : 'The Host silently shows you MAFIA or NOT MAFIA.'),
   track: () => 'The Host silently shows you who they visited.',
   watch: () => 'The Host silently shows you who visited them.',
   autopsy: () => 'The Host silently shows you their true role.',
@@ -79,9 +79,9 @@ export function roleGuide(roleId, rules = {}) {
   if (r.nightImmune) death.push('You can’t be killed at night.');
   if (r.shield) death.push('If the town votes you out, nobody can be killed the night after.');
 
-  if (r.appearsAs === 'innocent' && r.alignment !== 'town') know.push('To a Cop’s check you look innocent.');
-  if (r.appearsAs === 'mafia' && r.alignment === 'town') know.push('To a Cop’s check you look like Mafia, even though you are town.');
-  if (r.id === 'godfather') know.push('To the Detective you look like a Villager.');
+  if (r.appearsAs === 'innocent' && r.alignment !== 'town') know.push('To a check for MAFIA or NOT MAFIA you look innocent.');
+  if (r.appearsAs === 'mafia' && r.alignment === 'town') know.push('To a check for MAFIA or NOT MAFIA you look like Mafia, even though you are town.');
+  if (r.id === 'godfather') know.push('A check for MAFIA or NOT MAFIA shows you as NOT MAFIA. A check for an exact role shows you as a Villager.');
   if (r.meeting === 'mafia') know.push('Your phone lists your Mafia teammates.');
   if (r.showMafia) know.push('Your phone lists who the Mafia are. Don’t make it obvious that you know.');
 

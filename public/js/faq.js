@@ -1,6 +1,6 @@
 // How it works and FAQ (#/faq). Static copy in native <details> accordions: opening one never re-renders.
 import { ui } from './ui_icons.js';
-import { ROLES } from './roles.js';
+import { ROLES, INVESTIGATOR_NAME } from './roles.js';
 import { PLAY_MODES } from './modes.js';
 import { esc } from './state.js';
 import { siteFooter } from './footer.js';
@@ -55,23 +55,25 @@ const GROUPS = () => [
         <li>The Mafia’s kill, then the Janitor.</li>
         <li>Other killers, such as the Serial Killer and the Vigilante.</li>
         <li>Protectors (Doctor, Bodyguard and friends), after the killers have picked.</li>
-        <li>Investigators, such as the Cop and the Detective.</li>
+        <li>Detectives, and the ${INVESTIGATOR_NAME} if you use one.</li>
         <li>Trackers and lookouts last.</li>
       </ol>
-      <p>So a plain game goes Mafia, then Doctor, then Cop. The night screen lists the order for you.</p>
+      <p>So a plain game goes Mafia, then Doctor, then Detective. The night screen lists the order for you.</p>
       <p>Roles whose player has died are still called, so nobody can tell who is gone.</p>
       <p>Games started before this order came in keep their old order until a new game or the “Use the new night script” switch.</p>`],
     ['A blocker picked me. Do I still wake up and choose?', `
-      ${L([['Yes.', 'A blocked or jailed player wakes and points like any other night. The table can’t tell.'], ['The block cancels what they did.', 'A blocked Doctor saves nobody. A blocked Cop or Detective gets a NO RESULT card.'], ['A role with limited uses', 'still spends the use.']])}`],
+      ${L([['Yes.', 'A blocked or jailed player wakes and points like any other night. The table can’t tell.'], ['The block cancels what they did.', 'A blocked Doctor saves nobody. A blocked Detective gets a NO RESULT card.'], ['A role with limited uses', 'still spends the use.']])}`],
     ['Two players have the same role. Who wakes?', `
-      ${L([['Each one gets a number:', 'Cop 1, Cop 2, Hooker 1, Hooker 2.'], ['Their phone shows it:', '“You are Cop 2.”'], ['The Host taps', 'that player on the shoulder, so only they wake.'], ['Each pick and each result', 'belongs to that player alone.']])}`],
+      ${L([['Each one gets a number:', 'Detective 1, Detective 2, Hooker 1, Hooker 2.'], ['Their phone shows it:', '“You are Detective 2.”'], ['The Host taps', 'that player on the shoulder, so only they wake.'], ['Each pick and each result', 'belongs to that player alone.']])}`],
     ['Some roles don’t know what they really are. How does that work?', `
-      ${L([['Told something else.', 'The Insane, Naive, Paranoid and Confused Cop, the Placebo Doctor and the Miller are told something other than the truth.'], ['Their phone and the card key', 'show what they think they are.'], ['The table', 'may know a fake Cop is in play, but never which player.'], ['The Host', 'is told privately, and the app gives that player the right (wrong) results.']])}`],
-    ['What is the Confused Cop?', `
-      <p>A hidden role. The player thinks they are a Cop. Their phone says Cop, and the Host calls them as a Cop (Cop 1, Cop 2).</p>
+      ${L([['Told something else.', 'The Insane, Naive, Paranoid and Confused Detective, the Placebo Doctor and the Miller are told something other than the truth.'], ['Their phone and the card key', 'show what they think they are.'], ['The table', 'may know a fake Detective is in play, but never which player.'], ['The Host', 'is told privately, and the app gives that player the right (wrong) results.']])}`],
+    ['What is the Confused Detective?', `
+      <p>A hidden role. The player thinks they are a Detective. Their phone says Detective, and the Host calls them as a Detective (Detective 1, Detective 2).</p>
       ${H('Each check')}
       ${L([['Coin flip', 'made by the app when the Host enters the pick.'], ['Heads', 'gives the TRUE result.'], ['Tails', 'gives the OPPOSITE.'], ['Only the Host', 'sees how it landed, in a private note. The player gets the usual card.']])}
-      <p>A regular Cop must be in the game too. Without one, the app blocks the deal and asks you to add a Cop.</p>`],
+      <p>A regular Detective must be in the game too. Without one, the app blocks the deal and asks you to add a Detective.</p>`],
+    ['What does the Detective do? Where did the Cop go?', `
+      ${L([['Each night', 'the Detective points at one player and learns MAFIA or NOT MAFIA.'], ['The Godfather', 'shows as NOT MAFIA.'], ['Two Detectives', 'are called one at a time: Detective 1, then Detective 2.'], ['The Cop is now the Detective.', 'The Insane Cop is the Insane Detective, and the Parity Cop is the Comparer.'], ['The old exact-role Detective', `is now the ${INVESTIGATOR_NAME}, an optional role: it learns a player’s exact role, and the Godfather shows as a Villager.`], ['A game already under way', 'keeps its old roles and names. New games use the new ones.']])}`],
     ['The Hooker blocked one Mafia member. Does the kill still happen?', `
       ${L([['Yes,', 'if any Mafia member is free to carry it out.'], ['It only stops', 'when every Mafia member is blocked.'], ['Trackers and lookouts', 'see one visitor, never the blocked one.']])}`],
   ]],

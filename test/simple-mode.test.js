@@ -5,15 +5,15 @@ import { buildDeckMap } from '../public/js/engine.js';
 import { ROLE_BY_ID } from '../public/js/roles.js';
 
 test('Simple has exactly four roles with the plain names', () => {
-  assert.deepEqual(SIMPLE_ROLES.map((r) => r.name), ['Mafia', 'Doctor', 'Cop', 'Villager']);
+  assert.deepEqual(SIMPLE_ROLES.map((r) => r.name), ['Mafia', 'Doctor', 'Detective', 'Villager']);
   for (const r of SIMPLE_ROLES) assert.equal(ROLE_BY_ID[r.id].name, r.name);
 });
 
 test('suggested counts for 5-12 players add up and stay sensible', () => {
   for (let n = 5; n <= 12; n++) {
     const c = simpleCounts(n);
-    assert.equal(c.mafia + c.doctor + c.cop + c.villager, n);
-    assert.equal(c.doctor, 1); assert.equal(c.cop, 1);
+    assert.equal(c.mafia + c.doctor + c.detective + c.villager, n);
+    assert.equal(c.doctor, 1); assert.equal(c.detective, 1);
     assert.ok(c.mafia >= 1 && c.mafia * 2 < n, `mafia ${c.mafia} of ${n}`);
     assert.equal(c.mafia, Math.max(1, Math.round(n / 4)));
     assert.equal(simpleRoleIds(c).length, n);
@@ -22,10 +22,10 @@ test('suggested counts for 5-12 players add up and stay sensible', () => {
 });
 
 test('card mapping uses Black Aces cards', () => {
-  const m = Object.fromEntries(simpleDeckMap(['mafia', 'mafia', 'doctor', 'cop', 'villager', 'villager']).map((x, i) => [i, x.card]));
+  const m = Object.fromEntries(simpleDeckMap(['mafia', 'mafia', 'doctor', 'detective', 'villager', 'villager']).map((x, i) => [i, x.card]));
   assert.deepEqual(Object.values(m), ['AS', 'AC', 'KH', 'QH', '2S', '2H']);
   assert.equal(buildDeckMap(['mafia', 'doctor'], 'simple')[1].card, 'KH');
-  assert.deepEqual(simpleCardKey(['mafia', 'mafia', 'cop']).map((k) => k.name), ['Mafia', 'Cop']);
+  assert.deepEqual(simpleCardKey(['mafia', 'mafia', 'detective']).map((k) => k.name), ['Mafia', 'Detective']);
 });
 
 test('a set that cannot fit one deck says so plainly', () => {

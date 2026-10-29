@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newRoom, reduce, viewForHost, viewForPlayer } from '../public/js/room.js';
 import { ROLE_BY_ID, factionOf } from '../public/js/roles.js';
-import { LATEST_NIGHT_VERSION, roleMax, rulesOf, stalemateOf } from '../public/js/engine.js';
+import { LATEST_NIGHT_VERSION, upgradeTarget, roleMax, rulesOf, stalemateOf } from '../public/js/engine.js';
 import { CATALOGUE, rng, dealRefusal, planCoverage, pickNightActions, disguiseLeaks } from '../scripts/sim-lib.mjs';
 
 const GAMES = Number(process.env.SIM_GAMES) || 2000;
@@ -198,7 +198,7 @@ function playGame(g, plan, R, rec) {
     act({ type: 'addPlayers', names: Array.from({ length: plan.n }, (_, i) => `P${i}`) });
     act({ type: 'setCustomRoles', roles: CUSTOMS });
     act({ type: 'setConfig', mode: 'app', roles: plan.roles, rules });
-    if (room.nightVersion < LATEST && R.chance(0.1)) act({ type: 'upgradeNight' }); // in the lobby this switches straight over
+    if (room.nightVersion < upgradeTarget(room) && R.chance(0.1)) act({ type: 'upgradeNight' }); // in the lobby this switches straight over
     act({ type: 'deal' });
     leaks(room, rec, tag);
     for (let night = 0; night < NIGHT_CAP; night++) {
@@ -206,7 +206,7 @@ function playGame(g, plan, R, rec) {
       if (room.phase === 'dealt' && rules.dayStart && R.chance(0.5)) {
         act({ type: 'startDay' });
       } else {
-        if (room.phase === 'day' && room.nightVersion < LATEST && R.chance(0.15)) act({ type: 'upgradeNight', off: R.chance(0.2) });
+        if (room.phase === 'day' && room.nightVersion < upgradeTarget(room) && R.chance(0.15)) act({ type: 'upgradeNight', off: R.chance(0.2) });
         act({ type: 'startNight' });
         rec.nights++;
       }

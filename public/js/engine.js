@@ -1,5 +1,5 @@
 // Pure game logic. Shared by the Cloudflare Worker, the browser (local mode) and node tests.
-import { ROLES, ROLE_BY_ID, factionOf } from './roles.js';
+import { ROLES, ROLE_BY_ID, factionOf, INVESTIGATOR_ID, MERGE_NIGHT_VERSION } from './roles.js';
 import { simpleDeckMap } from './simple.js';
 
 export const MIN_PLAYERS = 5;
@@ -24,7 +24,7 @@ export function shuffle(arr) {
 }
 
 // ---------- role suggestion ----------
-const TOWN_PRIORITY = ['doctor', 'cop', 'detective', 'bodyguard', 'vigilante', 'tracker', 'hunter', 'jailer',
+const TOWN_PRIORITY = ['doctor', 'detective', 'bodyguard', 'vigilante', 'tracker', 'hunter', 'jailer',
   'lookout', 'mason', 'mason', 'coroner', 'security_guard', 'merlin', 'governor', 'grandma'];
 
 export function suggestRoles(n) {
@@ -74,7 +74,7 @@ const redHigh = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2
 const blackHigh = RANKS.flatMap((r) => ['S', 'C'].map((s) => r + s));
 const FIXED_HOME = {
   godfather: ['AS'], don: ['KS'], mafia: ['AC', 'KC', 'QS', 'QC', 'JS', 'JC', '10S', '10C'],
-  doctor: ['AH'], cop: ['KH'], detective: ['QH'], bodyguard: ['JH'], vigilante: ['KD'],
+  doctor: ['AH'], cop: ['KH'], detective_v1: ['QH'], detective: ['KH'], [INVESTIGATOR_ID]: ['QH'], bodyguard: ['JH'], vigilante: ['KD'],
   mason: ['AD', 'QD'], jester: ['RJ'], killer: ['BJ'], villager: lowRed,
 };
 const FIXED_POOL = { town: redHigh, mafia: blackHigh, third: ['RJ', 'BJ', ...[...blackHigh].reverse()] };
@@ -104,7 +104,7 @@ export const playerById = (room, id) => room.players.find((p) => p.id === id);
 const nameOf = (room, id) => playerById(room, id)?.name || '?';
 const usedCount = (room, id) => room.usage?.[id] || 0;
 
-// What a Cop-style check shows for a player: 'mafia' | 'innocent'
+// What a Detective-style check shows for a player: 'mafia' | 'innocent'
 export function appearsAs(room, p) {
   if (room.framed?.includes(p.id)) return 'mafia';
   const r = ROLE_BY_ID[p.roleId];
@@ -156,14 +156,20 @@ export const hasV8Rules = (room) => nightVersion(room) >= 8;
 // saves). (2) A blocked or jailed role still wakes and picks like anyone else; the block only cancels the effect when the
 // night resolves. A blocked investigator is shown a "NO RESULT" card, so the step plays out the same way with or without a block.
 export const hasV9Order = (room) => nightVersion(room) >= 9;
-export const LATEST_NIGHT_VERSION = 9;
+// 10: Cop and Detective merge. One Detective learns MAFIA or NOT MAFIA (the Godfather shows as NOT MAFIA); the exact-role check is the
+// optional Investigator; Parity Cop is the Comparer. Rooms at 9 or older keep the old roles and names (Cop, Detective, Parity Cop...).
+// The merge never starts mid-game: see upgradeTarget.
+export const hasMergedDetective = (room) => nightVersion(room) >= MERGE_NIGHT_VERSION;
+export const LATEST_NIGHT_VERSION = 10;
+// The version a "new night script" upgrade can reach: a lobby room may take the merge, a room already in a game stops before it.
+export const upgradeTarget = (room) => (room?.phase === 'lobby' ? LATEST_NIGHT_VERSION : Math.min(LATEST_NIGHT_VERSION, MERGE_NIGHT_VERSION - 1));
 // v9 wake order: protect 20 -> 54, guard 21 -> 55 (after the last killer at 53, before the Coroner at 58 and the investigators).
 const V9_SHIFT = { protect: 34, guard: 34 };
-// 7: every look-alike call family is numbered 1..N (Cop 1, Cop 2...), the player's phone shows their number, and the Confused Cop is a disguised Cop
+// 7: every look-alike call family is numbered 1..N (Detective 1, Detective 2...), the player's phone shows their number, and the Confused Detective (Confused Cop before 10) is a disguised Detective
 export const hasNumberedCalls = (room) => nightVersion(room) >= 7;
 
 // The role id a player believes they hold. v7 treats the Confused Cop as a disguised Cop (older rooms keep it open).
-export const shownRoleId = (roleId, room) => (hasNumberedCalls(room) && roleId === 'confused_cop' ? 'cop' : ROLE_BY_ID[roleId]?.seesAs || roleId);
+export const shownRoleId = (roleId, room) => (hasNumberedCalls(room) && roleId === 'confused_cop' ? 'cop' : hasNumberedCalls(room) && roleId === 'confused_detective' ? 'detective' : ROLE_BY_ID[roleId]?.seesAs || roleId);
 const callHash = (room, id) => [...`${room.copSalt}:${id}`].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
 // Holders of each family that has its own individual wake-up call (alive and dead, so numbers never move on a death).
 function callFamilies(room) {
@@ -471,8 +477,8 @@ export function setupWarnings(roleIds, playerCount) {
   if (count((r) => r.meeting === 'mason') === 1) out.push({ level: 'warn', text: 'A single Mason has nobody to meet. Add a second or remove it.' });
   if (has('lover') && count((r) => r.id === 'lover') !== 2) out.push({ level: 'warn', text: 'Lovers come in pairs. Use exactly two.' });
   const deceivers = roles.filter((r) => r.appearsAs === 'innocent' || r.action?.type === 'frame' || r.appearsAs === 'mafia');
-  if (deceivers.length && !hasCheck) out.push({ level: 'tip', text: `${[...new Set(deceivers.map((r) => r.name))].join(', ')} only matter${deceivers.length === 1 ? 's' : ''} if someone investigates. Add a Cop or Detective.` });
-  if (n >= 7 && !hasCheck) out.push({ level: 'tip', text: 'Nobody can investigate, so Town has to guess. Add a Cop for a classic game.' });
+  if (deceivers.length && !hasCheck) out.push({ level: 'tip', text: `${[...new Set(deceivers.map((r) => r.name))].join(', ')} only matter${deceivers.length === 1 ? 's' : ''} if someone investigates. Add a Detective.` });
+  if (n >= 7 && !hasCheck) out.push({ level: 'tip', text: 'Nobody can investigate, so Town has to guess. Add a Detective for a classic game.' });
   // Generic pairing rule: a role with requiresPartner needs that role in the game, or the deal is blocked.
   for (const r of roles) {
     const need = r.requiresPartner && ROLE_BY_ID[r.requiresPartner];
@@ -488,7 +494,7 @@ export function setupWarnings(roleIds, playerCount) {
   const killers = count((r) => r.action?.type === 'kill' || r.meeting === 'mafia' && r.id === 'mafia') || (mafia.length ? 1 : 0);
   const savers = count((r) => ['protect', 'guard', 'jail'].includes(r.action?.type));
   if (savers > killers + 1) out.push({ level: 'warn', text: `${savers} protectors against ${killers} killer${killers === 1 ? '' : 's'}: nights may often end with nobody dead.` });
-  const uniques = ['godfather', 'doctor', 'cop', 'jailer', 'mayor', 'president', 'janitor'];
+  const uniques = ['godfather', 'doctor', 'cop', 'detective', 'jailer', 'mayor', 'president', 'janitor'];
   for (const id of uniques) if (count((r) => r.id === id) > 1) out.push({ level: 'tip', text: `More than one ${ROLE_BY_ID[id].name}. Fine for a big table, but each extra one changes the balance.` });
   return out;
 }
@@ -670,19 +676,20 @@ export function resolveNight(room, actions, opts = {}) {
       const visited = psychic && hasV8Rules(room) && wokeBy(a).some((x) => x.targets.some((id) => actorIds.includes(id)) && x.visitors.some((id) => !actorIds.includes(id)));
       if (visited) { text = 'No vision tonight.'; novision = true; } // v8: anybody who visited the Psychic before their call clouds the vision
       else if (chk === 'alignment') text = `${t.name} is ${sideName(a.s.roleId === 'psychic' && hasNumberedCalls(room) ? (factionOf(t.roleId) === 'mafia' ? 'mafia' : 'innocent') : appearsAs(room, t))}.`; // v7: the Psychic reads the TRUE side, past frames and disguises
-      else if (chk === 'inverted') { text = `${t.name} is ${sideName(appearsAs(room, t) === 'mafia' ? 'innocent' : 'mafia')}.`; note = 'Insane Cop: this is the flipped result. Say it as if it were true.'; }
+      else if (chk === 'inverted') { text = `${t.name} is ${sideName(appearsAs(room, t) === 'mafia' ? 'innocent' : 'mafia')}.`; note = `${ROLE_BY_ID[a.s.roleId]?.name || 'Insane Detective'}: this is the flipped result. Say it as if it were true.`; }
       else if (chk === 'random') {
-        // Open role: heads = the true Cop result, tails = the opposite. The flip is decided when the target is entered.
+        // Open role: heads = the true Detective result, tails = the opposite. The flip is decided when the target is entered.
         const flip = a.flip || flipCoin();
         const truth = appearsAs(room, t);
         text = `${t.name} is ${sideName(flip === 'heads' ? truth : truth === 'mafia' ? 'innocent' : 'mafia')}.`;
-        note = flip === 'heads' ? 'Confused Cop: coin landed Heads, this is the TRUE answer.' : 'Confused Cop: coin landed Tails, this is the FLIPPED answer.';
-        coinInfo = { flip, text: `Confused Cop ${nameOf(room, actorIds[0])} checked ${t.name}: coin landed ${flip === 'heads' ? 'Heads (true answer)' : 'Tails (flipped answer)'}.` };
+        const confName = ROLE_BY_ID[a.s.roleId]?.name || 'Confused Detective';
+        note = flip === 'heads' ? `${confName}: coin landed Heads, this is the TRUE answer.` : `${confName}: coin landed Tails, this is the FLIPPED answer.`;
+        coinInfo = { flip, text: `${confName} ${nameOf(room, actorIds[0])} checked ${t.name}: coin landed ${flip === 'heads' ? 'Heads (true answer)' : 'Tails (flipped answer)'}.` };
       }
-      else if (chk === 'naive') { text = `${t.name} is ${sideName('innocent')}.`; note = 'Naive Cop: everyone looks innocent to them. Say it as if it were true.'; }
-      else if (chk === 'paranoid') { text = `${t.name} is ${sideName('mafia')}.`; note = 'Paranoid Cop: everyone looks guilty to them. Say it as if it were true.'; }
+      else if (chk === 'naive') { text = `${t.name} is ${sideName('innocent')}.`; note = `${ROLE_BY_ID[a.s.roleId]?.name || 'Naive Detective'}: everyone looks innocent to them. Say it as if it were true.`; }
+      else if (chk === 'paranoid') { text = `${t.name} is ${sideName('mafia')}.`; note = `${ROLE_BY_ID[a.s.roleId]?.name || 'Paranoid Detective'}: everyone looks guilty to them. Say it as if it were true.`; }
       else if (chk === 'role') {
-        const disguised = hasGodfatherDisguise(room) && t.roleId === 'godfather' && (a.s.roleId === 'detective' || ROLE_BY_ID[a.s.roleId]?.seesAs === 'detective');
+        const disguised = hasGodfatherDisguise(room) && t.roleId === 'godfather' && [INVESTIGATOR_ID, 'detective_v1'].some((id) => a.s.roleId === id || ROLE_BY_ID[a.s.roleId]?.seesAs === id);
         text = `${t.name} is the ${ROLE_BY_ID[disguised ? 'villager' : t.roleId].name}.`;
       }
       else if (chk === 'parity') {
@@ -943,7 +950,7 @@ export function balanceOf(roleIds) {
 
 // Swap roles one at a time, keeping the player count, until the setup is about even. Prefers small changes:
 // it only swaps in common roles, and only touches Villagers, plain Mafia and the role it just added.
-const SWAP_IN = ['villager', 'mafia', 'doctor', 'cop', 'godfather', 'vigilante', 'bodyguard', 'tracker', 'jester', 'hooker', 'framer'];
+const SWAP_IN = ['villager', 'mafia', 'doctor', 'detective', 'godfather', 'vigilante', 'bodyguard', 'tracker', 'jester', 'hooker', 'framer'];
 export function rebalance(roleIds) {
   let roles = [...roleIds];
   const score = (rs) => Math.abs(balanceOf(rs).score);

@@ -348,8 +348,8 @@ describe('resolveNight', () => {
       assert.match(infoText(check('insane_cop', 'villager').rep), /is MAFIA/);
       assert.match(infoText(check('insane_cop', 'godfather').rep), /is MAFIA/);
     });
-    test('detective sees exact role', () => {
-      assert.match(infoText(check('detective', 'godfather').rep), /the Godfather/);
+    test('investigator sees exact role', () => {
+      assert.match(infoText(check('investigator', 'godfather').rep), /the Godfather/);
     });
     test('wannabe gives some result', () => {
       assert.match(infoText(check('wannabe', 'villager').rep), /Tgt is (MAFIA|NOT Mafia)/);

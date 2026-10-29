@@ -48,9 +48,9 @@ test('simple key: the words on the card key match the cards the app deals', () =
   // Black Aces, then black Kings, then black Jacks: the Mafia list the key describes.
   assert.deepEqual(SIMPLE_CARDS.mafia.map((c) => c.slice(0, -1)), ['A', 'A', 'K', 'K', 'J', 'J']);
   assert.ok(SIMPLE_CARDS.mafia.every((c) => !cardInfo(c).red));
-  // Red Kings for the Doctor, red Queens for the Cop.
+  // Red Kings for the Doctor, red Queens for the Detective.
   assert.ok(SIMPLE_CARDS.doctor.every((c) => c.startsWith('K') && cardInfo(c).red));
-  assert.ok(SIMPLE_CARDS.cop.every((c) => c.startsWith('Q') && cardInfo(c).red));
+  assert.ok(SIMPLE_CARDS.detective.every((c) => c.startsWith('Q') && cardInfo(c).red));
   const page = simplePage();
   for (const c of SIMPLE_CARDS.mafia.slice(0, 2)) assert.ok(page.includes(cardInfo(c).label), `key shows ${cardInfo(c).label}`);
   assert.ok(page.includes('Black Aces, then black Kings, then black Jacks.'));
@@ -62,7 +62,7 @@ test('simple page: one card key, the counts table and the night script in the or
   assert.ok(page.indexOf('Setting up') < page.indexOf('Each night'));
   assert.match(page, /Mafia, wake up\. Who do you kill\?/);
   assert.match(page, /Doctor, wake up\. Who do you protect\?/);
-  assert.match(page, /Cop, wake up\. Who do you check\?/);
+  assert.match(page, /Detective, wake up\. Who do you check\?/);
   assert.equal((page.match(/<tr class="over">/g) || []).length, 5, '26 to 30 players are flagged');
 });
 

@@ -6,7 +6,7 @@ import { ROLES } from '../public/js/roles.js';
 import { newRoom, reduce, viewForHost, viewForPlayer } from '../public/js/room.js';
 
 const HOST = { host: true }, ANON = { anon: true };
-const SPEC = [['Mob', 'mafia'], ['God', 'godfather'], ['Doc', 'doctor'], ['Det', 'detective'], ['Cop', 'cop'], ['Vig', 'vigilante'], ['V1', 'villager'], ['V2', 'villager'], ['V3', 'villager'], ['V4', 'villager']];
+const SPEC = [['Mob', 'mafia'], ['God', 'godfather'], ['Doc', 'doctor'], ['Det', 'detective_v1'], ['Cop', 'cop'], ['Vig', 'vigilante'], ['V1', 'villager'], ['V2', 'villager'], ['V3', 'villager'], ['V4', 'villager']];
 function mk(version, { phase = 'night', night = 2, hostKey = 'hostkey', spec = SPEC } = {}) {
   const room = newRoom('UP', hostKey);
   for (const [name, roleId] of spec) {
@@ -110,7 +110,7 @@ describe('upgradeNight', () => {
     const room = mk(9, { phase: 'day', night: 1 });
     assert.ok(up(room).error);
     assert.equal(room.upgradeNext, undefined);
-    assert.equal(newRoom('X', 'k').nightVersion, 9);
+    assert.equal(newRoom('X', 'k').nightVersion, 10);
   });
 });
 
