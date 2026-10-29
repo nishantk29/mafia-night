@@ -76,8 +76,31 @@ try {
   await host.page.locator('[data-a="setupPreview"][data-v="last-orders"]').click();
   await shot(host, 'preset-preview-390');
   await host.page.locator('[data-a="setupCustomizeFrom"]').click();
-  await host.page.locator('.deck-list').waitFor();
+  await host.page.locator('.deck-list').first().waitFor();
   await shot(host, 'customize-390'); await full(host, 'customize-390-full');
+  { // role groups: team sections, then a subhead per type
+    const g = await host.page.evaluate(() => [...document.querySelectorAll('.setup-page section.tg')].map((s) => ({ team: s.dataset.team, h: s.querySelector('.tg-name')?.textContent, n: s.querySelector('.tg-n')?.textContent,
+      types: [...s.querySelectorAll('.tg-sub')].map((t) => [t.dataset.type, t.querySelector('.tg-type')?.textContent, t.querySelectorAll('.deck-item').length]) })));
+    L.check('customize: roles grouped by team (Town, Mafia, Neutral order) with card counts', g.length >= 2 && g[0].team === 'town' && g[0].h === 'Town' && g.every((x) => /^\d+ cards?$/.test(x.n)) && g.map((x) => x.team).join() === ['town', 'mafia', 'third'].filter((t) => g.some((x) => x.team === t)).join(), JSON.stringify(g).slice(0, 300));
+    L.check('customize: every team has a subhead per type, even with one type', g.every((x) => x.types.length >= 1 && x.types.every(([d, h, c]) => d === h && c >= 1)));
+    const fs = await host.page.evaluate(() => [...new Set([...document.querySelectorAll('.tg-type, .tg-h, .deck-item .rc')].map((e) => e.className.split(' ')[0] + ':' + getComputedStyle(e).fontSize))]);
+    L.check('customize: type subheads are 16px, team heads 22px', fs.includes('tg-type:16px') && fs.includes('tg-h:22px'), fs.join(' '));
+    await host.page.locator('.setup-page [data-a="openAddRole"]').click();
+    await host.page.locator('.add-role-sheet').waitFor(); await host.page.waitForTimeout(450);
+    await shot(host, 'addrole-390');
+    const a = await host.page.evaluate(() => ({ top: !!document.querySelector('.add-role-sheet .add-role-top .search-field'), teams: [...document.querySelectorAll('.add-role-list section.tg')].map((s) => s.dataset.team),
+      types: [...document.querySelectorAll('.add-role-list .tg-sub')].map((t) => t.dataset.team + '/' + t.dataset.type) }));
+    L.check('add role: Town, Mafia, Neutral sections with data-team', a.teams.join() === 'town,mafia,third', a.teams.join());
+    L.check('add role: approved types (Plain kept, Mafia Killing and Support, no Vote)', a.types.includes('town/Plain') && a.types.includes('mafia/Killing') && a.types.includes('mafia/Support') && !a.types.some((t) => /Vote/.test(t)), a.types.join());
+    L.check('add role: the sheet top holds the search in its own row (ready for a filter)', a.top);
+    await host.page.locator('.add-role-sheet input.search').fill('godfather'); await host.page.waitForTimeout(100);
+    const vis = await host.page.evaluate(() => ({ subs: [...document.querySelectorAll('.add-role-list .tg-sub')].filter((t) => !t.hidden).map((t) => t.dataset.team + '/' + t.dataset.type), secs: [...document.querySelectorAll('.add-role-list section.tg')].filter((t) => !t.hidden).length }));
+    L.check('add role: search hides type and team sections with no match', vis.subs.join() === 'mafia/Killing' && vis.secs === 1, JSON.stringify(vis));
+    await shot(host, 'addrole-search-390');
+    await host.page.locator('.add-role-sheet input.search').fill(''); await host.page.waitForTimeout(100);
+    L.check('add role: clearing the search shows every section again', (await host.page.locator('.add-role-list .tg-sub[hidden]').count()) === 0);
+    await host.page.locator('.add-role-sheet .add-role-done').click(); await host.page.waitForTimeout(450);
+  }
   await host.page.locator('.deck-list [data-a="addRole"][data-id="villager"]').click();
   await host.page.waitForTimeout(200);
   L.check('customize: 8 roles for 7 players shows the mismatch', /need to match/.test(await host.page.locator('.setup-page').innerText()));

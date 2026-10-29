@@ -92,3 +92,14 @@
 .st-card .st-skip{margin-top:var(--s2)}
 .st-adjust .btn,.st-skip .btn{min-height:44px}
 .st-adjust .btn[aria-disabled="true"]{opacity:.45}
+
+/* Team, then type grouping (role selector, Add role, Roles in this game). Type subheads are 16px and team headings
+   22px, so the step from the 17px role rows to the team heading is at least 1.25x (impeccable flat-type-hierarchy). */
+.tg{margin-top:var(--s6,32px)}
+.tg:first-child{margin-top:var(--s4,16px)}
+.tg-h{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3,12px);margin:0;padding-bottom:var(--s2,8px);border-bottom:2px solid var(--team);font:700 1.375rem/1.2 var(--font-ui,Rubik,system-ui,sans-serif);letter-spacing:0;text-transform:none;color:var(--team)}
+.tg-n{font-size:1rem;font-weight:600;color:var(--candle);font-variant-numeric:tabular-nums}
+.tg-type{margin:var(--s4,16px) 0 var(--s1,4px);font:600 1rem/1.3 var(--font-ui,Rubik,system-ui,sans-serif);letter-spacing:0;text-transform:none;color:var(--smoke)}
+.tg .deck-list{margin-bottom:0}
+.tg .role-grid{margin-top:var(--s2,8px)}
+.add-role-list .tg:first-child{margin-top:var(--s2,8px)}
