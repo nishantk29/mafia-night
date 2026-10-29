@@ -165,6 +165,8 @@ try {
   if (SHOTS) { await host.shot(SHOTS, 'day-390'); await dump(host, 'day'); }
   await checkPhones(L, all, 'day vote');
   await host.page.locator('.action-dock .btn.big').click(); await wait(host, 400);
+  // Live rooms answer a moment later: wait for the next step's button instead of a fixed sleep.
+  await host.page.waitForFunction(() => /Start night 2/.test(document.querySelector('.action-dock .btn.big')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
   const after = await host.page.evaluate(() => ({ rail: [...document.querySelectorAll('.st-line')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()), btn: document.querySelector('.action-dock .btn.big')?.textContent.trim() }));
   L.check('the vote collapses and Start night 2 is next', after.rail.some((r) => /was voted out/.test(r)) && /Start night 2/.test(after.btn), JSON.stringify(after));
 
