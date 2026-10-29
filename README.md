@@ -27,7 +27,7 @@ Night script ordered by role, auto-resolution of kills, protects, guards, jails,
 - Engine night actions: kill, protect, guard, alert, jail, block, blockVisitors, frame, clean, convert, copyRole, investigate (alignment/role/inverted/parity/fake), track, watch, autopsy. Anything else is a day reminder or a trigger the Host adjudicates.
 
 ## Artwork
-- **Icons:** every role maps to a game-icons.net glyph (`public/js/role_icons.js`, generated into `icon_data.js` by `npm run assets`). Credit is shown on the home screen (CC BY 3.0: Lorc, Delapouite and contributors).
+- **Icons:** every role maps to a game-icons.net glyph (`public/js/role_icons.js`, generated into the sprite `public/icons/roles.svg` by `npm run assets`, which the app loads on first use rather than at startup). Credit is shown on the home screen (CC BY 3.0: Lorc, Delapouite and contributors).
 - **Procedural card art:** each role card is built in code: a team-tinted backdrop with a per-role pattern (sunburst / rings / art-deco fans), a vignette and the role's icon. The card flips once when revealed.
 - **Interface icons:** Phosphor (MIT), generated into `public/js/ui_icons.js` by `npm run icons:ui`.
 - **Painted portraits (optional):** `npm run art:brief` writes `art-source/BRIEF.md` (31 ChatGPT/Gemini prompts, 6 roles per image, most-used roles first). Save each image as `art-source/sheets/sheet-NN.png`, run `npm run art:slice -- art-source/sheets/sheet-NN.png`, then deploy. Portraits in `public/art/<roleId>.webp` replace the procedural art automatically.

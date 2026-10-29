@@ -3,7 +3,7 @@
 // - Navigations: network-first, falling back to the cached app shell.
 // - /api/* and /ws/* never touch the cache.
 // VERSION is a content hash of every precached file, so it changes whenever a file does.
-const VERSION = '38d040c1c5';
+const VERSION = '2c4f1aa8ad';
 const PREFIX = 'mafia-night-';
 const CACHE = PREFIX + VERSION;
 
@@ -24,6 +24,7 @@ const PRECACHE = [
   '/icons/icon-maskable-512.png',
   '/icons/icon-maskable.svg',
   '/icons/icon.svg',
+  '/icons/roles.svg',
   '/js/app.js',
   '/js/art.js',
   '/js/art_manifest.js',
@@ -40,7 +41,6 @@ const PRECACHE = [
   '/js/host_help.js',
   '/js/host_help_core.js',
   '/js/host_v2.js',
-  '/js/icon_data.js',
   '/js/modes.js',
   '/js/motion.js',
   '/js/night-nav.js',
@@ -60,6 +60,7 @@ const PRECACHE = [
   '/js/theme.js',
   '/js/tools.js',
   '/js/ui_icons.js',
+  '/js/wake.js',
   '/js/wordmark.js',
   '/js/world.js',
   '/manifest.webmanifest',
