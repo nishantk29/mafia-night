@@ -2,6 +2,7 @@
 // animations are off (prefers-reduced-motion or the in-app toggle, both folded into animOn()).
 import { S } from './state.js';
 import { animOn, dur } from './fx.js';
+import { nightNav } from './night-nav.js';
 export { dur };
 
 const $html = document.documentElement;
@@ -12,7 +13,8 @@ export function stepKey() {
   const v = S.view; const n = S.ui.night;
   if (S.mode === 'host' || S.mode === 'local') {
     if (!v) return `${S.mode}:wait`;
-    if (v.phase === 'night') return `${S.mode}:night${v.night}:${Object.keys(n.actions || {}).length}:${n.focus || ''}`;
+    // The step is the card on screen: tapping a name or Undo keeps it, Next (or the room confirming a step) moves on.
+    if (v.phase === 'night') { let cur = ''; try { cur = nightNav(v, n || {}).current?.key || ''; } catch { /* no script yet */ } return `${S.mode}:night${v.night}:${cur}`; }
     if (v.phase === 'day') return `${S.mode}:day${v.day}:${v.report ? 'r' : ''}:${v.pending?.length ? 'q' : ''}`;
     return `${S.mode}:${v.phase}`;
   }
