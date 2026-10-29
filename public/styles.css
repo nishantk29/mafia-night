@@ -68,7 +68,7 @@
   --ease-out:cubic-bezier(.22,1,.36,1); --ease-in-out:var(--ease-out);
   --dur-scale:2;
   --t-press:calc(90ms * var(--dur-scale)); --t-open:calc(220ms * var(--dur-scale)); --t-enter:calc(90ms * var(--dur-scale)); --t-reveal:calc(360ms * var(--dur-scale));
-  --ease-spring:cubic-bezier(.34,1.56,.64,1); /* overshoot: tiny button press only */
+  --ease-spring:cubic-bezier(.2,.8,.2,1); /* plain decelerate, no overshoot (deslop 2026-10-29) */
 
   /* chrome */
   --appbar-h:56px; --tabbar-h:64px; --dock-h:80px; --table-chrome:140px;
