@@ -120,17 +120,54 @@ try {
   L.check('every card shows a quoted line in the read-aloud type', lines.filter((l) => l.kicker).every((l) => /^“.+”$/.test(l.say || '')));
   await checkPhones(L, all, 'night');
 
+  // ---- day timeline clarity: spine, states, readable upcoming, notes clear of the Next button ----
+  const dayLook = async (stage) => {
+    const r = await host.page.evaluate(() => {
+      const cs = (el, pseudo) => (el ? getComputedStyle(el, pseudo) : null);
+      const rail = document.querySelector('.st-rail'); const sp = cs(rail, '::before');
+      const done = cs(document.querySelector('.st-line.is-done .st-dot')); const next = cs(document.querySelector('.st-line.is-next .st-dot'));
+      const nextTxt = cs(document.querySelector('.st-line.is-next .st-text')); const now = cs(document.querySelector('.st-dot.is-now'));
+      const dock = cs(document.querySelector('.action-dock'));
+      return { spine: sp && [sp.width, sp.backgroundColor], done: done && done.backgroundColor, next: next && [next.borderTopWidth, next.borderTopColor, next.backgroundColor], nextTxt: nextTxt && nextTxt.color,
+        nextOp: document.querySelector('.st-line.is-next') ? getComputedStyle(document.querySelector('.st-line.is-next')).opacity : '1', now: now && now.backgroundColor, dock: dock && dock.backgroundImage };
+    });
+    L.check(`${stage}: one solid 3px spine in --rule-strong`, r.spine && r.spine[0] === '3px' && r.spine[1] === 'rgb(138, 138, 154)', JSON.stringify(r.spine));
+    L.check(`${stage}: current step is brass`, r.now === 'rgb(242, 193, 78)', r.now);
+    if (r.done) L.check(`${stage}: done steps are filled --smoke`, r.done === 'rgb(201, 201, 214)', r.done);
+    if (r.next) L.check(`${stage}: upcoming steps are a 3px --smoke ring with --smoke labels`, r.next[0] === '3px' && r.next[1] === 'rgb(201, 201, 214)' && r.nextTxt === 'rgb(201, 201, 214)' && r.nextOp === '1', JSON.stringify(r));
+    L.check(`${stage}: the Next dock fades over 12px`, /linear-gradient\(rgba\(0, 0, 0, 0\), rgb\(11, 11, 13\) 12px\)/.test(r.dock || ''), r.dock);
+    // open the private notes when there are any, scroll to the end: the last line sits fully above the Next button
+    await host.page.setViewportSize({ width: 390, height: 664 }); await wait(host, 100);
+    const peek = host.page.locator('.st-peek[aria-expanded="false"]');
+    if (await peek.count()) { await peek.click(); await wait(host, 150); }
+    const gap = await host.page.evaluate(async () => {
+      window.scrollTo(0, document.documentElement.scrollHeight); await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const btn = document.querySelector('.action-dock .btn.big')?.getBoundingClientRect(); const dockTop = document.querySelector('.action-dock')?.getBoundingClientRect().top;
+      const dockEl = document.querySelector('.action-dock');
+      const els = [...document.querySelectorAll('.console *')].filter((e) => !dockEl?.contains(e) && !e.closest('.tabbar, .toast, dialog, .sheet-bg') && [...e.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim()) && e.getClientRects().length && getComputedStyle(e).position !== 'fixed');
+      const last = Math.max(...els.map((e) => e.getBoundingClientRect().bottom));
+      const lastEl = els.find((e) => e.getBoundingClientRect().bottom === last);
+      return { last: Math.round(last), btn: Math.round(btn?.top ?? 0), dockTop: Math.round(dockTop ?? 0), what: (lastEl?.textContent || lastEl?.tagName || '').trim().slice(0, 40), scroll: document.documentElement.scrollHeight - innerHeight };
+    });
+    L.check(`${stage}: at the end of the page the last note is clear of the Next button and its fade`, gap.last <= gap.dockTop + 24 - 12 && gap.last <= gap.btn, JSON.stringify(gap));
+    await host.page.setViewportSize({ width: 390, height: 844 });
+    await host.page.evaluate(() => window.scrollTo(0, 0));
+    if (await host.page.locator('.st-peek[aria-expanded="true"]').count()) { await host.page.locator('.st-peek[aria-expanded="true"]').click(); await wait(host, 150); }
+    if (SHOTS) await host.shot(SHOTS, `clarity-${stage}-390`);
+  };
   // ---- day 1 ----
   await host.page.locator('.st-card .st-kicker:text("Morning")').waitFor({ timeout: 5000 }).catch(() => {});
   if (SHOTS) await host.shot(SHOTS, 'day-morning-390');
   const gold1 = () => host.page.evaluate(() => document.querySelector('.action-dock .btn.big')?.textContent.trim());
   const clock = () => host.page.evaluate(() => { const t = document.querySelector('[data-talk]')?.textContent || ''; const [m, sec] = t.split(':').map(Number); return m * 60 + sec; });
   if (await host.page.locator('.st-kicker:text("Morning")').count()) {
+    await dayLook('morning');
     L.check('the morning Next names the talk step', await gold1() === 'Next: Talk it out', await gold1());
     await host.page.locator('.action-dock .btn.big').click(); await wait(host, 250);
   }
   // ---- the talk step ----
   await host.page.locator('.st-card .st-kicker:text("Talk")').waitFor({ timeout: 5000 });
+  await dayLook('talk');
   const talkText = await host.page.locator('.st-card').innerText();
   L.check('talk card: "Talk it out" with a short what-to-do', /Talk it out/.test(talkText) && /Tap Next when it is time to vote/.test(talkText));
   L.check('talk card: Next names the vote and is on', await gold1() === 'Next: Vote' && await host.page.locator('.action-dock .btn.big.disabled').count() === 0, await gold1());
@@ -163,6 +200,7 @@ try {
   const gold = await host.page.evaluate(() => document.querySelector('.action-dock .btn.big')?.textContent.trim());
   L.check('the gold button says "Vote <name> out"', gold === `Vote ${pick} out`, gold);
   L.check('there is no tally on the vote card', !(await host.page.evaluate(() => /tally|\bvotes?\b.*\d/i.test(document.querySelector('.st-card').innerText.replace(/Vote\b/g, '')))));
+  await dayLook('vote');
   if (SHOTS) { await host.shot(SHOTS, 'day-390'); await dump(host, 'day'); }
   await checkPhones(L, all, 'day vote');
   await host.page.locator('.action-dock .btn.big').click(); await wait(host, 400);
@@ -172,6 +210,7 @@ try {
   L.check('the vote collapses and Start night 2 is next', after.rail.some((r) => /was voted out/.test(r)) && /Start night 2/.test(after.btn), JSON.stringify(after));
   const n2 = await host.page.evaluate(() => (document.querySelector('.st-rail')?.textContent.match(/Night 2/g) || []).length);
   L.check('after the vote "Night 2" shows once on the timeline', n2 === 1, String(n2));
+  if (await host.page.locator('.st-rail').count()) await dayLook('after-vote');
 
   // ---- hidden setup ----
   const hid = await table(true);
