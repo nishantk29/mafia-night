@@ -3,7 +3,7 @@
 // - Navigations: network-first, falling back to the cached app shell.
 // - /api/* and /ws/* never touch the cache.
 // VERSION is a content hash of every precached file, so it changes whenever a file does.
-const VERSION = '34f51ca60b';
+const VERSION = 'ec3c7c3767';
 const PREFIX = 'mafia-night-';
 const CACHE = PREFIX + VERSION;
 
@@ -29,6 +29,8 @@ const PRECACHE = [
   '/js/art.js',
   '/js/art_manifest.js',
   '/js/board.js',
+  '/js/config-defaults.js',
+  '/js/deck-key.js',
   '/js/engine.js',
   '/js/error-screen.js',
   '/js/faq.js',
@@ -45,6 +47,7 @@ const PRECACHE = [
   '/js/motion.js',
   '/js/night-nav.js',
   '/js/player.js',
+  '/js/preset-mixes.js',
   '/js/presets.js',
   '/js/print.js',
   '/js/qr.js',
@@ -55,6 +58,9 @@ const PRECACHE = [
   '/js/roles_extra2.js',
   '/js/roles_sheet.js',
   '/js/room.js',
+  '/js/setup-actions.js',
+  '/js/setup-store.js',
+  '/js/setup-ui.js',
   '/js/simple.js',
   '/js/state.js',
   '/js/theme.js',
@@ -68,6 +74,7 @@ const PRECACHE = [
   '/print.html',
   '/pwa-install.js',
   '/redesign.css',
+  '/setup.css',
   '/styles.css',
 ];
 

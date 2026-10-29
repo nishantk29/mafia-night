@@ -17,8 +17,7 @@ import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
 import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn, restartIn } from './fx.js';
 import { gameOverEvent, isNewGame } from './room.js';
-import { presetById } from './presets.js';
-import { SIMPLE_KEY, setupModeFrom, simpleCounts, simpleRoleIds, countsOf, isSimpleSet } from './simple.js';
+import { SETUP_ACTIONS, syncSetup, afterSetupPaint, markCustom, setupDealProblem, wireSetupGestures } from './setup-actions.js';
 import { step, gameAwake } from './motion.js';
 import { createHold } from './hold.js';
 import { siteFooter } from './footer.js';
@@ -40,22 +39,6 @@ function focusSelector(el) {
   return parts.length ? parts.join('') : null;
 }
 
-// Simple or Complex setup: the URL (?mode=simple | cards) wins, then the last choice, then Simple.
-const initial = setupModeFrom(location.search, store.get(SIMPLE_KEY));
-S.ui.setupMode = initial.mode;
-let simpleSync = initial.mode === 'simple'; // push Simple's config (city theme, card key) once the room is in setup
-let simpleCards = initial.cards;
-function syncSimple() {
-  const v = S.view;
-  if (!simpleSync || !v || v.kind === 'player' || v.phase !== 'lobby') return;
-  simpleSync = false;
-  const patch = { theme: 'city' };
-  if (simpleCards || v.config.mode === 'cards') { if (S.mode !== 'local') patch.mode = 'cards'; patch.deckStyle = 'simple'; }
-  if (!isSimpleSet(v.config.roles) || (!v.config.roles.length && v.players.length)) patch.roles = simpleRoleIds(simpleCounts(Math.max(v.players.length, v.limits.min)));
-  simpleCards = false;
-  S.send({ type: 'setConfig', ...patch });
-}
-
 let pendingRender = false;
 // The private role card: shown only while pressed (or Space/Enter held), at most 3s, gone the moment the page is hidden.
 const hold = createHold((on) => {
@@ -69,9 +52,9 @@ const endHold = (all) => { if (all) hold.cancel(); else hold.release(); if (pend
 S.render = function render() {
   if (drag || hold.pressed || hold.shown) { pendingRender = true; return; } // a seat is being dragged or the role card is held: the end renders
   const a = document.activeElement;
-  if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { pendingRender = true; if (a.dataset.i === 'gyText') patchGraveyard(); return; }
-  pendingRender = false;
-  try { syncSimple(); step(paint); } catch (e) { crash(e); }
+  if (a && $app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !S.ui.addFlush) { pendingRender = true; if (a.dataset.i === 'gyText') patchGraveyard(); return; }
+  pendingRender = false; S.ui.addFlush = false;
+  try { syncSetup(); step(paint); } catch (e) { crash(e); }
 };
 function paint() {
   try { paintScreen(); } catch (e) { crash(e); }
@@ -117,6 +100,7 @@ function paintScreen() {
   S.ui.anim = null; // entrance/flip classes apply to one render only (DESIGN.md 15.1)
   applyRoleSearch();
   afterRender();
+  const focusMoved = afterSetupPaint($app);
   followCue();
   if (opened === 'restart') restartIn();
   gameAwake((S.mode === 'host' || S.mode === 'local') && ['dealt', 'night', 'day'].includes(S.view?.phase));
@@ -125,7 +109,7 @@ function paintScreen() {
   // A dialog that just opened takes focus; otherwise focus goes back to the element that had it.
   const dialogClose = (opened === 'sheet' || opened === 'modal') && $app.querySelector('.sheet .x-btn, .modal .x-btn, .overlay-in .x-btn');
   if (dialogClose) dialogClose.focus({ preventScroll: true });
-  else if (sel) refocus(sel, a.className);
+  else if (sel && !focusMoved) refocus(sel, a.className);
 }
 // Several elements can share data attributes (a seat on the table, in the seat list and in the roster):
 // prefer the one with the same classes, and only ever focus a visible one.
@@ -178,19 +162,17 @@ function home() {
     <div class="home-hero">
       <div class="card-fan" aria-hidden="true"><span class="rcard-back"><span class="rcard-back-mark">${ui('brand')}</span></span></div>
       <h1 class="wordmark">${wordmark()}</h1>
-      <p class="lede">Secret roles for Mafia and Werewolf, dealt to everyone’s phone. You get the script for the night.</p>
+      <p class="lede">Night falls. Pick how your table plays.</p>
     </div>
     <div class="home-paths">
-      <section class="path path-host">${knifeSvg()}<h2 class="path-title">Be the Host</h2>
-        <p class="muted">You read the night aloud. Everyone else joins on their phone with a 6‑letter code.</p>
-        <button type="button" class="btn big" data-a="hostLive">Host a game</button>
+      <section class="path path-host"><h2 class="path-title">Host on phones</h2>
+        <p class="muted">Everyone joins with a code. You run the night.</p>
         ${hostCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/host/${esc(c)}">Resume room <b class="code">${esc(c)}</b></a><button type="button" class="resume-x" data-a="forgetRoom" data-k="mafia.host.${esc(c)}" aria-label="Forget room ${esc(c)}">${ui('x')}</button></p>`).join('')}</section>
-      <section class="path path-join"><h2 class="path-title">Join with a code</h2>
-        <div class="join-row"><label class="field"><span>Code from the Host</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
+      <section class="path path-join"><h2 class="path-title">Join a game</h2>
+        <div class="join-row"><label class="field"><span>Code from the host</span><input class="code-input" data-i="joinCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="6 letters" value="${esc(S.ui.draft.joinCode || '')}"></label>
         <button type="button" class="btn ghost" data-a="goJoin">Join</button></div>
         ${playCodes.map((c) => `<p class="resume-row"><a class="resume" href="#/play/${esc(c)}">Back to your seat in room <b class="code">${esc(c)}</b></a><button type="button" class="resume-x" data-a="forgetRoom" data-k="mafia.player.${esc(c)}" aria-label="Forget room ${esc(c)}">${ui('x')}</button></p>`).join('')}</section>
-      <section class="path path-local"><a class="path-link" href="#/local">No phones? Run the game on this device</a>
-        <p class="muted">Run everything from this one screen. The game is saved only in this browser; nobody else can see it.</p></section>
+      <section class="path path-local"><a class="path-row" href="#/local"><span><b class="path-title">Play offline</b><span class="muted">One phone. Our cards, your own deck, or no cards.</span></span>${ui('caret-down')}</a></section>
       <a class="home-rules" href="#/faq"><span><b>Rules &amp; FAQ</b><small>Roles, play modes and tricky calls.</small></span>${ui('caret-down')}</a>
       ${suggestions()}
       <section class="home-how"><h2 class="home-how-title">How to Play</h2>
@@ -201,6 +183,7 @@ function home() {
           <li><h3>Win</h3><p>Town wins when every Mafia member and every other killer is gone. Mafia win when they match or outnumber everyone else.</p></li>
         </ol></section>
     </div>
+    <div class="home-cta"><button type="button" class="btn big" data-a="hostLive">Host a game</button></div>
     ${siteFooter()}
   </main>`;
 }
@@ -300,7 +283,7 @@ async function route() {
   closeVictory();
   hold.cancel();
   S.graveyard = null; S.gyShown = 0;
-  Object.assign(S.ui, { gy: false, tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, addRole: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
+  Object.assign(S.ui, { setupKey: null, gy: false, tab: 'game', sheet: null, reveal: false, showKey: false, showCode: false, showQr: false, addRole: false, tools: false, votes: {}, picked: null, modal: null, claim: null, claimSuit: null, anim: null });
   const h = location.hash.replace(/^#\/?/, '');
   const [kind, arg] = h.split('/');
   S.code = null;
@@ -414,18 +397,19 @@ const A = {
   // lobby
   addNames() {
     const names = (S.ui.draft.names || '').split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
-    if (!names.length) return S.toast('Type at least one name first.'); S.ui.draft.names = ''; send({ type: 'addPlayers', names });
+    if (!names.length) return S.toast('Type at least one name first.'); S.ui.draft.names = ''; S.ui.addFlush = true; send({ type: 'addPlayers', names });
   },
   rmPlayer(el) { send({ type: 'removePlayer', playerId: el.dataset.id }); },
   cfg(el) { send({ type: 'setConfig', [el.dataset.k]: el.dataset.v }); },
-  suggest() { S.ui.deckShown = []; syncLibrary(); send({ type: 'suggestRoles' }); },
-  rebalance() { const roles = S.view?.config?.roles || []; if (roles.length) send({ type: 'setConfig', roles: rebalance(roles) }); },
-  clearRoles() { S.ui.deckShown = []; send({ type: 'setConfig', roles: [] }); },
-  addRole(el) { syncLibrary(); send({ type: 'setConfig', roles: [...S.view.config.roles, el.dataset.id] }); },
-  subRole(el) { const r = [...S.view.config.roles]; const i = r.lastIndexOf(el.dataset.id); if (i >= 0) r.splice(i, 1); send({ type: 'setConfig', roles: r }); },
+  suggest() { markCustom(); S.ui.deckShown = []; syncLibrary(); send({ type: 'suggestRoles' }); },
+  rebalance() { markCustom(); const roles = S.view?.config?.roles || []; if (roles.length) send({ type: 'setConfig', roles: rebalance(roles) }); },
+  clearRoles() { markCustom(); S.ui.deckShown = []; send({ type: 'setConfig', roles: [] }); },
+  addRole(el) { markCustom(); syncLibrary(); send({ type: 'setConfig', roles: [...S.view.config.roles, el.dataset.id] }); },
+  subRole(el) { markCustom(); const r = [...S.view.config.roles]; const i = r.lastIndexOf(el.dataset.id); if (i >= 0) r.splice(i, 1); send({ type: 'setConfig', roles: r }); },
   roleTeam(el) { S.ui.roleTeam = el.dataset.v; S.render(); },
   info(el) { if ($tip.dataset.for === el.dataset.id && $tip.classList.contains('on')) hideTip(); else showTip(el); },
   deal() { syncLibrary(); send({ type: 'deal' }); },
+  setupDeal2(el) { const p = setupDealProblem(); if (p) return S.toast(p.reason); A.deal(); },
   undeal() { send({ type: 'undeal' }); },
   showKey() { S.ui.showKey = true; S.ui.anim = 'modal'; S.render(); },
   closeCheck() { S.ui.checkCard = null; S.render(); },
@@ -519,21 +503,6 @@ const A = {
   restartAsk() { S.ui.settings = false; S.ui.restartConfirm = true; S.ui.anim = 'modal'; S.render(); },
   restartNo() { S.ui.restartConfirm = false; S.render(); },
   closeVictory() { closeVictory(); S.ui.anim = 'roles'; S.render(); },
-  setupMode(el) {
-    const m = el.dataset.v; if (S.ui.setupMode === m) return;
-    S.ui.setupMode = m; store.set(SIMPLE_KEY, m);
-    const c = S.view.config;
-    if (m === 'simple') { simpleSync = true; simpleCards = false; S.render(); return; }
-    send({ type: 'setConfig', deckStyle: 'random' }); // Complex has its own card key choice
-  },
-  simpleSuggest() { send({ type: 'setConfig', roles: simpleRoleIds(simpleCounts(Math.max(S.view.players.length, S.view.limits.min))) }); },
-  simpleStep(el) {
-    const counts = countsOf(S.view.config.roles); const id = el.dataset.id;
-    counts[id] = Math.max(0, counts[id] + Number(el.dataset.v));
-    send({ type: 'setConfig', roles: simpleRoleIds(counts) });
-  },
-  simpleCards() { const on = S.view.config.mode !== 'cards'; send({ type: 'setConfig', mode: on ? 'cards' : 'app', deckStyle: on ? 'simple' : 'random' }); },
-  preset(el) { const p = presetById(el.dataset.id); if (!p) return; S.ui.deckShown = []; syncLibrary(); send({ type: 'setConfig', roles: [...p.roles] }); },
   openAddRole() { S.ui.addRole = true; S.ui.anim = 'sheet'; S.render(); },
   closeAddRole() { S.ui.addRole = false; S.render(); },
   menuOpen(el) { S.ui.settings = false; ({ tools: () => A.tools(), gy: () => A.openGy(), roles: () => A.openRoles() })[el.dataset.v]?.(); },
@@ -569,7 +538,8 @@ const A = {
   pickCard(el) { S.ui.claim = el.dataset.v; S.ui.claimSuit = suitOf(el.dataset.v); S.render(); },
   claim() { if (S.ui.claim) send({ type: 'claimCard', card: S.ui.claim }); },
 };
-Object.assign(A, TOOL_ACTIONS);
+Object.assign(A, TOOL_ACTIONS, SETUP_ACTIONS);
+wireSetupGestures();
 setInterval(tickTools, 500);
 
 document.addEventListener('click', (ev) => {
@@ -662,13 +632,14 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
     // Renders are deferred while a field has focus, so leave the field first or the dialog would stay open.
-    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.addRole || S.ui.modal || S.ui.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
+    if ((S.ui.tools || S.ui.roles || S.ui.gy || S.ui.showKey || S.ui.showCode || S.ui.showQr || S.ui.addRole || S.ui.modal || S.ui.sheet || S.ui.setup?.sheet) && $app.contains(document.activeElement)) { pendingRender = false; document.activeElement.blur(); }
     if (hostHelpOpen()) { S.ui.hhWalk ? A.hhSkip() : A.closeHostHelp(); return; }
     if (S.ui.roles) { A.closeRoles(); return; }
     if (S.ui.gy) { A.closeGy(); return; }
     if (S.ui.showKey) { A.hideKey(); return; }
     if (S.ui.tools) { A.closeTools(); return; }
     if (S.ui.addRole) { A.closeAddRole(); return; }
+    if (S.ui.setup?.sheet) { A.setupSheetClose(); return; }
     if (S.ui.showCode) { A.hideCode(); return; }
     if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
@@ -680,6 +651,7 @@ document.addEventListener('keydown', (ev) => {
   }
   // Enter in the home code field and the join name field submits.
   if (ev.key === 'Enter' && ev.target.dataset?.i === 'gyText' && !ev.isComposing) { ev.preventDefault(); A.gySend(); return; }
+  if (ev.key === 'Enter' && ev.target.dataset?.i === 'names') { ev.preventDefault(); A.addNames(); return; }
   if (ev.key === 'Enter' && ev.target.dataset?.i === 'joinCode') { ev.preventDefault(); A.goJoin(); return; }
   if (ev.key === 'Enter' && ev.target.dataset?.i === 'joinName') { ev.preventDefault(); A.join(); return; }
   // Arrow keys move through radiogroups and tablists (roving tabindex); the newly focused option is chosen.
@@ -708,6 +680,7 @@ document.addEventListener('input', (ev) => {
   const el = ev.target; const i = el.dataset.i; if (!i) return;
   if (i === 'names') S.ui.draft.names = el.value;
   else if (i === 'gyText') S.ui.draft.gyText = el.value;
+  else if (i === 'presetName') S.ui.draft.presetName = el.value;
   else if (i === 'joinName') S.ui.draft.joinName = el.value;
   else if (i === 'joinCode') S.ui.draft.joinCode = el.value.toUpperCase();
   else if (i === 'search') { S.ui.search = el.value; applyRoleSearch(); }

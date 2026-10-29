@@ -1,7 +1,7 @@
 // How it works and FAQ (#/faq). Static copy in native <details> accordions: opening one never re-renders.
 import { ui } from './ui_icons.js';
 import { ROLES, INVESTIGATOR_NAME } from './roles.js';
-import { PLAY_MODES } from './modes.js';
+import { PLAY_MODES, OFFLINE_DEALS } from './modes.js';
 import { esc } from './state.js';
 import { siteFooter } from './footer.js';
 
@@ -105,7 +105,10 @@ const GROUPS = () => [
     ['What does the app know about me?', `
       ${L([['No account.', 'A room game needs a name for your seat and a room code.'], ['The room', 'is kept on the server so every phone can reach it.'], ['Saved in your browser:', 'games on this device, your notes and your custom roles.'], ['Table Tools', 'never leave your device.']])}`],
   ]],
-  ['Playing Offline', [
+  ['Playing offline', [
+    ['How do I deal roles offline?', `
+      <p>Choose Play offline on the home page. After players and roles, pick how to deal:</p>
+      ${L(OFFLINE_DEALS.map((o) => [`<span data-offline="${o.id}">${o.name}.</span>`, o.how]))}`],
     ['Can I play without internet?', `
       <ol>
         <li>Open Mafia Night once while you’re online, or install it: on iPhone tap Share, then Add to Home Screen; on Android tap Install app.</li>

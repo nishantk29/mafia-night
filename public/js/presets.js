@@ -1,3 +1,4 @@
+export { MAFIA_PRESETS as PRESET_LIST, mafiaPresetById } from './preset-mixes.js';
 import { INVESTIGATOR_ID, INVESTIGATOR_NAME } from './roles.js';
 // Setup presets (written with the merged role ids, night version 10): plain role lists applied with the existing setConfig roles action. Pure data, no DOM.
 export const PRESETS = [

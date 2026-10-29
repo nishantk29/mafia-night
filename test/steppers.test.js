@@ -56,6 +56,8 @@ test('lobby html: a role at 0 stays listed with − disabled; + disabled at the 
   const room = mk();
   handle(room, null, { type: 'setConfig', roles: ['lover', 'lover', 'cop', 'mafia'] });
   S.ui.deckShown = ['doctor'];
+  S.ui.setupKey = 'LOCAL'; S.ui.saved = []; S.ui.advanced = { dayTimer: false, cardOnDeath: true, hiddenSetup: false };
+  S.ui.setup = { step: 0, presetId: 'speakeasy', source: 'custom', savedId: null, seating: null, deal: 'printable', page: 'customize', sheet: null };
   const html = hostScreen(viewForHost(room), true);
   const item = (id) => html.match(new RegExp(`<li class="deck-item">(?:(?!</li>).)*data-id="${id}"(?:(?!</li>).)*</li>`, 's'))?.[0];
   const doc = item('doctor');
@@ -64,6 +66,6 @@ test('lobby html: a role at 0 stays listed with − disabled; + disabled at the 
   assert.match(doc, /subRole"[^>]*disabled/);
   assert.doesNotMatch(doc, /addRole"[^>]*disabled/);
   assert.match(item('lover'), /addRole"[^>]*disabled/);
-  assert.match(html, /class="tally"[^>]*aria-live="polite"/);
-  S.ui.deckShown = [];
+  assert.match(html, /Can’t start yet|Heads up/);
+  S.ui.deckShown = []; S.ui.setupKey = null;
 });
