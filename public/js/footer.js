@@ -1,6 +1,6 @@
 // Site footer: one row of game links, and a small Credits expander for licences. Link text is always a name.
 export const GAME_LINKS = [
-  ['All Games', 'https://gamenight.hatethespurs.com/'],
+  ['All games', 'https://gamenight.hatethespurs.com/'],
   ['Quest Night', 'https://avalon.hatethespurs.com/'],
   ['The Gilded Chamber', 'https://secrethitler.hatethespurs.com/'],
 ];

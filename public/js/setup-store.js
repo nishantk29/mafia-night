@@ -73,7 +73,7 @@ export const seatingOf = (st, players) => st.seating || seatingAuto(players);
 // ---- validity: null when the step can be left, else { reason, fixes } so a disabled Next always names a way out ----
 export function stepProblem(key, c) {
   const { n, min, roles, preset, st, local } = c;
-  const toPlayers = { label: 'Back to Players', a: 'setupGo', v: '0' };
+  const toPlayers = { label: 'Back to players', a: 'setupGo', v: '0' };
   if (key === 'players') return n < min ? { reason: `Add ${plural(min - n, 'more player')} to start (${min} minimum).`, fixes: [{ label: 'Add a name', a: 'focusAdd' }] } : null;
   if (key === 'preset') {
     if (st.source === 'custom' || inRange(preset, n)) return null;

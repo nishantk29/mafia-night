@@ -85,7 +85,7 @@ function turns(v) {
     <div class="btn-row tool-presets" role="group" aria-label="Time each">${[30, 60, 90].map((s) => `<button type="button" class="btn ghost" aria-pressed="${t.total === s * 1000}" data-a="turnSet" data-v="${s}">${s} sec</button>`).join('')}</div>
     <div class="btn-row">
       <button type="button" class="btn big" data-a="turnGo" ${who ? '' : 'disabled'}>${ui(run ? 'pause' : 'play')} ${run ? 'Pause' : t.left < t.total ? 'Resume' : 'Start'}</button>
-      <button type="button" class="btn ghost" data-a="turnNext" ${who ? '' : 'disabled'}>Next speaker</button>
+      <button type="button" class="btn ghost" data-a="turnNext" ${who ? '' : 'disabled'}>${(() => { const nx = who && nextSpeaker(v.players, who.id); return nx && nx.id !== who.id ? `Next: ${esc(nx.name)}` : 'Next'; })()}</button>
     </div>
     <p class="muted">Passes around the living players in seat order. When time runs out it moves to the next speaker and waits for you to start.</p>
   </div>`;

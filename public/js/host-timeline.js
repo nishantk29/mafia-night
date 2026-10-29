@@ -138,7 +138,7 @@ export function stepBody(v, s, n, alive = v.players.filter((p) => p.alive)) {
       <p class="meta">${picks.length ? `${picks.length} of ${s.count} picked` : `Pick ${plural(s.count, 'player')}`}</p>`;
   }
   if (s.kind !== 'action') return '';
-  if (s.type === 'execCheck') return `<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">Show card</button><button type="button" class="btn ghost" data-a="skip" data-key="${s.key}">Skip</button></div>`;
+  if (s.type === 'execCheck') return `<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">Reveal</button><button type="button" class="btn ghost" data-a="skip" data-key="${s.key}">Skip</button></div>`;
   if (s.targets === 0) {
     const [yes, no] = s.type === 'alert' ? ['Go on alert', 'Not tonight'] : ['Yes', 'No'];
     return `<div class="btn-row"><button type="button" class="btn ${set && !set.on ? 'ghost' : ''}" aria-pressed="${!!set?.on}" data-a="alert" data-key="${s.key}" data-v="1">${yes}</button><button type="button" class="btn ghost" aria-pressed="${!!set && !set.on}" data-a="alert" data-key="${s.key}" data-v="0">${no}</button></div>`;

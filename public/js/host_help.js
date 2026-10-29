@@ -12,7 +12,7 @@ export const WALKTHROUGH = [
   { title: 'Set up roles', lines: ['Add your players, then pick the roles in the deck.', 'The app warns you if the mix looks lopsided.'] },
   { title: 'Share the code', lines: ['Players open the site and type your room code, or scan the QR.', 'Everyone sees only their own role.'] },
   { title: 'Read the night script aloud', lines: ['Each night the app gives you lines to say, in order.', 'Tap what each role chooses, then wake everyone up.'] },
-  { title: 'Run the day vote', lines: ['Read the morning announcement, let the table talk, then condemn someone.', 'No majority? Tap Nobody today.'] },
+  { title: 'Run the day vote', lines: ['Read the morning announcement, let the table talk, then condemn someone.', 'No majority? Tap No one.'] },
 ];
 
 // What to do in each phase. day has two faces: the morning (a report from last night is on screen) and the plain vote.
@@ -21,7 +21,7 @@ const PHASE_HELP = {
   dealt: { title: 'Roles dealt', lines: ['Everyone looks at their own role, privately.', 'Wait until every player has seen theirs.', 'Then start the first night.'] },
   night: { title: 'Night', lines: ['Say the first line: everyone closes their eyes.', 'Go down the list. Read each call aloud and tap what that role chooses.', 'When every step is done, wake everyone up.'] },
   morning: { title: 'Morning', lines: ['Read the announcement aloud.', 'Answer any questions the app asks first.', 'Then run the vote below.'] },
-  day: { title: 'Day vote', lines: ['Let the table talk.', 'Tap the player the table votes out, then condemn them, or tap Nobody today.', 'Then start the next night.'] },
+  day: { title: 'Day vote', lines: ['Let the table talk.', 'Tap the player the table votes out, then condemn them, or tap No one.', 'Then start the next night.'] },
   over: { title: 'Game over', lines: ['Tell the table who won.', 'Restart keeps the same code and players with new roles.', 'Or change the setup first.'] },
 };
 export const HELP_PHASES = Object.keys(PHASE_HELP);
