@@ -11,6 +11,7 @@ import { HIDDEN_SETUP_SHOWS_BALANCE } from './config-defaults.js';
 import { OFFLINE_DEALS } from './modes.js';
 import { ownDeckFor, KEY, CORE_KEY, EXTRA_KEY, NEEDS_PRINTABLE } from './deck-key.js';
 import { seatRows } from './seating.js';
+import { byTeamType } from './role-types.js';
 import { stepsOf, stepProblem, presetOf, seatingOf, counts, savedAsPreset } from './setup-store.js';
 
 const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
@@ -217,15 +218,18 @@ export function customizePage(c) {
   const order = [...new Set([...(S.ui.deckShown || []), ...roles])].filter((id) => ROLE_BY_ID[id]);
   for (const id of roles) if (!S.ui.deckShown.includes(id)) S.ui.deckShown.push(id);
   const ws = setupWarnings(roles, n);
-  const rowsHtml = order.map((id) => { const r = ROLE_BY_ID[id];
-    return `<li class="deck-item"><span class="rc a-${r.alignment}">${ico(r)} ${esc(r.name)}</span><span class="stepper"><button type="button" class="icon-btn" data-a="subRole" data-id="${id}" aria-label="One fewer ${esc(r.name)}" ${cnt[id] ? '' : 'disabled'}>${ui('minus')}</button><b class="stepper-n">${cnt[id] || 0}</b><button type="button" class="icon-btn" data-a="addRole" data-id="${id}" aria-label="One more ${esc(r.name)}" ${(cnt[id] || 0) >= roleMax(id) || roles.length >= MAX_PLAYERS ? 'disabled' : ''}>${ui('plus')}</button></span></li>`; }).join('');
+  const rowOf = (id) => { const r = ROLE_BY_ID[id];
+    return `<li class="deck-item"><span class="rc a-${r.alignment}">${ico(r)} ${esc(r.name)}</span><span class="stepper"><button type="button" class="icon-btn" data-a="subRole" data-id="${id}" aria-label="One fewer ${esc(r.name)}" ${cnt[id] ? '' : 'disabled'}>${ui('minus')}</button><b class="stepper-n">${cnt[id] || 0}</b><button type="button" class="icon-btn" data-a="addRole" data-id="${id}" aria-label="One more ${esc(r.name)}" ${(cnt[id] || 0) >= roleMax(id) || roles.length >= MAX_PLAYERS ? 'disabled' : ''}>${ui('plus')}</button></span></li>`; };
+  const teams = byTeamType(order.map((id) => ROLE_BY_ID[id]));
+  const rowsHtml = teams.map((g) => { const total = g.types.reduce((t, x) => t + x.items.reduce((a, r) => a + (cnt[r.id] || 0), 0), 0);
+    return `<section class="tg a-${g.team}" data-team="${g.team}"><h3 class="tg-h"><span class="tg-name">${g.title}</span><span class="tg-n">${plural(total, 'card')}</span></h3>${g.types.map((x) => `<div class="tg-sub" data-team="${g.team}" data-type="${x.type}"><h4 class="tg-type">${x.type}</h4><ul class="deck-list">${x.items.map((r) => rowOf(r.id)).join('')}</ul></div>`).join('')}</section>`; }).join('');
   const note = roles.length !== n ? `<p class="note is-warn">${ui('warning')} ${plural(roles.length, 'role')} for ${plural(n, 'player')}. They need to match.</p>` : '';
   const flags = ws.filter((w) => w.level !== 'tip').map((w) => `<li class="note ${w.level === 'error' ? 'is-error' : 'is-warn'}">${ui('warning')} <span><b>${w.level === 'error' ? 'Can’t start yet' : 'Heads up'}.</b> ${esc(w.text)}</span></li>`).join('');
   return `<div class="setup-page">${back('setupClosePage')}
     <div class="page-head"><h2 class="setup-h" tabindex="-1" id="setup-h">Customize</h2><button type="button" class="btn ghost small" data-a="setupSave">${ui('save')} Save preset</button></div>
     <p class="muted"><button type="button" class="linkish" data-a="setupPresets">Presets</button> · ${plural(roles.length, 'role')} for ${plural(n, 'player')}</p>
     ${roles.length ? balanceBar(roles) + balanceLine(roles, v.config.advanced?.hiddenSetup) : ''}${note}${flags ? `<ul class="advice">${flags}</ul>` : ''}
-    <ul class="deck-list">${rowsHtml}</ul>
+    <div class="tg-wrap">${rowsHtml}</div>
     <button type="button" class="btn ghost" data-a="openAddRole">${ui('plus')} Add role</button></div>`;
 }
 export const customizeDock = () => `<div class="dock-row"><button type="button" class="btn big" data-a="setupClosePage">Use this setup</button></div>`;

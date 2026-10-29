@@ -51,7 +51,8 @@ try {
   L.check('players see the button "See my role"', gates.slice(1).every((g) => g.btn === 'See my role'), gates.slice(1).map((g) => g.btn).join(','));
   L.check('host and every player phone render the same list', gates.every((g) => g.body === gates[0].body));
   L.check('the list names no player', gates.every((g) => !NAMES.some((n) => g.body.includes(n))));
-  L.check('teams are grouped with totals ("Town, 3")', /Town, \d/.test(gates[1].body) && /Mafia, \d/.test(gates[1].body), gates[1].body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 120));
+  L.check('teams are grouped with totals ("Town 3")', /tg-name">Town<\/span><span class="tg-n">\d/.test(gates[1].body) && /tg-name">Mafia<\/span><span class="tg-n">\d/.test(gates[1].body), gates[1].body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 120));
+  L.check('each team is split by type with a subhead per type', /class="tg-sub" data-team="town" data-type="[A-Za-z ]+"><h4 class="tg-type">/.test(gates[1].body) && (gates[1].body.match(/class="tg-type"/g) || []).length === (gates[1].body.match(/class="tg-sub"/g) || []).length);
   if (SHOTS) { await players[0].shot(SHOTS, 'roles-panel-390'); await dump(players[0], 'roles-panel'); await host.shot(SHOTS, 'roles-panel-host-390'); }
   await checkPhones(L, all, 'roles panel');
   // a role row opens its full rules

@@ -3,7 +3,7 @@
 // - Navigations: network-first, falling back to the cached app shell.
 // - /api/* and /ws/* never touch the cache.
 // VERSION is a content hash of every precached file, so it changes whenever a file does.
-const VERSION = 'ed69be8a8d';
+const VERSION = '9c13125a1d';
 const PREFIX = 'mafia-night-';
 const CACHE = PREFIX + VERSION;
 
@@ -57,6 +57,7 @@ const PRECACHE = [
   '/js/roles_extra.js',
   '/js/roles_extra2.js',
   '/js/roles_sheet.js',
+  '/js/role-types.js',
   '/js/room.js',
   '/js/setup-actions.js',
   '/js/seat-model.js',

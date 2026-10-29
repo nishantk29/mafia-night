@@ -41,9 +41,13 @@ test('every viewer gets the identical render, for every preset', () => {
 test('groups by team with totals, a count and one line per role', () => {
   const room = mk(['mafia', 'mafia', 'hooker', 'doctor', 'detective', 'villager', 'villager', 'jester']);
   const m = rolesModel(viewForPlayer(room, room.players[0].id));
-  assert.deepEqual(m.groups.map((g) => [g.title, g.total]), [['Town', 4], ['Mafia', 3], ['On their own', 1]]);
+  assert.deepEqual(m.groups.map((g) => [g.title, g.total]), [['Town', 4], ['Mafia', 3], ['Neutral', 1]]);
   const html = rolesPanel(m, { gate: true });
-  assert.match(text(html), /Town, 4/); assert.match(text(html), /Mafia, 3/); assert.match(text(html), /On their own, 1/);
+  assert.match(text(html), /Town 4/); assert.match(text(html), /Mafia 3/); assert.match(text(html), /Neutral 1/);
+  // grouped by type inside each team (role-types.js), a subhead even when a team has one type
+  assert.match(text(html), /Town 4 Investigative Detective .* Protective Doctor .* Plain Villager/);
+  assert.match(text(html), /Mafia 3 Killing Mafia .* Support Hooker/);
+  assert.match(text(html), /Neutral 1 Tricksters Jester/);
   assert.match(text(html), /See my role/);
   assert.equal(m.count, 8);
   assert.match(rolesChip(m), />8 roles</);
