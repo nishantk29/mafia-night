@@ -1,15 +1,16 @@
 // Role artwork: game-icons glyphs, procedural card backdrops, and optional painted portraits in /art.
 // Icons: game-icons.net by Lorc, Delapouite and contributors, CC BY 3.0.
 import { ROLE_ICON } from './role_icons.js';
-import { ICON_DATA } from './icon_data.js';
 import { ART } from './art_manifest.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Small inline icon (falls back to the role's emoji when no icon is mapped, e.g. custom roles).
+// The glyph comes from the sprite /icons/roles.svg (built by scripts/build-assets.mjs, which fails on an unknown name),
+// so the glyph data is not part of the startup bundle.
 export function ico(role, cls = '') {
-  const body = role && ICON_DATA[ROLE_ICON[role.id]];
-  if (body) return `<svg class="ico ${cls}" viewBox="0 0 512 512" aria-hidden="true" focusable="false">${body}</svg>`;
+  const name = role && ROLE_ICON[role.id];
+  if (name) return `<svg class="ico ${cls}" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><use href="/icons/roles.svg#${name}"/></svg>`;
   return `<span class="ico emo-fb ${cls}" aria-hidden="true">${esc(role?.emoji || '❔')}</span>`;
 }
 
