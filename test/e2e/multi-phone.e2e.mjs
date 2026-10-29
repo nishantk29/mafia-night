@@ -66,6 +66,7 @@ try {
 
   // Clean up a live room: end the game from the host menu.
   if (!srv.local) {
+    await host.page.locator('[data-a="seeRoles"]').click({ timeout: 3000 }).catch(() => {}); // the first look at the roles list
     await host.page.locator('[data-a="openSettings"]').click(); await host.page.locator('[data-a="endGameAsk"]').click(); await host.page.locator('[data-a="endGameYes"]').click();
   }
 

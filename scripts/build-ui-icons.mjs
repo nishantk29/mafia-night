@@ -15,6 +15,7 @@ const KEYS = {
   game: ['ph', 'cards-three-bold'],
   'game-on': ['ph', 'cards-three-fill'],
   table: ['ph', 'users-three-bold'],
+  lock: ['ph', 'lock-bold'],
   'table-on': ['ph', 'users-three-fill'],
   log: ['ph', 'scroll-bold'],
   'log-on': ['ph', 'scroll-fill'],

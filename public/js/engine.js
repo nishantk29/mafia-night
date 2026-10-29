@@ -538,10 +538,13 @@ export function log(room, text, opts = {}) {
 
 // ---------- night resolution ----------
 // actions: { [stepKey]: { targets: [playerId...], on?: boolean } }
+// The night order, one source of truth: the steps resolveNight walks (in this order), and the steps the Host's script
+// calls. The Host timeline is built from nightScript, so a test can hold the two to the same list.
+export const resolveOrder = (room) => nightScript(room).filter((s) => s.kind === 'action' && s.type !== 'execCheck');
 export function resolveNight(room, actions, opts = {}) {
   const allSteps = nightScript(room).filter((s) => s.kind === 'action');
   const execSteps = allSteps.filter((s) => s.type === 'execCheck'); // v8: told privately, never part of the night's actions
-  const steps = allSteps.filter((s) => s.type !== 'execCheck');
+  const steps = resolveOrder(room);
   const rep = { night: room.night, deaths: [], saves: [], info: [], conversions: [], notes: [] };
   const alivePlayer = (id) => playerById(room, id);
   const selfProtect = rulesOf(room).selfProtect;

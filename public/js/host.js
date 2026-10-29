@@ -7,14 +7,14 @@ import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
-import { nightNav } from './night-nav.js';
+import { nightModel, dayModel, card, timeline, tokens, stepBody } from './host-timeline.js';
 import { previewNight, checkCard, stepCues, doneStepLines, START_CUE, END_CUE, setupWarnings, balanceOf, roleMax, MAX_PLAYERS, DEFAULT_RULES, cardInfo, LATEST_NIGHT_VERSION, upgradeTarget } from './engine.js';
 import { roomFromView } from './room.js';
 import { THEMES } from './theme.js';
 import { graveyardPanel } from './graveyard.js';
 import { toolsButton, toolsPanel, phaseBadge, timerRunning, turnRunning } from './tools.js';
 import { animOn, dur } from './fx.js';
-import { setupRoleList, rolesSheet, rolesButton } from './roles_sheet.js';
+import { rolesModel, rolesChip, rolesLayer, rolesGateOpen } from './roles_sheet.js';
 import { SIMPLE_ROLES, simpleCounts, countsOf, isSimpleSet, deckFitText, simpleCardKey } from './simple.js';
 
 import { setupView } from './setup-actions.js';
@@ -43,13 +43,14 @@ export function hostScreen(v, local) {
   const title = local ? 'On this device<span class="appbar-sub">Private to this device</span>' : `<button type="button" class="appbar-code" data-a="showCode" aria-label="Room code ${esc(v.code.split('').join(' '))}. Tap to show the code full screen">${ui('expand')}<b class="code">${esc(v.code)}</b></button>`;
   const [picon, plabel] = v.phase === 'night' ? ['moon', `Night ${v.night}`] : v.phase === 'day' ? ['sun', `Day ${v.day}`] : PHASE[v.phase];
   if (v.phase !== 'lobby') S.ui.deckShown = [];
+  if (rolesGateOpen(v)) return rolesLayer(v); // the first look at the setup comes before the console, so it holds the one gold button
   const { body, dock, bar = '' } = ({ lobby, dealt, night, day, over })[v.phase](v, local);
   const tabs = [['game', 'Game'], ['table', 'Table'], ['log', 'Log']];
   return `<header class="appbar">
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
-    ${phaseBadge(picon, plabel, v.phase === 'night' ? v.night : v.phase === 'day' ? v.day : '')}${v.phase !== 'lobby' && (timerRunning() || turnRunning()) ? toolsButton() : ''}
-    ${hostHelpButton()}<button type="button" class="icon-btn" data-a="openSettings" aria-label="Menu" title="Menu">${ui('gear')}</button>${bar}
+    ${['night', 'day'].includes(v.phase) ? '' : phaseBadge(picon, plabel, '')}${v.phase !== 'lobby' && (timerRunning() || turnRunning()) ? toolsButton() : ''}
+    ${v.phase !== 'lobby' ? rolesChip(rolesModel(v)) : ''}${hostHelpButton()}<button type="button" class="icon-btn" data-a="openSettings" aria-label="Menu" title="Menu">${ui('gear')}</button>${bar}
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
     <section class="pane pane-game" aria-label="Game">${v.stalemate ? `<section class="block stalemate"><p class="note">${ui('crown')} ${esc(v.stalemate.reason)}</p><div class="btn-row"><button type="button" class="btn" data-a="declare">Declare a winner</button></div></section>` : ''}${body}
@@ -65,7 +66,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${S.ui.roles ? rolesSheet(setupRoleList(v.config.roles)) : ''}${S.ui.addRole && v.phase === 'lobby' ? addRoleSheet(v) : ''}${S.ui.settings ? settingsSheet() : ''}${hostHelpOverlay(v)}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${rolesLayer(v)}${S.ui.addRole && v.phase === 'lobby' ? addRoleSheet(v) : ''}${S.ui.settings ? settingsSheet() : ''}${hostHelpOverlay(v)}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
@@ -267,51 +268,45 @@ function assignList(v) {
 // ---------------- night ----------------
 function night(v) {
   const n = S.ui.night;
-  if (n.n !== v.night) { n.n = v.night; n.actions = {}; n.picks = {}; n.acked = {}; }
+  if (n.n !== v.night) { n.n = v.night; n.actions = {}; n.picks = {}; n.acked = {}; n.opened = false; }
   n.acked ||= {};
   const steps = v.script;
   syncCheck(v, steps.filter((s) => s.kind === 'action' && (s.type === 'investigate' || (v.nightVersion >= 7 && LIVE.includes(s.type)))));
-  const nav = nightNav(v, n);
-  const current = nav.current;
-  const idSteps = steps.filter((s) => s.kind === 'identify');
-  const doneStep = (s) => s.kind !== 'identify' && !!n.actions[s.key];
-  const alive = v.players.filter((p) => p.alive);
-  const blind1 = v.night === 1 && v.config.mode === 'cards' && v.config.cardFlow === 'blind';
+  const m = nightModel(v, n);
   const total = steps.length;
-  const finished = steps.filter(doneStep).length;
-  const idx = current ? steps.indexOf(current) : -1;
-  const upcoming = steps.filter((s) => s !== current && !doneStep(s));
-  const next = upcoming.find((s) => steps.indexOf(s) > idx) || upcoming[0];
-  const earlier = steps.filter((s) => s !== current && doneStep(s));
-  const first = !!current && idx === 0 && !doneStep(current);
-  const callName = (s) => esc(s.label || ROLE_BY_ID[s.roleId]?.name || 'the next step');
+  const finished = steps.filter((s) => s.kind !== 'identify' && !!n.actions[s.key]).length;
+  const alive = v.players.filter((p) => p.alive);
+  const first = m.intro;
+  let current = '';
+  if (m.intro) current = card({ kicker: 'Everyone', key: '@open', say: m.card.say, todo: m.card.todo });
+  else if (m.card) current = stepCard(v, m.card, alive);
+  else if (total) current = card({ kicker: 'Everyone', key: '@close', say: v.story?.close || END_CUE, todo: 'Wait until every eye is open. Tap Wake everyone up.' });
+  const prep = first && v.story?.prep?.length ? `<button type="button" class="linkish st-peek" data-a="toggleUi" data-k="prepOpen" aria-expanded="${!!S.ui.prepOpen}">${ui('ear')} Private notes for tonight</button>${S.ui.prepOpen ? `<section class="story-prep"><ul>${v.story.prep.map((p) => `<li>${esc(p.text)}</li>`).join('')}</ul></section>` : ''}` : '';
   const body = `<header class="phase-head"><h2 class="phase-title">Night ${v.night}</h2>
-      <p class="muted">${total ? `${current ? `Step ${idx + 1} of ${total}` : 'All steps done'}. ` : ''}${blind1 ? 'When a role wakes, tap who it is, then record what they do.' : 'Read each line aloud and record what each role chooses.'}</p>
       ${v.shield ? `<p class="note is-warn">${ui('shield')} Virgin shield: nobody can be killed tonight.</p>` : ''}</header>
-    ${first ? upgradeCard(v) : ''}
-    ${first && v.story?.prep?.length ? `<section class="story-prep"><h3 class="story-just">${ui('ear')} Before night ${v.night}: just for you <span class="private-tag">Private</span></h3><ul>${v.story.prep.map((p) => `<li>${esc(p.text)}</li>`).join('')}</ul></section>` : ''}
-    ${first ? (v.story ? storySay(v.story.open) : sayLine(START_CUE)) : ''}
-    ${current ? `<ol class="cues one" data-night="${v.night}">${cue(v, current, idx + 1, true, alive)}</ol>` : ''}
-    ${!current && total ? (v.story ? storySay(v.story.close) : sayLine(END_CUE)) : ''}
-    ${!current && !total ? empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.') : ''}
-    ${next ? `<button type="button" class="next-line" data-a="focusStep" data-key="${next.key}"><span class="next-tag">Next</span> ${callName(next)}</button>` : ''}
-    ${earlier.length ? `<details class="earlier"><summary>Earlier tonight <span class="earlier-n">${earlier.length}</span></summary><ol class="cues earlier-list">${earlier.map((s) => cue(v, s, steps.indexOf(s) + 1, false, alive)).join('')}</ol></details>` : ''}`;
-  const dock = btn('big', 'nextStep', nav.action === 'resolve' ? `${ui('sun')} ${nav.label}` : nav.short, { on: nav.enabled, why: nav.label, attrs: `data-left="${nav.open.length}" aria-label="${esc(nav.label)}" title="${esc(nav.label)}"` });
+    ${first ? upgradeCard(v) : ''}${prep}
+    ${total ? timeline({ done: m.done, upcoming: m.idle ? [] : m.upcoming, current }) : empty('moon', 'No roles wake tonight. Wake everyone up when you’re ready.')}`;
+  const b = total ? m.button : { label: 'Wake everyone up', enabled: true, action: 'resolve' };
+  const cur = m.card?.step;
+  const fix = !b.enabled && cur ? `<p class="dock-why">${esc(b.why)} <button type="button" class="linkish" data-a="${cur.kind === 'identify' ? 'skipIdentify' : 'skip'}" data-key="${esc(cur.key)}" data-role="${esc(cur.roleId || '')}">Skip this step</button></p>` : '';
+  const label = m.idle || b.action === 'resolve' ? `${ui('sun')} ${b.label}` : b.label;
+  const dock = `${fix}${btn('big', b.action === 'startCalls' ? 'startCalls' : 'nextStep', label, { on: b.enabled, why: b.why || b.label, attrs: `data-left="${m.nav.open.length}" aria-label="${esc(m.nav.enabled ? b.label : b.why)}" title="${esc(b.label)}"` })}`;
   const bar = total ? `<div class="night-progress" role="progressbar" aria-label="Night progress" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${finished}"><i style="--p:${(finished / total).toFixed(3)}"></i></div>` : '';
   return { body: body + checkOverlay(v), dock, bar };
 }
 
+// The current step's card: the exact line in quotes, what to do, the picker. Nobody is named but the players on the picker.
+function stepCard(v, c, alive) {
+  const n = S.ui.night; const s = c.step; const set = n.actions[s.key];
+  const body = stepBody(v, s, n, alive);
+  const peek = s.hint || v.story?.steps?.[s.key]?.notes?.length
+    ? `<button type="button" class="linkish st-peek" data-a="toggleUi" data-k="peek" aria-expanded="${!!S.ui.peek}">${ui('ear')} ${S.ui.peek ? 'Hide private note' : 'Private note'}</button>${S.ui.peek ? `<div class="story-notes"><ul>${[s.hint, s.realRole && `Real role: ${s.realRole}`, ...(v.story?.steps?.[s.key]?.notes || [])].filter(Boolean).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}` : '';
+  const after = set ? `${afterBits(v, s, set)}${s.kind === 'action' && checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button>` : ''}` : '';
+  return card({ kicker: c.name, key: s.key, say: c.say, todo: c.todo, dead: c.dead, body: `${body}${after}${peek}`, then: set ? '' : c.then });
+}
+
 // The lines the Host reads or does after a step is answered (Then say, live answer, coin flip). Empty when there are none.
 const afterBits = (v, s, set) => `${v.story?.steps?.[s.key]?.then ? `<div class="story-say"><p class="story-then"><span class="story-tag">Then say:</span> <q>${esc(v.story.steps[s.key].then)}</q></p></div>` : ''}${tellNow(v, s, set)}${afterCoin(s, set, doneLines(v, s, set))}`;
-// A step with lines to read after the answer stays on screen (focused) until Next; app.js asks this after recording an answer.
-export const staysAfterAnswer = (key) => { const v = S.view; const s = v?.script?.find((x) => x.key === key); return !!s && !!afterBits(v, s, S.ui.night.actions[key]); };
-const resultText = (v, s, set) => {
-  if (s.kind !== 'action') return 'Done';
-  if (s.type === 'execCheck') return 'Done';
-  if (s.targets === 0) return set.on ? (s.type === 'alert' ? 'On alert' : 'Yes') : (s.type === 'alert' ? 'Staying in' : 'No');
-  return set.targets.length ? `Target: ${set.targets.map((id) => esc(pname(v, id))).join(' and ')}` : 'Skipped';
-};
-
 // v4: one big read-aloud block, with the Host-only notes below it.
 function storySay(text, then, notes = []) {
   return `<div class="story-say"><p class="story-line"><span class="story-tag">Say:</span> <q>${esc(text)}</q></p>${then ? `<p class="story-then"><span class="story-tag">Then say:</span> <q>${esc(then)}</q></p>` : ''}</div>${storyNotes(notes)}`;
@@ -396,65 +391,6 @@ function tellNow(v, s, set) {
   return `<div class="tell-now"><p class="tell-say">${ui('ear')} Tell them now: <b>${esc(res.text)}</b></p>${res.note ? `<p class="note is-private">${esc(res.note)}</p>` : ''}</div>`;
 }
 
-function cue(v, s, num, current, alive) {
-  const n = S.ui.night;
-  const r = ROLE_BY_ID[s.roleId];
-  const num0 = callNum(s.label);
-  const roleEl = `${num0 ? `<span class="call-badge" data-num="${num0}" aria-hidden="true">${num0}</span>` : ''}${s.label ? `<b class="call-label">${esc(s.label)}</b>` : r ? roleChip(r) : ''}`;
-  const isDone = (s.kind === 'info' || s.kind === 'action') && !!n.actions[s.key];
-  if (isDone && !current) {
-    const set = n.actions[s.key];
-    return `<li class="cue is-done" data-ck="${s.key}"><span class="cue-n" aria-label="Step ${num}, done">${ui('check')}</span><div class="cue-line">${roleEl}<span class="cue-result">${resultText(v, s, set)}</span>
-      ${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">${resultText(v, s, set) === 'Skipped' ? 'Undo' : 'Change'}</button>` : ''}</div>${checkFor(v, s, set) ? `<div class="cue-after"><button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button></div>` : ''}</li>`;
-  }
-  if (isDone) {
-    const set = n.actions[s.key];
-    return `<li class="cue is-current is-ack" data-ck="${s.key}" aria-current="step"><div class="cue-body"><div class="step-head">${roleEl}<span class="cue-result">${resultText(v, s, set)}</span></div>
-      ${afterBits(v, s, set)}
-      <div class="step-links">${checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button>` : ''}${s.kind === 'action' ? `<button type="button" class="link" data-a="undoStep" data-key="${s.key}">Change</button>` : ''}</div></div></li>`;
-  }
-  const cues = stepCues(s);
-  const hint = s.hint ? `<p class="note is-private">${ui('ear')} ${esc(s.hint)}</p>${s.realRole ? `<p class="note is-private">Real role: ${esc(s.realRole)}</p>` : ''}` : '';
-  const st = v.story?.steps?.[s.key];
-  const say = st ? `${storySay(st.say, n.actions[s.key] ? st.then : null, st.notes)}${hint}` : cues ? `${sayLine(cues.open)}${hint}` : `<p class="note is-private">${ui('ear')} Just for you: ${esc(s.prompt)}</p>`;
-  let inner;
-  if (s.kind === 'identify') {
-    const picks = n.picks[s.key] || [];
-    inner = `<div class="step-head">${roleEl}</div>${say}
-      <div class="pick">${s.candidates.map((id) => `<button type="button" class="pk" aria-pressed="${picks.includes(id)}" data-a="pick" data-key="${s.key}" data-id="${id}">${esc(pname(v, id))}</button>`).join('')}</div>
-      <div class="pick"><button type="button" class="pk is-none" data-a="skipIdentify" data-key="${s.key}" data-role="${s.roleId}">No one has this card</button></div>
-      <p class="meta">${picks.length ? `${picks.length} of ${s.count} picked` : `Pick ${plural(s.count, 'player')}`}</p>`;
-  } else if (s.kind === 'info') {
-    const rr = ROLE_BY_ID[s.roleId];
-    let extra;
-    if (rr?.showMafia) extra = `<p class="note">Show them: ${names(v, v.players.filter((p) => p.roleId && ROLE_BY_ID[p.roleId].alignment === 'mafia').map((p) => p.id)) || 'nobody yet'}</p>`;
-    else if (rr?.needsTarget) extra = s.actors.map((id) => { const t = v.players.find((p) => p.id === id)?.target; return `<p class="note">${esc(pname(v, id))}’s target: <b>${esc(t ? pname(v, t) : '?')}</b></p>`; }).join('');
-    else if (rr?.meeting === 'mason') extra = `<p class="note">Masons: ${names(v, s.actors)}</p>`;
-    else extra = `<p class="note">${names(v, s.actors)}</p>`;
-    inner = `<div class="step-head">${roleEl}</div>${say}${extra}`;
-  } else {
-    const who = s.actors.map((id) => esc(pname(v, id))).join(', ');
-    const usesLeft = Number.isFinite(s.uses) ? s.uses - (v.usage[s.actors[0]] || 0) : null;
-    const head = `<div class="step-head">${roleEl}</div><span class="meta">${who}</span>${usesLeft != null ? `<span class="meta">${plural(usesLeft, 'use')} left</span>` : ''}${say}`;
-    if (s.type === 'execCheck') {
-      inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">Show card</button><button type="button" class="pk is-none" data-a="skip" data-key="${s.key}">Skip</button></div>`;
-    } else if (s.targets === 0) {
-      const [yes, no] = s.type === 'alert' ? ['Go on alert', 'Not tonight'] : ['Yes', 'No'];
-      inner = `${head}<div class="btn-row"><button type="button" class="btn" data-a="alert" data-key="${s.key}" data-v="1">${yes}</button><button type="button" class="btn ghost" data-a="alert" data-key="${s.key}" data-v="0">${no}</button></div>`;
-    } else {
-      const list = s.dead ? v.players.filter((p) => !p.alive && !s.actors.includes(p.id)) : alive.filter((p) => (s.type === 'protect' && v.config.rules?.selfProtect !== false) || !s.actors.includes(p.id));
-      const picks = n.picks[s.key] || [];
-      const need = s.targets || 1;
-      const none = `<button type="button" class="pk is-none" data-a="skip" data-key="${s.key}">No one</button>`;
-      inner = `${head}${list.length
-        ? `<div class="pick">${list.map((p) => `<button type="button" class="pk" aria-pressed="${picks.includes(p.id)}" data-a="pick" data-key="${s.key}" data-id="${p.id}">${esc(p.name)}</button>`).join('')}${none}</div>
-          <p class="meta">${need > 1 ? `Pick ${need} players${picks.length ? ` (${picks.length} of ${need} picked)` : ''}` : s.dead ? 'Pick 1 dead player' : 'Pick 1 player'}</p>`
-        : `<p class="muted">Nobody can be chosen right now.</p><div class="pick">${none}</div>`}`;
-    }
-  }
-  return `<li class="cue is-current" data-ck="${s.key}" aria-current="step"><div class="cue-body">${inner}</div></li>`;
-}
-
 // Legacy rooms (night script < latest): host-only opt-in, applied when the next night starts, never mid-step.
 function upgradeCard(v) {
   if (v.nightVersion >= upgradeTarget(v) || v.phase === 'lobby') return '';
@@ -467,44 +403,36 @@ function upgradeCard(v) {
 
 // ---------------- day ----------------
 function day(v) {
-  const rep = v.report && v.report.night === v.night ? v.report : null;
-  const alive = v.players.filter((p) => p.alive);
-  const sel = S.ui.condemn && alive.some((p) => p.id === S.ui.condemn) ? S.ui.condemn : null;
-  let report = `<header class="phase-head"><h2 class="phase-title">Day ${v.day}</h2></header>`;
-  if (rep) {
-    const deaths = rep.deaths.map((d) => {
-      const r = ROLE_BY_ID[v.players.find((p) => p.id === d.id)?.roleId];
-      const what = d.hidden ? 'died. Their role stays hidden.' : r ? `was the ${roleChip(r)}` : 'died.';
-      return `<li class="event is-death">${ui('skull')}<div><b>${esc(pname(v, d.id))}</b> ${what}<p class="meta">${esc(d.cause)}</p></div></li>`;
-    }).join('');
-    report = `<header class="phase-head"><h2 class="phase-title">Morning of day ${v.day}</h2></header>
-      ${v.story?.morning ? `<div class="story-say is-morning"><p class="story-line"><span class="story-tag">Read this out:</span> <q>${esc(v.story.morning.say)}</q></p></div>${storyNotes(v.story.morning.notes)}` : ''}
-      ${v.story?.morning ? '' : `<ul class="events">
-        ${deaths || `<li class="event is-quiet">${ui('sun')}<div>Nobody died last night.</div></li>`}
-        ${rep.saves.map((s) => `<li class="event is-save">${ui('save')}<div>${esc(s.text)}</div></li>`).join('')}
-        ${rep.conversions.map((c) => `<li class="event is-convert">${ui('convert')}<div>${esc(c.text)}</div></li>`).join('')}
-        ${rep.notes.map((t) => `<li class="event is-note">${ui('info')}<div>${esc(t)}</div></li>`).join('')}
-      </ul>`}
-      ${rep.info.length ? `<section class="whisper"><h3 class="whisper-title">${ui('ear')} Tell these players in private</h3>
-        ${rep.info.map((i) => `<div class="whisper-item">${names(v, i.actorIds)} <span class="muted">${esc(rname(i.roleId))}</span><p>${esc(i.text)}</p>${i.note ? `<p class="note is-private">${esc(i.note)}</p>` : ''}</div>`).join('')}</section>` : ''}`;
-  }
+  const stageOf = S.ui.dayStage?.day === v.day ? S.ui.dayStage.stage : undefined;
+  const m = dayModel(v, { stage: stageOf, sel: S.ui.condemn, result: S.ui.dayResult?.day === v.day ? S.ui.dayResult.text : '' }, v.config.rules?.revealOnDeath !== false);
+  const { rep, alive } = m;
   const pend = v.pending.map((p) => `<section class="cue is-current pending"><div class="cue-body">
       <span class="meta">${esc(pname(v, p.playerId))}</span><p class="say">${esc(p.text)}</p>
       <div class="pick">${alive.map((q) => `<button type="button" class="pk" data-a="pend" data-pid="${p.id}" data-id="${q.id}">${esc(q.name)}</button>`).join('')}</div>
       <button type="button" class="link" data-a="pend" data-pid="${p.id}" data-id="">Nobody</button></div></section>`).join('');
+  const names2 = (ids) => ids.map((id) => pname(v, id)).join(' and ');
+  let current;
+  if (m.stage === 'morning') {
+    const said = v.story?.morning?.say || `The sun is up. ${rep.deaths.length ? `${names2(rep.deaths.map((d) => d.id))} did not survive the night.` : 'Nobody died last night.'}`;
+    current = card({ kicker: 'Morning', key: 'morning', say: said, todo: 'Read this out, then tap Next.' });
+  } else if (m.stage === 'vote') {
+    const sel = m.sel;
+    current = card({ kicker: 'Vote', key: 'vote', say: m.say, todo: 'Tap who’s out.', dead: 'A tie? Tap No one, or vote again.',
+      body: tokens(alive.map((p) => ({ id: p.id, name: p.name })), { picked: sel && sel !== 'none' ? [sel] : [], action: 'selCondemn', none: { on: sel === 'none', attrs: 'data-a="selCondemn" data-id="none"' } }) });
+  } else current = card({ kicker: `Night ${v.night + 1}`, key: 'night', todo: v.pending.length ? 'Answer the questions below first.' : `Tap Start night ${v.night + 1} when everyone is ready.` });
+  const private_ = rep ? `${rep.info.length ? `<section class="whisper"><h3 class="whisper-title">${ui('ear')} Tell these players in private</h3>
+        ${rep.info.map((i) => `<div class="whisper-item">${names(v, i.actorIds)} <span class="muted">${esc(rname(i.roleId))}</span><p>${esc(i.text)}</p>${i.note ? `<p class="note is-private">${esc(i.note)}</p>` : ''}</div>`).join('')}</section>` : ''}
+      ${v.story?.morning ? storyNotes(v.story.morning.notes) : `<ul class="events">${rep.saves.map((x) => `<li class="event is-save">${ui('save')}<div>${esc(x.text)}</div></li>`).join('')}${rep.conversions.map((c) => `<li class="event is-convert">${ui('convert')}<div>${esc(c.text)}</div></li>`).join('')}${rep.notes.map((t) => `<li class="event is-note">${ui('info')}<div>${esc(t)}</div></li>`).join('')}</ul>`}` : '';
   const abilities = alive.filter((p) => ROLE_BY_ID[p.roleId]?.day).map((p) => {
     const r = ROLE_BY_ID[p.roleId]; const used = v.dayUsed[p.id] || 0; const max = r.dayUses;
     return `<div class="arow"><span class="arow-glyph a-${r.alignment}">${ico(r)}</span><span class="arow-name"><b>${esc(p.name)}</b> <span class="muted">${esc(r.day)}</span></span>
       ${max ? `<button type="button" class="mini" aria-pressed="${used >= max}" data-a="useDay" data-id="${p.id}">${used} of ${max} used</button>` : ''}</div>`;
   }).join('');
-  const vote = `<section class="block vote"><h2 class="block-title">Who does the town condemn?</h2>
-      <div class="pick">${alive.map((p) => `<button type="button" class="pk" aria-pressed="${sel === p.id}" data-a="selCondemn" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>
-      <div class="btn-row">${btn('big', 'condemn', sel ? `${ui('gavel')} Condemn ${esc(pname(v, sel))}` : `${ui('gavel')} Choose who to condemn`, { on: !!sel, why: 'Choose who to condemn' })}
-        <button type="button" class="btn ghost" data-a="noCondemn">Nobody today</button></div></section>`;
-  return {
-    body: `${report}${upgradeCard(v)}${pend}${vote}${abilities ? `<section class="block abilities"><h2 class="block-title">Day abilities</h2>${abilities}</section>` : ''}`,
-    dock: btn(sel ? 'big secondary' : 'big', 'startNight', v.pending.length ? 'Answer the questions above first' : `Start night ${v.night + 1}`, { on: !v.pending.length, why: 'Answer the questions above first' }),
-  };
+  const priv = private_.trim() || abilities ? `<button type="button" class="linkish st-peek" data-a="toggleUi" data-k="privOpen" aria-expanded="${!!S.ui.privOpen}">${ui('ear')} Private notes for today</button>${S.ui.privOpen ? `${private_}${abilities ? `<section class="block abilities"><h2 class="block-title">Day abilities</h2>${abilities}</section>` : ''}` : ''}` : '';
+  const body = `<header class="phase-head"><h2 class="phase-title">Day ${v.day}</h2></header>${upgradeCard(v)}${pend}
+    <ol class="cues one st-rail" data-night>${m.done.map((d) => `<li class="st-line is-done" data-sk="${d.key}"><span class="st-dot" aria-hidden="true"></span><span class="st-tick" aria-hidden="true">${ui('check')}</span><span class="st-text">${esc(d.text)}</span></li>`).join('')}${current}${m.upcoming.map((u) => `<li class="st-line is-next" data-sk="${u.key}"><span class="st-dot" aria-hidden="true"></span><span class="st-text">${esc(u.name)}</span></li>`).join('')}</ol>${priv}`;
+  const b = m.button;
+  return { body, dock: btn(b.enabled && b.action === 'startNight' ? 'big secondary' : 'big', b.action, b.label, { on: b.enabled && !(b.action !== 'startNight' && b.action !== 'dayVote' && v.pending.length), why: v.pending.length ? 'Answer the questions above first' : b.why }) };
 }
 
 // ---------------- over ----------------

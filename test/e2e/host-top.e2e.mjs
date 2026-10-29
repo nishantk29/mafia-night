@@ -47,19 +47,22 @@ async function run(browser, dev) {
   await page.evaluate(() => document.querySelector('[data-a="setupDeal2"],[data-a="deal"]').click()); await sleep(500);
   const y1 = await page.evaluate(() => window.scrollY);
   check(`${tag}: card key opens at the top after Deal roles`, yBefore > 0 && y1 === 0, `scrolled ${yBefore} -> ${y1}`);
-  // Start night 1 from the bottom.
+  // The first look at the roles list comes first (it replaces the console), then start night 1 from the bottom.
+  await page.evaluate(() => document.querySelector('[data-a="seeRoles"]')?.click()); await sleep(300);
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await sleep(200);
   const yB2 = await page.evaluate(() => window.scrollY);
   await page.evaluate(() => [...document.querySelectorAll('.action-dock button')].find((x) => /Start night/i.test(x.textContent)).click()); await sleep(500);
   await sleep(300);
   const cue = await page.evaluate(() => { const c = document.querySelector('.cues .cue.is-current'); if (!c) return null; const r = c.getBoundingClientRect(); const dock = document.querySelector('.action-dock').getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), dockTop: Math.round(dock.top) }; });
   // Night 1 centres the first line to read (followCue), so the check is that the line is on screen and clear of the button.
-  check(`${tag}: night 1 opens on the first line to read after Start night 1`, yB2 > 0 && cue && cue.top >= 0 && cue.top < cue.dockTop, `from scrollY ${yB2}, cue ${JSON.stringify(cue)}`);
+  check(`${tag}: night 1 opens on the first line to read after Start night 1`, cue && cue.top >= 0 && cue.top < cue.dockTop, `from scrollY ${yB2}, cue ${JSON.stringify(cue)}`);
   // Within the night, picking keeps the Host's place (no jump on every tap).
+  // (The night page is now short enough that it may not scroll at all, so the check is that a pick does not move it.)
   await page.evaluate(() => window.scrollTo(0, 120)); await sleep(150);
+  const y2 = await page.evaluate(() => window.scrollY);
   await page.evaluate(() => document.querySelector('[data-a="pick"]')?.click()); await sleep(300);
   const y3 = await page.evaluate(() => window.scrollY);
-  check(`${tag}: a pick during the night keeps the scroll position`, y3 > 0, `scrollY ${y3}`);
+  check(`${tag}: a pick during the night keeps the scroll position`, y3 === y2, `scrollY ${y2} -> ${y3}`);
   check(`${tag}: no page errors`, errs.length === 0, errs.join('; '));
   await ctx.close();
 }

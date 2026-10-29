@@ -10,13 +10,15 @@ const HOST = { host: true };
 const CASES = [1, 2, 3].flatMap((k) => [false, true].map((godfather) => ({
   k, godfather, roles: ['mafia', godfather ? 'godfather' : 'mafia', 'doctor', ...Array(k).fill('detective'), ...Array(7 - k).fill('villager'), 'tracker'].slice(0, 10),
 })));
+// A hidden setup (Advanced) is one more case: the phones carry no role ids, so shuffling secrets can't move a view.
+CASES.push({ k: 1, godfather: false, hidden: true, roles: ['mafia', 'mafia', 'doctor', 'detective', 'villager', 'villager', 'villager', 'villager', 'jester', 'villager'] });
 const asActor = (id) => (id === 'host' ? HOST : { playerId: id });
 const alive = (room) => room.players.filter((p) => p.alive);
 
 function setup(c) {
   const room = newRoom('INV', 'hostkey');
   reduce(room, HOST, { type: 'addPlayers', names: c.roles.map((_, i) => `P${i}`) });
-  reduce(room, HOST, { type: 'setConfig', mode: 'app', roles: c.roles });
+  reduce(room, HOST, { type: 'setConfig', mode: 'app', roles: c.roles, ...(c.hidden ? { advanced: { hiddenSetup: true } } : {}) });
   const d = reduce(room, HOST, { type: 'deal' }); if (d.error) throw new Error(`deal refused: ${d.error}`);
   return room;
 }
