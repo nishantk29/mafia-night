@@ -32,6 +32,7 @@ import { HOST_HELP_ACTIONS, hostHelpOpen } from './host_help.js';
 import { errorBody, errorButtons, crashHtml, FATAL, ENDED } from './error-screen.js';
 import { wordmark, knifeSvg, suggestions } from './flair.js';
 import { wakeReconnect } from './wake.js';
+import { backClosesSheets } from './back-sheet.js';
 
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
@@ -47,6 +48,17 @@ function focusSelector(el) {
 }
 
 let pendingRender = false;
+// Back (Android Back, the iOS edge swipe) closes the top sheet or overlay first, the same as a tap on its backdrop.
+// A layer with no backdrop action (the roles gate) is left alone, so Back still leaves from there.
+const backNav = backClosesSheets(() => {
+  const d = [...document.querySelectorAll('[aria-modal="true"]')].filter((x) => x.getClientRects().length).at(-1);
+  const el = d?.closest('[data-a]');
+  if (!el || !A[el.dataset.a]) return null;
+  return {
+    key: `${el.dataset.a}|${d.getAttribute('aria-labelledby') || d.getAttribute('aria-label') || ''}`,
+    close: () => { const f = document.activeElement; if (f && $app.contains(f) && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) { pendingRender = false; f.blur(); } el.click(); },
+  };
+});
 // The private role card: shown only while pressed (or Space/Enter held), at most 3s, gone the moment the page is hidden.
 const hold = createHold((on) => {
   document.querySelectorAll('.secret').forEach((s) => {
@@ -121,6 +133,7 @@ function paintScreen() {
   const dialogClose = (opened === 'sheet' || opened === 'modal') && $app.querySelector('.sheet .x-btn, .modal .x-btn, .overlay-in .x-btn');
   if (dialogClose) dialogClose.focus({ preventScroll: true });
   else if (sel && !focusMoved) refocus(sel, a.className);
+  backNav.sync();
 }
 // Several elements can share data attributes (a seat on the table, in the seat list and in the roster):
 // prefer the one with the same classes, and only ever focus a visible one.
