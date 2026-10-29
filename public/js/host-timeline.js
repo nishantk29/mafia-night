@@ -7,7 +7,8 @@ import { nightNav } from './night-nav.js';
 import { stepCues, START_CUE, END_CUE } from './engine.js';
 import { esc, initial } from './state.js';
 import { ui } from './ui_icons.js';
-import { NIGHT_PICK_COLLAPSE, DAY_SAYS } from './config-defaults.js';
+import { NIGHT_PICK_COLLAPSE, DAY_SAYS, TALK_MINUTES, TALK_MIN, TALK_MAX } from './config-defaults.js';
+import { clampMinutes, talkLeft, talkDoneText, mmss } from './day-talk.js';
 
 // The role a step calls ("Detective", "Detective 1", "Mafia"), taken from the line the Host reads, so a disguised role is
 // named by what it believes it is.
@@ -64,27 +65,45 @@ export function nightModel(view, uiNight = {}) {
       : { label: nav.enabled ? (nav.action === 'resolve' ? 'Next: Everyone' : `Next: ${nextName}`) : nav.short, enabled: nav.enabled, why: nav.label, action: nav.action } };
 }
 
-// The day: morning (if there was a night) then the vote. ui = { stage, sel } with sel a player id or 'none'.
-export function dayModel(view, uiDay = {}, revealCard = true) {
+// The day: morning (if there was a night), then the talk (rooms dealt with talkStep), then the vote.
+// uiDay = { stage, sel, result, minutes, startedAt, talkDone } with sel a player id or 'none'. `now` is the clock, so the model stays pure.
+// The Day timer (Advanced) decides only whether the talk is counted down; Next and Skip are always on, at 0 too.
+export function dayModel(view, uiDay = {}, revealCard = true, now = Date.now()) {
+  const talkOn = !!view.advanced?.talkStep; const timed = talkOn && !!view.advanced?.dayTimer;
   const rep = view.report && view.report.night === view.night ? view.report : null;
   const alive = view.players.filter((p) => p.alive);
-  const stage = uiDay.stage || (rep ? 'morning' : 'vote');
+  const stage = uiDay.stage === 'talk' && !talkOn ? 'vote' : uiDay.stage || (rep ? 'morning' : talkOn ? 'talk' : 'vote');
   const sel = uiDay.sel === 'none' || alive.some((p) => p.id === uiDay.sel) ? uiDay.sel || null : null;
   const name = (id) => view.players.find((p) => p.id === id)?.name || '?';
   const morningText = rep ? (rep.deaths.length ? `Morning: ${rep.deaths.map((d) => name(d.id)).join(' and ')} ${rep.deaths.length > 1 ? 'were' : 'was'} killed` : 'Morning: no one died') : '';
   const done = [];
   if (stage !== 'morning' && morningText) done.push({ key: 'morning', text: morningText });
+  if (talkOn && stage === 'vote') done.push({ key: 'talk', text: uiDay.talkDone || talkDoneText({ timed: false }) });
   if (uiDay.result) done.push({ key: 'vote', text: uiDay.result });
   const upcoming = [];
+  if (talkOn && stage === 'morning') upcoming.push({ key: 'talk', name: 'Talk it out' });
+  if (stage === 'talk') upcoming.push({ key: 'vote', name: 'Vote' });
   if (stage === 'vote' && !uiDay.result) {
     if (sel && sel !== 'none' && revealCard) upcoming.push({ key: 'reveal', name: `${name(sel)} shows their card` });
   }
   upcoming.push({ key: 'night', name: `Night ${view.night + 1}` });
   const voted = !!uiDay.result;
-  return { stage: voted ? 'night' : stage, rep, alive, sel, done, upcoming, voted, say: DAY_SAYS.vote,
-    button: stage === 'morning' ? { label: 'Next: Vote', enabled: true, action: 'dayVote' }
+  const minutes = clampMinutes(uiDay.minutes ?? TALK_MINUTES);
+  const talk = { timed, minutes, left: timed ? talkLeft({ minutes, startedAt: uiDay.startedAt }, now) : null };
+  return { stage: voted ? 'night' : stage, rep, alive, sel, done, upcoming, voted, say: DAY_SAYS.vote, talk, talkOn,
+    button: stage === 'morning' ? (talkOn ? { label: 'Next: Talk it out', enabled: true, action: 'dayTalk' } : { label: 'Next: Vote', enabled: true, action: 'dayVote' })
+      : stage === 'talk' ? { label: 'Next: Vote', enabled: true, action: 'dayVote' }
       : voted ? { label: `Start night ${view.night + 1}`, enabled: !view.pending.length, why: 'Answer the questions first', action: 'startNight' }
         : { label: sel === 'none' ? 'No one is out' : sel ? `Vote ${name(sel)} out` : 'Tap who’s out', enabled: !!sel, why: 'Tap who’s out, or No one', action: sel === 'none' ? 'noCondemn' : 'condemn' } };
+}
+
+// What the Host reads and does on the talk step. The clock is text: no animation, and 0:00 changes nothing but the words.
+export const TALK_TODO = 'Let everyone say what they think. Tap Next when it is time to vote.';
+export const talkUpText = 'Time is up. Take more time, or tap Next.';
+export function talkBody(t) {
+  if (!t.timed) return `<div class="btn-row"><button type="button" class="btn ghost" data-a="talkSkip">Skip the talk</button></div>`;
+  return `<p class="st-clock" data-talk aria-label="Time left">${mmss(t.left)}</p><p class="st-dead" data-talk-up ${t.left > 0 ? 'hidden' : ''}>${talkUpText}</p>
+    <div class="btn-row st-adjust" role="group" aria-label="Talk length, ${t.minutes} ${t.minutes === 1 ? 'minute' : 'minutes'}"><button type="button" class="btn ghost" data-a="talkAdj" data-v="-1" ${t.minutes <= TALK_MIN ? 'aria-disabled="true"' : ''}>−1 min</button><button type="button" class="btn ghost" data-a="talkAdj" data-v="1" ${t.minutes >= TALK_MAX ? 'aria-disabled="true"' : ''}>+1 min</button></div><div class="btn-row st-skip"><button type="button" class="btn ghost" data-a="talkSkip">Skip the talk</button></div>`;
 }
 
 // ---- markup ----

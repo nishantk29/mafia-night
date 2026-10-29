@@ -17,7 +17,7 @@ const wait = (p, ms) => p.page.waitForTimeout(ms);
 // With SHOTS set, also saves each key screen's DOM next to its shot, so the impeccable detector can run on it.
 const dump = async (p, name) => { if (SHOTS) writeFileSync(`${SHOTS}/${name}.html`, (await p.page.content()).replace('<head>', `<head><base href="${srv.base}/">`)); };
 try {
-  async function table(hidden) {
+  async function table(hidden, dayTimer = false) {
   const host = await phone(browser, srv.base, 'host'); all.push(host);
   await host.goto('/#/');
   await host.page.locator('[data-a="hostLive"]').click();
@@ -37,11 +37,12 @@ try {
   await skipWalk(host);
   for (let i = 0; i < 3; i++) { await host.page.locator('.action-dock [data-a="setupNext"]').click(); await wait(host, 150); }
   if (hidden) { await host.page.locator('[data-a="setupAdvOpen"]').click(); await host.page.locator('[data-a="setupAdv"][data-k="hiddenSetup"]').click(); await wait(host, 150); }
+  if (dayTimer) { await host.page.locator('[data-a="setupAdvOpen"]').click(); await host.page.locator('[data-a="setupAdv"][data-k="dayTimer"]').click(); await wait(host, 150); }
   await host.page.locator('.action-dock [data-a="setupDeal2"]').click();
   return { host, players };
 
   }
-  const { host, players } = await table(false);
+  const { host, players } = await table(false, true);
   // ---- item 4: the first look ----
   for (const p of players) await p.page.locator('.roles-gate').waitFor({ timeout: 15000 }).catch(() => {});
   await host.page.locator('.roles-gate').waitFor({ timeout: 15000 }).catch(() => {});
@@ -121,7 +122,36 @@ try {
   // ---- day 1 ----
   await host.page.locator('.st-card .st-kicker:text("Morning")').waitFor({ timeout: 5000 }).catch(() => {});
   if (SHOTS) await host.shot(SHOTS, 'day-morning-390');
-  if (await host.page.locator('.st-kicker:text("Morning")').count()) { await host.page.locator('.action-dock .btn.big').click(); await wait(host, 250); }
+  const gold1 = () => host.page.evaluate(() => document.querySelector('.action-dock .btn.big')?.textContent.trim());
+  const clock = () => host.page.evaluate(() => { const t = document.querySelector('[data-talk]')?.textContent || ''; const [m, sec] = t.split(':').map(Number); return m * 60 + sec; });
+  if (await host.page.locator('.st-kicker:text("Morning")').count()) {
+    L.check('the morning Next names the talk step', await gold1() === 'Next: Talk it out', await gold1());
+    await host.page.locator('.action-dock .btn.big').click(); await wait(host, 250);
+  }
+  // ---- the talk step ----
+  await host.page.locator('.st-card .st-kicker:text("Talk")').waitFor({ timeout: 5000 });
+  const talkText = await host.page.locator('.st-card').innerText();
+  L.check('talk card: "Talk it out" with a short what-to-do', /Talk it out/.test(talkText) && /Tap Next when it is time to vote/.test(talkText));
+  L.check('talk card: Next names the vote and is on', await gold1() === 'Next: Vote' && await host.page.locator('.action-dock .btn.big.disabled').count() === 0, await gold1());
+  const c0 = await clock(); L.check('the countdown starts at 5 minutes', c0 >= 295 && c0 <= 300, c0);
+  await host.page.locator('[data-a="talkAdj"][data-v="1"]').click(); await wait(host, 150);
+  const c1 = await clock(); L.check('+1 minute adds a minute', c1 >= 355 && c1 <= 360, c1);
+  for (let i = 0; i < 5; i++) { await host.page.locator('[data-a="talkAdj"][data-v="-1"]').click(); await wait(host, 60); }
+  L.check('-1 stops at 1 minute (the clock never shows 0 from the buttons)', (await clock()) <= 60 && (await clock()) > 0 && await host.page.locator('[data-a="talkAdj"][data-v="-1"][aria-disabled="true"]').count() === 1, await clock());
+  await host.page.locator('[data-a="talkAdj"][data-v="1"]').click(); await wait(host, 100);
+  await host.page.reload(); await host.page.locator('.st-card .st-kicker:text("Talk")').waitFor({ timeout: 15000 });
+  const c2 = await clock(); L.check('a refresh mid-talk comes back to the step with the clock running', c2 > 60 && c2 <= 120, c2);
+  if (SHOTS) {
+    await host.shot(SHOTS, 'talk-390'); await host.shot(SHOTS, 'day-timer-390'); await dump(host, 'talk');
+    for (const [name, w, h] of [['talk-375', 375, 667], ['talk-1280', 1280, 800]]) { await host.page.setViewportSize({ width: w, height: h }); await wait(host, 200); await host.shot(SHOTS, name); L.check(`talk step: no sideways scroll at ${w}x${h}`, !(await host.overflow())); }
+    await host.page.setViewportSize({ width: 390, height: 844 }); await wait(host, 200);
+  }
+  await checkPhones(L, all, 'talk step');
+  const nowAtTalk = await host.page.locator('[data-talk]').count();
+  L.check('the timer has no animation (text only)', nowAtTalk === 1 && !(await host.page.evaluate(() => document.getAnimations().some((a) => a.effect?.getTiming().iterations === Infinity))));
+  await host.page.locator('.action-dock .btn.big').click(); await wait(host, 250);
+  const railTalk = await host.page.evaluate(() => [...document.querySelectorAll('.st-line.is-done .st-text')].map((x) => x.textContent.trim()));
+  L.check('the done row reads "Talked it out for N minute(s)"', railTalk.some((t) => /^Talked it out for \d+ minutes?$/.test(t)), railTalk.join(' | '));
   await host.page.locator('.st-card [data-a="selCondemn"]').first().waitFor({ timeout: 5000 });
   const before = await host.page.evaluate(() => document.querySelector('.action-dock .btn.big')?.textContent.trim());
   L.check('vote button is disabled until someone is chosen', /who/i.test(before) && await host.page.locator('.action-dock .btn.big.disabled').count() === 1, before);

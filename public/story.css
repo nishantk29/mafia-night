@@ -85,3 +85,10 @@
 .roles-sheet{display:flex;flex-direction:column;padding-bottom:0}
 .roles-sheet .rs-body{flex:1 1 auto}
 .roles-sheet .rs-act{position:sticky;bottom:0;margin:var(--s3) calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter-l));padding:var(--s3) var(--gutter-r) calc(var(--s3) + env(safe-area-inset-bottom)) var(--gutter-l);background:linear-gradient(to bottom,transparent,var(--panel) 30%)}
+
+/* Day: the talk step. The countdown is plain text (no pulse); the adjust row keeps 44px targets. */
+.st-clock{margin:var(--s2) 0 var(--s2);font-family:var(--font-display);font-weight:800;font-size:clamp(3rem,16vw,4.5rem);line-height:1;color:var(--candle);font-variant-numeric:tabular-nums}
+.st-card .st-adjust{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2)}
+.st-card .st-skip{margin-top:var(--s2)}
+.st-adjust .btn,.st-skip .btn{min-height:44px}
+.st-adjust .btn[aria-disabled="true"]{opacity:.45}

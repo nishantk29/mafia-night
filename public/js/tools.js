@@ -11,7 +11,7 @@ export function rollDice(count, sides) {
   const s = DICE_SIDES.includes(sides) ? sides : 6;
   return Array.from({ length: n }, () => rnd(s) + 1);
 }
-const mmss =(ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+import { mmss, talkLeft } from './day-talk.js';
 
 export function timerLeft() {
   const t = S.ui.timer; if (!t) return 0;
@@ -205,6 +205,12 @@ function ring() {
 let beeped = false;
 export function tickTools() {
   keepAwake();
+  const talk = S.ui.dayStage;
+  if (talk?.stage === 'talk' && S.view?.phase === 'day') { // the day's talk countdown: text only; 0:00 changes the words, never the buttons
+    const left = talkLeft(talk, Date.now());
+    for (const el of document.querySelectorAll('[data-talk]')) el.textContent = mmss(left);
+    for (const el of document.querySelectorAll('[data-talk-up]')) el.hidden = left > 0;
+  }
   const turn = S.ui.turn;
   if (turn?.endAt) {
     const left = turn.endAt - Date.now();

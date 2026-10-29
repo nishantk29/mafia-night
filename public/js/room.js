@@ -383,7 +383,11 @@ export function reduce(room, actor, a) {
 
 // Validates the setup and deals (app mode: roles to phones; cards mode: builds the deck).
 // Advanced settings as the room sees them: a room made before they existed gets the defaults (card on death = its current rule).
-export const advancedOf = (room) => ({ ...ADVANCED_DEFAULTS, cardOnDeath: rulesOf(room).revealOnDeath, ...(['dealt', 'night', 'day', 'over'].includes(room?.phase) && room.dealtAdvanced ? room.dealtAdvanced : room?.config?.advanced || {}) });
+export const advancedOf = (room) => {
+  const inGame = ['dealt', 'night', 'day', 'over'].includes(room?.phase);
+  // talkStep (the day "Talk it out" step) is pinned at the deal: a room already in a game without the pin keeps the old day.
+  return { ...ADVANCED_DEFAULTS, cardOnDeath: rulesOf(room).revealOnDeath, ...(inGame && room.dealtAdvanced ? room.dealtAdvanced : room?.config?.advanced || {}), talkStep: inGame ? room.dealtAdvanced?.talkStep === true : true };
+};
 function dealNow(room) {
   const err = (e) => ({ error: e });
   const n = room.players.length;
