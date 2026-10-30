@@ -64,6 +64,20 @@ export async function server(dir) {
   return { base: `http://127.0.0.1:${port}`, stop: () => { p.kill('SIGTERM'); }, local: true };
 }
 
+// WebKit on this box can only reach http:// pages. Its Playwright WPE build finds no GIO TLS module (glib-networking is
+// not installed), so every https:// load fails with "TLS support is not available", before any app code runs. It is the
+// box, not the app: the same suites pass in WebKit against the local `wrangler dev` (http). So with an https BASE (a
+// live or preview URL) these suites run Chromium only.
+//   E2E_WEBKIT=1  force WebKit anyway (a box or CI with TLS)
+//   E2E_WEBKIT=0  never run WebKit
+/** @param {string} base @param {string[]} [want] @returns {string[]} the engines to run, in order */
+export function engines(base, want = ['chromium', 'webkit']) {
+  const f = process.env.E2E_WEBKIT;
+  const skip = f === '0' ? 'E2E_WEBKIT=0' : f !== '1' && /^https:/i.test(base || '') ? 'https BASE and the box WebKit has no TLS (set E2E_WEBKIT=1 to force)' : '';
+  if (skip && want.includes('webkit')) console.log(`SKIP webkit: ${skip}`);
+  return want.filter((e) => e !== 'webkit' || !skip);
+}
+
 /** @param {{ headless?: boolean }} [o] */
 export async function launch(o = {}) {
   const { chromium } = await import(`${PW}/index.mjs`);

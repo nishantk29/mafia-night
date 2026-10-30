@@ -2,7 +2,7 @@
 // name column for every role row, counts in a fixed tabular column, and equal heights for one-line rows.
 // Run: node test/e2e/preset-sheet.e2e.mjs   (starts the dev server; BASE=... uses a running one). SHOTS=<dir> saves shots.
 import { fileURLToPath } from 'node:url';
-import { ledger, server } from './phones.mjs';
+import { engines, ledger, server } from './phones.mjs';
 
 const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
 const { chromium, webkit } = await import(`${PW}/index.mjs`);
@@ -44,7 +44,8 @@ const measure = (page) => page.evaluate(() => {
 const tap = (loc) => loc.click({ timeout: 10000 }).catch(() => loc.evaluate((b) => b.click()));
 const same = (a) => a.every((v) => Math.abs(v - a[0]) <= 0.5);
 
-const ENGINES = (process.env.ENGINES || 'chromium,webkit').split(',');
+// WebKit is skipped for an https BASE (the box WebKit has no TLS): see engines() in phones.mjs. E2E_WEBKIT=1 forces it.
+const ENGINES = engines(srv.base, (process.env.ENGINES || 'chromium,webkit').split(','));
 for (const [engine, type] of [['chromium', chromium], ['webkit', webkit]].filter(([e]) => ENGINES.includes(e))) {
   const browser = engine === 'webkit' ? await type.launch({ timeout: 600000 }) : await type.launch({ timeout: 600000, executablePath: process.env.CHROME || '/usr/bin/google-chrome', args: ['--no-sandbox'] });
   try {

@@ -2,11 +2,12 @@
 // (Nishant, Oct 30 2026: "The card that shows who died is too quick"). One host and eight phones play night 1 and the day vote.
 // The vote card must still be on the host's and a player's phone after 60 s, go only on that phone's Close, and name no role.
 // Run: node test/e2e/death-card.e2e.mjs   (starts `wrangler dev --local`; BASE=... uses a running one)
-//   SHOTS=<dir> saves t=0 and t=60s shots. ONLY=webkit|chromium and MOTION=reduce|no-preference narrow the runs. WAIT_MS overrides 60000.
+//   SHOTS=<dir> saves t=0 and t=60s shots. ONLY=webkit|chromium and MOTION=reduce|no-preference narrow the runs.
+//   With an https BASE (live) WebKit is skipped: the box WebKit has no TLS. E2E_WEBKIT=1 forces it, E2E_WEBKIT=0 skips it. WAIT_MS overrides 60000.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ledger, server, DEVICES } from './phones.mjs';
+import { engines, ledger, server, DEVICES } from './phones.mjs';
 import { ROLE_BY_ID } from '../../public/js/roles.js';
 
 const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
@@ -149,7 +150,7 @@ async function run(engine, motion) {
 }
 
 try {
-  for (const engine of ['chromium', 'webkit']) {
+  for (const engine of engines(BASE)) { // WebKit is skipped for an https BASE: see engines() in phones.mjs
     if (process.env.ONLY && process.env.ONLY !== engine) continue;
     for (const motion of ['reduce', 'no-preference']) {
       if (process.env.MOTION && process.env.MOTION !== motion) continue;

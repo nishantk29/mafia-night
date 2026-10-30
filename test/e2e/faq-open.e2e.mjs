@@ -2,8 +2,9 @@
 // transform/opacity animations of at most 250 ms. No view transition snapshot groups (they animate width, height and
 // backdrop-filter) and no blur. With reduced motion nothing moves at all. Nishant, Oct 30 2026: "The animation when you open FAQS is also janky".
 // Run: node test/e2e/faq-open.e2e.mjs   (starts `wrangler dev --local`; BASE=... uses a running one)
+// With an https BASE (live) WebKit is skipped: the box WebKit has no TLS. E2E_WEBKIT=1 forces it, E2E_WEBKIT=0 skips it.
 import { fileURLToPath } from 'node:url';
-import { ledger, server } from './phones.mjs';
+import { engines, ledger, server } from './phones.mjs';
 
 const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
 const { chromium, webkit } = await import(`${PW}/index.mjs`);
@@ -20,7 +21,7 @@ const fresh = () => document.getAnimations().filter((a) => !window.__old.has(a))
     props: [...new Set(kf.flatMap((k) => Object.keys(k).filter((x) => !['offset', 'easing', 'composite', 'computedOffset'].includes(x))))].concat(a.transitionProperty ? [a.transitionProperty] : []), ms: Math.round(t.endTime ?? 0) };
 });
 
-for (const engine of ['chromium', 'webkit']) {
+for (const engine of engines(srv.base)) { // WebKit is skipped for an https BASE: see engines() in phones.mjs
   const browser = engine === 'webkit' ? await webkit.launch() : await chromium.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', args: ['--no-sandbox'] });
   try {
     for (const motion of ['no-preference', 'reduce']) {
