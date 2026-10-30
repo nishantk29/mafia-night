@@ -27,4 +27,6 @@ the service worker precache list and restamp it.
 ## Licences
 - Limelight (Sorkin Type Co): SIL OFL 1.1 with Reserved Font Name "Limelight". A subset is a Modified Version, so it ships as **Mafia Deco** (internal names and CSS family; copyright and licence fields unchanged). Licence text: `OFL-Limelight.txt`.
 - Alegreya Sans (The Alegreya Sans Project Authors): SIL OFL 1.1, no Reserved Font Name. Name kept.
-- Rubik is not touched here (separate change).
+- Rubik (The Rubik Project Authors): SIL OFL 1.1, no Reserved Font Name (`public/fonts/LICENSE-rubik.txt`). Name kept.
+
+Rubik is not split into core/ext (`"split": false`): it carries underlined links, and WebKit (Safari) stops skipping descenders under an underline when a family is served as more than one unicode-range file. One subset file keeps it pixel-identical.
