@@ -368,9 +368,12 @@ async function playGame(plan) {
     for (const p of dayAlive) if (ROLE_BY_ID[p.roleId]?.day && R.chance(0.3)) await act({ type: 'useDay', playerId: p.id });
     if (R.chance(0.8) && dayAlive.length) await act({ type: 'condemn', playerId: R.pick(dayAlive).id });
     else await act({ type: 'noCondemn' });
-    // Odd host moves: condemn a dead player (must be refused or harmless), revive then kill again.
+    // The vote can end the game: the odd moves below are only for a game still in play (they are refused at game over).
+    if (host.last().phase === 'over') break;
+    // Odd host moves: condemn a dead player (must be refused or harmless), revive then kill again (unless bringing
+    // them back handed their side the win).
     if (R.chance(0.1)) { const dead = host.last().players.find((x) => !x.alive); if (dead) await act({ type: 'condemn', playerId: dead.id }, { expectError: true }); }
-    if (R.chance(0.05)) { const dead = host.last().players.find((x) => !x.alive); if (dead) { await act({ type: 'revive', playerId: dead.id }); await act({ type: 'kill', playerId: dead.id, cause: 'storyteller' }); } }
+    if (R.chance(0.05)) { const dead = host.last().players.find((x) => !x.alive); if (dead) { await act({ type: 'revive', playerId: dead.id }); if (host.last().phase !== 'over') await act({ type: 'kill', playerId: dead.id, cause: 'storyteller' }); } }
     await checkSecrecy();
   }
 

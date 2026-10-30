@@ -3,6 +3,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { newRoom, reduce, viewForHost, viewForPlayer } from '../public/js/room.js';
+import { LATEST_NIGHT_VERSION } from '../public/js/engine.js';
+import { withEntropy, seededEntropy } from '../public/js/entropy.js';
 import { MERGED_TO_LEGACY, ROLE_BY_ID, factionOf, registerRoles } from '../public/js/roles.js';
 import {
   CATALOGUE, rng, dealRefusal, planCoverage, candidates, pickNightActions, livePreviews, nightProblems, disguiseLeaks,
@@ -28,9 +30,9 @@ function plansFor(R, games) {
 }
 
 // Plays one game in-process and returns every problem the oracles found, plus the roles it dealt.
-function play(plan, seed, rules = {}) {
+function play(plan, seed, rules = {}, version = 4) {
   const R = rng(seed);
-  const room = newRoom('SIMT', 'k'); room.nightVersion = 4; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
+  const room = newRoom('SIMT', 'k'); room.nightVersion = version; // pinned: v5 moves investigator results to the night check card (night-upgrade-v5.test.js)
   ok(room, { type: 'addPlayers', names: Array.from({ length: plan.n }, (_, i) => `P${i}`) });
   ok(room, { type: 'setCustomRoles', roles: CUSTOMS });
   ok(room, { type: 'setConfig', roles: plan.roles, rules });
@@ -162,5 +164,35 @@ describe('random games: live results, honest checks and disguises', () => {
     // this room is pinned to v4, so the merged ids deal as their old roles (see detective-merge.test.js and the v10 sims)
     assert.deepEqual(CATALOGUE.filter((id) => !dealt.has(id) && !(id in MERGED_TO_LEGACY)), []);
     assert.ok([...dealt].every((id) => factionOf(id) && ROLE_BY_ID[id]));
+  });
+});
+
+// M15: on v5+ investigator results (and v7+ track/watch/autopsy) are told only live on the check card, so the oracles
+// read them from the live preview and require the morning report to leave them out.
+describe('random games on the latest night rules (night-only results)', () => {
+  registerRoles(CUSTOMS);
+  const R = rng(20261030);
+  const plans = plansFor(R, 150);
+  test(`150 games at night version ${LATEST_NIGHT_VERSION}: no oracle problems`, () => {
+    const problems = [];
+    // Seeded deals and coins, so a failing game replays exactly.
+    plans.forEach((plan, g) => problems.push(...withEntropy(seededEntropy([g, 5000, 7, 11], 0), () => play(plan, 5000 + g, {}, LATEST_NIGHT_VERSION)).problems.map((x) => `game ${g}: ${x}`)));
+    assert.deepEqual(problems.slice(0, 10), []);
+  });
+  test('a night-only result that reaches the morning report is caught', () => {
+    const room = newRoom('X', 'k'); room.nightVersion = LATEST_NIGHT_VERSION;
+    ok(room, { type: 'addPlayers', names: ['A', 'B', 'C', 'D', 'E', 'F'] });
+    ok(room, { type: 'setConfig', roles: ['cop', 'mafia', 'villager', 'villager', 'villager', 'villager'] });
+    ok(room, { type: 'deal' }); ok(room, { type: 'startNight' });
+    const before = viewForHost(room);
+    const s = before.script.find((x) => x.type === 'investigate');
+    const target = room.players.find((p) => !s.actors.includes(p.id));
+    const actions = { [s.key]: { targets: [target.id] } };
+    const previews = livePreviews(before, actions);
+    ok(room, { type: 'submitNight', actions });
+    const after = viewForHost(room);
+    assert.deepEqual(nightProblems(before, actions, after, previews), []);
+    const leaky = structuredClone(after); leaky.report.info.push({ key: s.key, actorIds: s.actors, text: previews[s.key].text });
+    assert.ok(nightProblems(before, actions, leaky, previews).some((x) => x.includes('night-only')));
   });
 });

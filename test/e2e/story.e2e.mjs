@@ -13,6 +13,7 @@ async function closeDeathCard(P, waitMs = 0) {
   return n > 0;
 }
 import { ledger, server, launch, phone, checkPhones } from './phones.mjs';
+import { factionOf } from '../../public/js/roles.js';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SHOTS = process.env.SHOTS || '';
@@ -27,6 +28,8 @@ const dump = async (p, name) => { if (SHOTS) writeFileSync(`${SHOTS}/${name}.htm
 try {
   async function table(hidden, dayTimer = false) {
   const host = await phone(browser, srv.base, 'host'); all.push(host);
+  // The host's room views, so the vote can pick someone whose removal can't end the game.
+  host.frames = []; host.page.on('websocket', (ws) => ws.on('framereceived', (f) => { try { const m = JSON.parse(f.payload); if (m.type === 'view') host.frames.push(m.view); } catch { /* not JSON */ } }));
   await host.goto('/#/');
   await host.page.locator('[data-a="hostLive"]').click();
   await host.page.waitForFunction(() => /#\/host\/[A-Z]{6}/.test(location.hash), null, { timeout: 15000 });
@@ -228,7 +231,12 @@ try {
   L.check('vote button is disabled until someone is chosen', /who/i.test(before) && await host.page.locator('.action-dock .btn.big.disabled').count() === 1, before);
   const none = await host.page.locator('.st-card [data-a="selCondemn"][data-id="none"]').count();
   L.check('the vote card offers "No one" for a tie', none === 1);
-  const tok = host.page.locator('.st-card [data-a="selCondemn"]:not([data-id="none"])').first();
+  // Vote out a Town player: voting out the last Mafia (or a Jester, or a lone killer) ends the game, and this step
+  // checks that the day goes on to night 2. The deal is random, so the name is chosen from the host's view.
+  const hv = host.frames.findLast((v) => v?.players?.some((p) => p.roleId));
+  const town = (hv?.players || []).filter((p) => p.alive && factionOf(p.roleId) === 'town').map((p) => p.id);
+  L.check('the host view names a living Town player to vote out', town.length > 0, JSON.stringify((hv?.players || []).map((p) => [p.name, p.roleId, p.alive])));
+  const tok = host.page.locator(town.map((id) => `.st-card [data-a="selCondemn"][data-id="${id}"]`).join(', ') || '.st-card [data-a="selCondemn"]:not([data-id="none"])').first();
   const pick = (await tok.textContent()).trim(); await tok.click(); await wait(host, 150);
   const gold = await host.page.evaluate(() => document.querySelector('.action-dock .btn.big')?.textContent.trim());
   L.check('the gold button says "Vote <name> out"', gold === `Vote ${pick} out`, gold);
