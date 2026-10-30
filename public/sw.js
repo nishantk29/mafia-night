@@ -3,7 +3,7 @@
 // - Navigations: network-first, falling back to the cached app shell.
 // - /api/* and /ws/* never touch the cache.
 // VERSION is a content hash of every precached file, so it changes whenever a file does.
-const VERSION = '3027fc153a';
+const VERSION = 'db5acec6cd';
 const PREFIX = 'mafia-night-';
 const CACHE = PREFIX + VERSION;
 
@@ -32,6 +32,7 @@ const PRECACHE = [
   '/js/back-sheet.js',
   '/js/board.js',
   '/js/config-defaults.js',
+  '/js/day-talk.js',
   '/js/deck-key.js',
   '/js/engine.js',
   '/js/entropy.js',
@@ -43,6 +44,7 @@ const PRECACHE = [
   '/js/fx.js',
   '/js/graveyard.js',
   '/js/hold.js',
+  '/js/host-timeline.js',
   '/js/host.js',
   '/js/host_help.js',
   '/js/host_help_core.js',
@@ -55,24 +57,22 @@ const PRECACHE = [
   '/js/presets.js',
   '/js/print.js',
   '/js/qr.js',
+  '/js/role-types.js',
   '/js/role_guide.js',
   '/js/role_icons.js',
   '/js/roles.js',
   '/js/roles_extra.js',
   '/js/roles_extra2.js',
   '/js/roles_sheet.js',
-  '/js/role-types.js',
   '/js/room.js',
-  '/js/setup-actions.js',
   '/js/seat-model.js',
   '/js/seating-actions.js',
   '/js/seating.js',
-  '/js/setup-store.js',
   '/js/settle.js',
+  '/js/setup-actions.js',
+  '/js/setup-store.js',
   '/js/setup-ui.js',
   '/js/simple.js',
-  '/js/host-timeline.js',
-  '/js/day-talk.js',
   '/js/state.js',
   '/js/theme.js',
   '/js/tools.js',
@@ -80,6 +80,7 @@ const PRECACHE = [
   '/js/wake.js',
   '/js/wordmark.js',
   '/js/world.js',
+  '/kit-bars.css',
   '/manifest.webmanifest',
   '/print.css',
   '/print.html',
