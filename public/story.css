@@ -113,3 +113,9 @@
    either readable or fully covered, never half hidden. The console keeps its bottom padding, so the last note scrolls
    clear of the button. */
 html:has(.st-rail) .action-dock{background:linear-gradient(to bottom,transparent,var(--room) var(--s3))}
+
+/* press feedback (Nishant, 2026-10-29): lands on press-in in --f-press (120ms);
+   the release runs in --f-release (about 0.7x). Buttons and cards scale to .97; list rows (.choice) highlight instead. */
+@media (prefers-reduced-motion:no-preference){
+  :is(.pk,.home-rules,.block,.whisper,.guide,.path):active,.seat:active .seat-card,.btn:not(#v2):active,.action-dock .btn.big:not(#v2):active{transition-duration:var(--f-press)}
+}
