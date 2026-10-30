@@ -1,7 +1,8 @@
 // Cloudflare Worker: serves the API + WebSocket entry points. Static files come from Workers Static Assets.
 import { DurableObject } from 'cloudflare:workers';
 import { errorResponse } from './error-page.js';
-import { newRoom, reduce, migrateRoleIds, messagesFor, justEnded } from '../public/js/room.js';
+import { newRoom, migrateRoleIds, messagesFor, justEnded } from '../public/js/room.js';
+import { commit, KEY, SNAP_EVERY, LOG_VERSION, chunkOf, writesAfterAppend } from '../public/js/event-log.js';
 import { handleAiInternal } from './ai.js';
 import { askRule } from './ask.js';
 import { RULES_INDEX, RULES_HASH } from './rules-index.js';
@@ -74,16 +75,51 @@ export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.room = null;
-    this.ready = ctx.blockConcurrencyWhile(async () => { this.room = migrateRoleIds((await ctx.storage.get('room')) || null); });
+    this.elog = null;
+    this.ready = ctx.blockConcurrencyWhile(async () => {
+      this.room = migrateRoleIds((await ctx.storage.get('room')) || null);
+      if (this.room) await this.loadLog(await ctx.storage.get(KEY.meta));
+    });
+  }
+
+  // The event log (public/js/event-log.js) kept in this room's storage next to `room`. Only the meta and the
+  // current chunk are held in memory. A room stored before the log existed, or one whose log is out of step with
+  // `room` (written by an older build after a rollback), starts a fresh log with its current state as the base.
+  async loadLog(meta) {
+    if (meta?.v === LOG_VERSION && meta.updated === this.room.updated && meta.cursor === meta.len) {
+      const tail = meta.len % meta.snapEvery ? (await this.ctx.storage.get(KEY.chunk(chunkOf(meta.len, meta.snapEvery)))) || [] : [];
+      if (tail.length === meta.len % meta.snapEvery) { this.elog = { meta, tail, writes: {} }; return; }
+    }
+    this.startLog();
+  }
+  startLog() {
+    const meta = { v: LOG_VERSION, rev: 0, cursor: 0, len: 0, snapEvery: SNAP_EVERY, updated: this.room.updated };
+    this.elog = { meta, tail: [], writes: { [KEY.base]: structuredClone(this.room), [KEY.meta]: meta } };
+  }
+
+  // Every change to the room goes through here: the message is applied as an event, and kept if it changed the room.
+  apply(actor, msg) {
+    const r = commit(this.room, actor, msg, Date.now());
+    if (r.changed) {
+      const L = this.elog;
+      L.tail.push(r.ev);
+      L.meta = { ...L.meta, len: L.meta.len + 1, cursor: L.meta.len + 1, rev: L.meta.rev + 1, updated: this.room.updated };
+      Object.assign(L.writes, writesAfterAppend(L.meta, L.tail.slice(), structuredClone(this.room)));
+      if (L.meta.len % L.meta.snapEvery === 0) L.tail = [];
+    }
+    return r;
   }
 
   // A failed write must never swallow a move: retry once, and if storage is still unhappy keep going with the
   // in-memory room (it is what every screen is showing) and try again on the next action.
+  // The room, the log meta, the current chunk and any checkpoint go out together: puts with no await between them
+  // are one atomic write in a Durable Object.
   async save() {
-    this.room.updated = Date.now();
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        await this.ctx.storage.put('room', this.room);
+        const writes = { room: this.room, ...(this.elog?.writes || {}) };
+        await Promise.all(Object.entries(writes).map(([k, v]) => this.ctx.storage.put(k, v)));
+        if (this.elog) this.elog.writes = {};
         await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL_MS);
         return true;
       } catch (e) {
@@ -99,7 +135,7 @@ export class Room extends DurableObject {
   // Close the room for good: tell every socket why, drop them, wipe storage. The code is free to be dealt again.
   async closeRoom(reason) {
     for (const ws of this.ctx.getWebSockets()) { this.send(ws, { type: 'closed', reason }); try { ws.close(1000, 'closed'); } catch { /* already closed */ } }
-    this.room = null;
+    this.room = null; this.elog = null;
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
   }
@@ -113,6 +149,8 @@ export class Room extends DurableObject {
       if (this.room) return new Response('exists', { status: 409 });
       const { code, hostKey } = await request.json();
       this.room = newRoom(code, hostKey);
+      this.room.updated = Date.now();
+      this.startLog();
       await this.save();
       return new Response(JSON.stringify({ code, hostKey }), { status: 200 });
     }
@@ -138,7 +176,7 @@ export class Room extends DurableObject {
     if (!this.room) return; // closed: the sockets are already gone
     const connected = this.connectedIds();
     for (const ws of this.ctx.getWebSockets()) {
-      for (const m of messagesFor(this.room, ws.deserializeAttachment(), connected, announce)) this.send(ws, m);
+      for (const m of messagesFor(this.room, ws.deserializeAttachment(), connected, announce)) this.send(ws, m.type === 'view' ? { ...m, rev: this.elog?.meta.rev ?? 0 } : m);
     }
   }
 
@@ -159,8 +197,8 @@ export class Room extends DurableObject {
         if (!p || p.token !== msg.token) { this.send(ws, { type: 'fatal', error: 'Could not rejoin. Join again with a new name.', clear: true }); ws.close(1008, 'bad token'); return; }
         ws.serializeAttachment({ who: 'player', playerId: p.id });
       } else if (msg.join) {
-        const res = reduce(this.room, { anon: true }, { type: 'join', name: msg.join });
-        if (res.error) { this.send(ws, { type: 'error', error: res.error }); return; }
+        const { res, changed } = this.apply({ anon: true }, { type: 'join', name: msg.join });
+        if (res.error) { if (changed) await this.save(); this.send(ws, { type: 'error', error: res.error }); return; }
         await this.save();
         ws.serializeAttachment({ who: 'player', playerId: res.data.playerId });
         this.send(ws, { type: 'joined', ...res.data });
@@ -182,8 +220,16 @@ export class Room extends DurableObject {
     // ---- actions ----
     const actor = att.who === 'host' ? { host: true } : { playerId: att.playerId };
     const before = this.room.phase;
-    const res = reduce(this.room, actor, msg);
-    if (res.error) { this.send(ws, { type: 'error', error: res.error }); return; }
+    // A Host message sent against an older revision (a second Host phone, a late retry) is refused, never applied
+    // to a later step. Clients that send no `rev` are not checked.
+    if (actor.host && typeof msg.rev === 'number' && msg.rev !== this.elog.meta.rev) {
+      this.send(ws, { type: 'error', error: 'The game moved on. Showing the latest.' });
+      for (const m of messagesFor(this.room, att, this.connectedIds())) this.send(ws, m.type === 'view' ? { ...m, rev: this.elog.meta.rev } : m);
+      return;
+    }
+    const { rev: _rev, ...intent } = msg;
+    const { res, changed } = this.apply(actor, intent);
+    if (res.error) { if (changed) await this.save(); this.send(ws, { type: 'error', error: res.error }); return; }
     await this.save();
     this.broadcast(justEnded(before, this.room));
     if (res.data?.error) this.send(ws, { type: 'error', error: res.data.error }); // a restart that could not deal: the Host lands on setup with the reason
