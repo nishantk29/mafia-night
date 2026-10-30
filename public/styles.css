@@ -1024,7 +1024,7 @@ html.is-seat-dragging,html.is-seat-dragging *{cursor:grabbing!important}
 .faq-q > summary{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:56px;padding:var(--s3) 0;
   font-weight:700;font-size:var(--fs-md);line-height:1.3;color:var(--candle);list-style:none;cursor:pointer}
 .faq-q > summary::-webkit-details-marker{display:none}
-.faq-q > summary .ui-ico{width:20px;height:20px;color:var(--smoke);vertical-align:0;transition:transform var(--t-open) var(--ease-out)}
+.faq-q > summary .ui-ico{width:20px;height:20px;color:var(--smoke);vertical-align:0;transition:transform 220ms var(--ease-out)}
 .faq-q[open] > summary .ui-ico{transform:rotate(180deg)}
 @media (hover:hover){.faq-q > summary:hover .ui-ico{color:var(--candle)}}
 .faq-a{padding:0 0 var(--s5);max-width:var(--measure)}
@@ -1339,7 +1339,7 @@ html[data-phase="night"] .pane-game .phase-head{background:#17317E}
 
 
 /* lift on press: one transform */
-.block,.whisper,.guide,.path,.wrap.faq > .faq-group{transform:perspective(900px) translateY(var(--lift,0px)) rotateX(var(--rx,calc(var(--ogy,0) * -4deg))) rotateY(var(--ry,calc(var(--ogx,0) * 5deg)));
+.block,.whisper,.guide,.path{transform:perspective(900px) translateY(var(--lift,0px)) rotateX(var(--rx,calc(var(--ogy,0) * -4deg))) rotateY(var(--ry,calc(var(--ogx,0) * 5deg)));
   transition:transform 400ms var(--ease-out),scale var(--f-release) var(--ease-out);touch-action:pan-y}
 .block[data-tilting],.whisper[data-tilting],.guide[data-tilting],.path[data-tilting]{transition:transform 180ms linear,scale var(--f-release) var(--ease-out)}
 .block:active,.whisper:active,.guide:active,.path:active{scale:var(--f-press-scale)}
@@ -1508,15 +1508,16 @@ html[data-fx="off"] .coin-after.is-waiting,html[data-fx="off"] .coin-label.is-wa
 /* step transitions: View Transitions where available, the same slide in plain CSS elsewhere */
 html[data-vt] .pane-game,html[data-vt] #app > main.wrap{view-transition-name:step}
 html[data-vt] .rcard,html[data-vt] .waiting .rcard-back{view-transition-name:role-card}
-html[data-vt] .home-rules,html[data-vt] .wrap.faq > .phase-title{view-transition-name:rules-card}
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
 ::view-transition-old(step){animation:vt-out 100ms var(--ease-out) both}
 ::view-transition-new(step){animation:vt-in var(--t-enter) var(--ease-out) both}
-::view-transition-group(role-card),::view-transition-group(rules-card){animation-duration:400ms;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+::view-transition-group(role-card){animation-duration:400ms;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
 ::view-transition-group(step),::view-transition-group(root){animation-duration:var(--t-enter);animation-timing-function:cubic-bezier(.2,.8,.2,1)}
 @keyframes vt-out{to{opacity:0;transform:translateX(-8px)}}
 @keyframes vt-in{from{opacity:0;transform:translateX(16px)}}
 .step-in{animation:step-in var(--t-enter) var(--ease-out) both}
+/* the FAQ page opens on opacity + transform only, 220ms, no view transition (motion.js step) */
+.faq-in{animation:step-in 220ms var(--ease-out) both}
 @keyframes step-in{from{opacity:0;transform:translateX(16px)}}
 
 /* night rail: a finished step fills its connector from the top and its marker springs */
@@ -1563,11 +1564,11 @@ html[data-vt] .home-rules,html[data-vt] .wrap.faq > .phase-title{view-transition
 @media (prefers-reduced-motion:reduce){
   .secret .rcard,.secret-rest{transition:none}
   .secret-veil{transition:opacity 120ms linear!important}
-  .step-in,.cue.is-fill::before,.cue.is-fill .cue-n{animation:none}
+  .step-in,.faq-in,.cue.is-fill::before,.cue.is-fill .cue-n{animation:none}
 }
 html[data-fx="off"] .secret .rcard,html[data-fx="off"] .secret-rest{transition:none}
 html[data-fx="off"] .secret-veil{transition:opacity 120ms linear}
-html[data-fx="off"] .step-in,html[data-fx="off"] .cue.is-fill::before,html[data-fx="off"] .cue.is-fill .cue-n{animation:none}
+html[data-fx="off"] .step-in,html[data-fx="off"] .faq-in,html[data-fx="off"] .cue.is-fill::before,html[data-fx="off"] .cue.is-fill .cue-n{animation:none}
 
 /* numbers that roll keep a steady width */
 .tally,.vote-n,.stepper-n{font-variant-numeric:tabular-nums}

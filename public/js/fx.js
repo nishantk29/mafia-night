@@ -248,7 +248,8 @@ addEventListener('pointermove', (e) => e.pointerType !== 'touch' && tilt((e.clie
 
 // ---------------------------------------------------------------- card tilt and lift (hover pointers only)
 // Sets --rx/--ry on the card under the pointer; rAF-throttled, no idle loop. The seating board is never tilted: seats are dragged by coordinates.
-const CARDS = '.block,.whisper,.guide,.path,.faq-group,.role-tile,.role-group,.suggest-card';
+// .faq-group is left out: tilting a tall FAQ card in 3D while a question opens re-rasterised the whole card every frame.
+const CARDS = '.block,.whisper,.guide,.path,.role-tile,.role-group,.suggest-card';
 const cardOK = (el) => el && !el.querySelector('.board');
 let cardEl = null; let cx = 0; let cy = 0; let craf = 0;
 const cardFlush = () => {
