@@ -9,6 +9,7 @@ export function siteFooter() {
   const ext = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
   return `<footer class="site-foot">
     <nav class="foot-games" aria-label="Games">${GAME_LINKS.map(([n, h]) => `<a href="${h}">${n}</a>`).join('')}</nav>
+    <details class="foot-credits foot-display"><summary>Display</summary><kit-display-prefs></kit-display-prefs></details>
     <details class="foot-credits"><summary>Credits</summary>
       <ul>
         <li>Role icons: ${ext('https://game-icons.net', 'game-icons.net')} by Lorc, Delapouite and contributors, ${ext('https://creativecommons.org/licenses/by/3.0/', 'CC BY 3.0')}.</li>
