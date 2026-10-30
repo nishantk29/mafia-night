@@ -87,6 +87,8 @@ export function legalActions(room, r, { long = false } = {}) {
     if (room.condemnedDay === room.day) out.push({ type: 'startNight' });
     else if (long && R.chance(0.8)) out.push({ type: 'noCondemn' });
     else { const a = alive(room); if (a.length) out.push({ type: 'condemn', playerId: R.pick(a).id }, { type: 'condemn', playerId: R.pick(a).id }); out.push({ type: 'noCondemn' }); }
+    // The day steps (room.dayStage): Talk it out, a minute more or less, Skip, Continue to the vote.
+    if (room.condemnedDay !== room.day && R.chance(0.5)) out.push(R.pick([{ type: 'dayStage', stage: 'talk', minutes: 1 + R.int(15) }, { type: 'dayStage', stage: 'vote' }, { type: 'dayStage', stage: 'vote', skipped: true }, { type: 'dayStage', stage: 'morning' }]));
   }
   if (side && ['day', 'night'].includes(room.phase)) {
     const a = alive(room), d = dead(room);

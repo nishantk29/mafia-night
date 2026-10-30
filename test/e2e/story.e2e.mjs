@@ -211,6 +211,7 @@ try {
   await host.page.locator('[data-a="talkAdj"][data-v="1"]').click(); await wait(host, 150);
   const c1 = await clock(); L.check('+1 minute adds a minute', c1 >= 355 && c1 <= 360, c1);
   for (let i = 0; i < 5; i++) { await host.page.locator('[data-a="talkAdj"][data-v="-1"]').click(); await wait(host, 60); }
+  await host.page.locator('[data-a="talkAdj"][data-v="-1"][aria-disabled="true"]').waitFor({ timeout: 3000 }).catch(() => {}); // the step is a room move (E-4): wait for the room's view
   L.check('-1 stops at 1 minute (the clock never shows 0 from the buttons)', (await clock()) <= 60 && (await clock()) > 0 && await host.page.locator('[data-a="talkAdj"][data-v="-1"][aria-disabled="true"]').count() === 1, await clock());
   await host.page.locator('[data-a="talkAdj"][data-v="1"]').click(); await wait(host, 100);
   await host.page.reload(); await host.page.locator('.st-card .st-kicker:text("Talk")').waitFor({ timeout: 15000 });

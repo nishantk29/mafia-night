@@ -1,6 +1,6 @@
 // The day's "Talk it out" step: pure helpers (no DOM). The step never blocks: the countdown is text only, reaching 0 changes
-// nothing but the words, and Next and Skip are always on. The timing lives on the Host's phone (not in the room), so it
-// cannot touch the game; a refresh brings the step back from storage.
+// nothing but the words, and Next and Skip are always on. The step lives in the room (room.dayStage, set by the Host's
+// {type:'dayStage'} moves), so a reload, a second Host phone and Undo all see it. It never changes who is alive or who wins.
 import { TALK_MINUTES, TALK_MIN, TALK_MAX, TALK_STORE_KEY } from './config-defaults.js';
 
 export const clampMinutes = (n) => Math.min(TALK_MAX, Math.max(TALK_MIN, Math.round(Number(n)) || TALK_MINUTES));
@@ -15,11 +15,14 @@ export function talkDoneText({ timed, skipped, startedAt, now }) {
   return `Talked it out for ${m} ${m === 1 ? 'minute' : 'minutes'}`;
 }
 
-// Saved on the Host's phone: { code, gameNo, day, stage, minutes, startedAt, talkDone }.
+// The day step for the Host's view: the room's, for the day on screen.
+export const dayStageOf = (v) => (v?.phase === 'day' && v.dayStage?.day === v.day ? v.dayStage : null);
+// Before the room kept it, the step was saved on the Host's phone: { code, gameNo, day, stage, minutes, startedAt, talkDone }.
+// Read once, to move a room that was mid-talk at the update into the room (see adoptDayStage in app.js).
 export function loadDayStage(store, code, gameNo, day) {
   try {
     const s = JSON.parse(store.get(TALK_STORE_KEY) || 'null');
     return s && s.code === code && s.gameNo === gameNo && s.day === day && ['morning', 'talk', 'vote'].includes(s.stage) ? s : null;
   } catch { return null; }
 }
-export const saveDayStage = (store, code, gameNo, s) => store.set(TALK_STORE_KEY, JSON.stringify({ ...s, code, gameNo }));
+export const forgetDayStage = (store) => store.del(TALK_STORE_KEY);
