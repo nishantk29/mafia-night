@@ -6,6 +6,14 @@
 // Run: BASE=http://127.0.0.1:8942 node test/e2e/no-reveal.e2e.mjs   Shots: SHOTS=<dir>
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+// The death card (Killed / Voted out) stays until Close (Oct 30 2026). Taps every card that is up; true if one was there.
+async function closeDeathCard(P, waitMs = 0) {
+  const btn = P.page.locator('#fx [data-fx-continue]');
+  if (waitMs) await btn.first().waitFor({ timeout: waitMs }).catch(() => {});
+  let n = 0;
+  while (await btn.count()) { await btn.first().click(); await P.page.waitForTimeout(60); n++; if (n > 5) break; }
+  return n > 0;
+}
 import { ledger, launch, DEVICES } from './phones.mjs';
 
 const BASE = (process.env.BASE || '').replace(/\/$/, '');
@@ -73,6 +81,7 @@ async function night(host) {
     if (await host.page.locator('.st-card [data-a="selCondemn"], .st-kicker:text("Morning")').count()) break;
   }
   await host.page.locator('.st-card .st-kicker:text("Morning")').waitFor({ timeout: 8000 }).catch(() => {});
+  await closeDeathCard(host); // a night death's card waits for Close
 }
 const morningSay = (host) => host.page.evaluate(() => document.querySelector('.st-card .st-say')?.textContent || '');
 
@@ -129,14 +138,15 @@ try {
       L.check('vote: no "shows their card" step with reveal off', !/shows their card/.test(rail), rail);
       await host.page.locator('.action-dock .btn.big').click();
       await host.page.waitForFunction(() => /Start night 2|game|Game/.test(document.querySelector('.action-dock .btn.big')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
-      await wait(host, 900); // the pop-out settles
+      await wait(host, 900); // the death card is up (it stays until Close)
       const over = await host.page.evaluate(() => /Game over|wins/i.test(document.body.innerText));
       const after = await host.page.evaluate(() => [...document.querySelectorAll('.st-line')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()).join(' | '));
       L.check('vote: the game goes on (a Town player was voted out)', !over);
       L.check('vote: the result reads "<name> was voted out" and names no role', (new RegExp(`${pick} was voted out`).test(after) && !ROLE_WORDS.test(after.replace(/Vote\b/g, '').replace(/Mafia picked a target/g, ''))), after);
       if (SHOTS) await host.shot('vote-390');
       for (const p of players) await wait(p, 300);
-      const pop = await Promise.all(players.map((p) => p.page.evaluate(() => document.querySelector('.fx-pop')?.innerText || '')));
+      const pop = await Promise.all(players.map((p) => p.page.evaluate(() => document.querySelector('#fx .fx-out')?.innerText || '')));
+      L.check('vote: the death card is up on the phones (it waits for Close)', over || pop.some(Boolean), pop.join(' | '));
       if (SHOTS) await players.find((p) => p.name !== pick).shot('vote-phone-390');
       L.check('vote: the pop-out on phones names no role', pop.every((t) => !ROLE_WORDS.test(NAMES.reduce((s, n) => s.split(n).join(''), t))), pop.join(' | '));
       const leaks = players.flatMap(payloadLeaks); L.check('after the vote: no phone payload carries a dead player\'s role', over || leaks.length === 0, leaks.slice(0, 3).join(' | '));

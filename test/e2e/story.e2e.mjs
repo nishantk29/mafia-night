@@ -4,6 +4,14 @@
 // Run: node test/e2e/story.e2e.mjs   (BASE=http://127.0.0.1:8942 to use a dev server you started)   Shots: SHOTS=<dir>
 import { fileURLToPath } from 'node:url';
 import { writeFileSync } from 'node:fs';
+// The death card (Killed / Voted out) stays until Close (Oct 30 2026). Taps every card that is up; true if one was there.
+async function closeDeathCard(P, waitMs = 0) {
+  const btn = P.page.locator('#fx [data-fx-continue]');
+  if (waitMs) await btn.first().waitFor({ timeout: waitMs }).catch(() => {});
+  let n = 0;
+  while (await btn.count()) { await btn.first().click(); await P.page.waitForTimeout(60); n++; if (n > 5) break; }
+  return n > 0;
+}
 import { ledger, server, launch, phone, checkPhones } from './phones.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -136,6 +144,7 @@ try {
     await host.page.locator('.action-dock .btn.big').click(); await wait(host, 250);
     if (await host.page.locator('.st-card [data-a="selCondemn"], .st-kicker:text("Morning")').count()) break;
   }
+  await closeDeathCard(host); // a night death shows the death card, which waits for Close (death-card.e2e.mjs covers it)
   const dayStarted = await host.page.evaluate(() => /Day 1/.test(document.querySelector('.phase-title')?.textContent || ''));
   L.check('Next walked the whole night into day 1', dayStarted, lines.length + ' steps');
   const railText = lines.flatMap((l) => l.rail).join(' | ');
@@ -230,6 +239,7 @@ try {
   await host.page.locator('.action-dock .btn.big').click(); await wait(host, 400);
   // Live rooms answer a moment later: wait for the next step's button instead of a fixed sleep.
   await host.page.waitForFunction(() => /Start night 2/.test(document.querySelector('.action-dock .btn.big')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
+  L.check('the vote shows the death card, and it waits for Close (unless the vote ended the game)', (await closeDeathCard(host, 3000)) || !(await host.page.locator('.st-rail').count()));
   const after = await host.page.evaluate(() => ({ rail: [...document.querySelectorAll('.st-line')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()), btn: document.querySelector('.action-dock .btn.big')?.textContent.trim() }));
   L.check('the vote collapses and Start night 2 is next', after.rail.some((r) => /was voted out/.test(r)) && /Start night 2/.test(after.btn), JSON.stringify(after));
   const n2 = await host.page.evaluate(() => (document.querySelector('.st-rail')?.textContent.match(/Night 2/g) || []).length);
