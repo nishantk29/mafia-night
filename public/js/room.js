@@ -6,6 +6,7 @@ import {
   hasStoryScript, hasNightOnlyChecks, assignCallNumbers, callNumbers, hasNumberedCalls, shownRoleId, LATEST_NIGHT_VERSION, nightVersion, stepScript, prepNotes, nightOpen, nightClose, morningAnnouncement,
 } from './engine.js';
 import { THEMES } from './theme.js';
+import { randBytes, rand01, nowMs } from './entropy.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId, legacyRoleId, pinStoredId, storedToMerged } from './roles.js';
 import { roleGuide } from './role_guide.js';
 import { ROOM_MODES, CARD_FLOWS } from './modes.js';
@@ -18,14 +19,14 @@ const DEFAULT_LEGEND = {
 };
 const MAX_WRONG_CLAIMS = 5;
 
-const rid = (n = 6) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, '0')).join('');
+const rid = (n = 6) => [...randBytes(n)].map((b) => b.toString(16).padStart(2, '0')).join('');
 
 export function newRoom(code, hostKey) {
   return {
-    code, hostKey, created: Date.now(),
+    code, hostKey, created: nowMs(),
     nightVersion: LATEST_NIGHT_VERSION, // the Godfather shows as a Villager to the Detective (6), investigator results only at night (5), dead roles are still called at night (2), the Host's steps look the same alive or dead (3), the Host script (4); rooms stored without this field are version 1 (see engine nightVersion)
     config: { theme: 'city', rules: { ...DEFAULT_RULES }, revealPolicy: REVEAL_POLICY, mode: 'app', cardFlow: 'blind', deckStyle: 'random', roles: [], customRoles: [], sharedBoard: true, legend: { ...DEFAULT_LEGEND } },
-    players: [], deck: null, copSalt: Math.random(), phase: 'lobby', day: 0, night: 0,
+    players: [], deck: null, copSalt: rand01(), phase: 'lobby', day: 0, night: 0,
     usage: {}, dayUsed: {}, pending: [], log: [], winner: null, sideWins: [], lastReport: null, shield: false, framed: [], seq: 0,
   };
 }
@@ -45,7 +46,7 @@ function addPlayer(room, name, offline) {
 function resetDeal(room) {
   for (const p of room.players) { p.roleId = null; p.card = null; p.alive = true; p.tags = []; p.deathCause = null; p.roleHidden = false; p.target = null; p.convertedFrom = null; p.wrongClaims = 0; delete p.note; delete p.becameJester; delete p.jesterSeen; }
   delete room.callNo; // fresh random Cop 1/2/... numbers each game
-  room.copSalt = Math.random(); // seeds the neutral "Cop 1/2/..." numbering for this game
+  room.copSalt = rand01(); // seeds the neutral "Cop 1/2/..." numbering for this game
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.condemnedDay = null; room.usage = {}; room.dayUsed = {};
   room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.results = []; room.shield = false; room.framed = [];
   delete room.graveyard;
@@ -79,7 +80,7 @@ function postChat(room, actor, a) {
   if (!actor.host && !(me && me.alive === false)) return err('Only the dead can use the Graveyard.');
   const text = String(a.text ?? '').replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/ {2,}/g, ' ').trim().slice(0, GY_LEN).trim();
   if (!text) return err('Write something first.');
-  const from = actor.host ? 'host' : me.id, now = Date.now();
+  const from = actor.host ? 'host' : me.id, now = nowMs();
   let m = gyRate.get(room); if (!m) gyRate.set(room, m = new Map());
   const recent = (m.get(from) || []).filter((x) => now - x < GY_WINDOW);
   if (recent.length >= GY_RATE) { m.set(from, recent); return err('Slow down a little.'); }

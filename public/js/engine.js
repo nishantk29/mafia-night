@@ -1,5 +1,6 @@
 // Pure game logic. Shared by the Cloudflare Worker, the browser (local mode) and node tests.
 import { ROLES, ROLE_BY_ID, factionOf, INVESTIGATOR_ID, MERGE_NIGHT_VERSION } from './roles.js';
+import { randU32 } from './entropy.js';
 import { simpleDeckMap } from './simple.js';
 
 export const MIN_PLAYERS = 5;
@@ -10,11 +11,11 @@ export const roleMax = (roleId, playerCount = MAX_PLAYERS) =>
   roleId === 'lover' ? 2 : Math.min(MAX_PLAYERS, Math.max(1, playerCount | 0));
 
 // ---------- randomness ----------
+// From entropy.js: crypto on its own, a seeded stream while the room applies an event (so the log replays exactly).
 export function randInt(n) {
-  const a = new Uint32Array(1);
   const lim = Math.floor(0x100000000 / n) * n;
   let x;
-  do { crypto.getRandomValues(a); x = a[0]; } while (x >= lim);
+  do { x = randU32(); } while (x >= lim);
   return x % n;
 }
 export function shuffle(arr) {
