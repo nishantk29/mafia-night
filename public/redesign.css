@@ -22,17 +22,16 @@ html{background:#0B0B0D;hyphens:manual}
 .home-rules b,.rcard-name{font-weight:800;letter-spacing:.03em;text-transform:uppercase;font-size:1.3em}
 @media (min-width:768px){.home-hero .wordmark{font-size:clamp(5.5rem,11vw,9rem)}}
 
-/* ---- logo: outlined Limelight letters, blood running off their bottoms; the drips grow once, then ooze slowly ---- */
+/* ---- logo: outlined Limelight letters, blood running off their bottoms; the drips grow once and hold (400ms budget, 2026-10-29) ---- */
 .home-hero{position:relative}
 .wordmark{position:relative;display:block;width:min(100%,430px);margin:0 0 var(--s3)}
 .wordmark-svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
 .wm-drips{position:absolute;inset:0;pointer-events:none}
 .dr-svg{position:absolute;display:block;overflow:visible;transform-origin:50% 0;will-change:transform}
 .wm-blood .dr{fill:var(--blood,#B3121F)}
-html[data-fx="on"] .dr-svg{animation:drip calc(1.6s * var(--dur-scale)) var(--ease-butter) both,ooze calc(7s * var(--dur-scale)) ease-in-out calc(calc(1.6s * var(--dur-scale)) + var(--i) * calc(.45s * var(--dur-scale))) 1}
-html[data-fx="on"] .dr-svg:nth-child(3n){animation-delay:calc(.5s * var(--dur-scale)),calc(2s * var(--dur-scale))}
+html[data-fx="on"] .dr-svg{animation:drip 320ms var(--ease-butter) both}
+html[data-fx="on"] .dr-svg:nth-child(3n){animation-delay:80ms}
 @keyframes drip{from{transform:scaleY(0);opacity:0}25%{opacity:1}}
-@keyframes ooze{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.06)}}
 @media (min-width:768px){.wordmark{width:min(100%,520px)}}
 
 /* ---- knife strike, once, when the Host card first shows ---- */
@@ -41,7 +40,7 @@ html[data-fx="on"] .dr-svg:nth-child(3n){animation-delay:calc(.5s * var(--dur-sc
 .knife svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 8px 6px rgba(0,0,0,.55))}
 /* One strike: transform + opacity on the .knife layer only. The 0% pose is the starting state (backwards fill), so the
    final pose never shows before it. Ease-out into the card, a small overshoot, then it settles at 18deg. */
-html[data-fx="on"] .knife.is-new{will-change:transform;animation:knife-in calc(.48s * var(--dur-scale)) cubic-bezier(.2,.8,.2,1) calc(.1s * var(--dur-scale)) both}
+html[data-fx="on"] .knife.is-new{will-change:transform;animation:knife-in 320ms cubic-bezier(.2,.8,.2,1) 80ms both}
 @keyframes knife-in{
   0%{opacity:0;transform:translate3d(64px,-84px,0) rotate(54deg)}
   22%{opacity:1}
@@ -55,10 +54,7 @@ html[data-fx="on"] .knife.is-new{will-change:transform;animation:knife-in calc(.
 .bg-art .smoke{position:absolute;left:-30%;top:10%;width:160%;height:70%;opacity:.55;background:radial-gradient(40% 50% at 30% 50%,rgba(255,244,230,.07),transparent 70%),radial-gradient(34% 44% at 70% 40%,rgba(179,18,31,.12),transparent 70%)}
 .bg-art .skyline{position:absolute;left:0;right:0;bottom:0;height:clamp(150px,34vh,340px);background:repeat-x bottom/auto 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 200' preserveAspectRatio='none'%3E%3Cg fill='%23141217'%3E%3Cpath d='M0 200V120h30V90h24v40h20V70h36v60h18V100h30V60l14-10 14 10v70h26V110h34V80h22v50h28V95h30v40h20V75h36v125z'/%3E%3C/g%3E%3Cg fill='%23ffd36b' opacity='.55'%3E%3Crect x='38' y='100' width='4' height='6'/%3E%3Crect x='94' y='86' width='4' height='6'/%3E%3Crect x='104' y='96' width='4' height='6'/%3E%3Crect x='214' y='78' width='4' height='6'/%3E%3Crect x='304' y='92' width='4' height='6'/%3E%3Crect x='392' y='102' width='4' height='6'/%3E%3Crect x='470' y='86' width='4' height='6'/%3E%3Crect x='540' y='84' width='4' height='6'/%3E%3C/g%3E%3C/svg%3E");opacity:.9}
 .bg-art .moon{position:absolute;right:9%;top:9%;width:clamp(70px,9vw,130px);aspect-ratio:1;border-radius:var(--f-r-round);background:radial-gradient(circle at 38% 38%,#fff1d8,#d8c6a6 62%,#a8977a);box-shadow:0 0 60px 10px rgba(255,236,200,.12);opacity:.85}
-/* the smoke drifts in once and settles where it rests (no looping motion: Nishant, Oct 28 11:09 PM ET); that resting place is
-   also what reduced motion and effects off show */
-html[data-fx="on"] .bg-art .smoke{animation:smoke calc(46s * var(--dur-scale)) cubic-bezier(.2,.6,.3,1) 1 both}
-@keyframes smoke{from{transform:translate3d(18%,0,0)}to{transform:none}}
+/* the smoke holds its resting place (a 46s drift does not fit the 400ms budget, 2026-10-29); reduced motion and effects off show the same */
 html[data-shell="host"] .bg-art .moon,html[data-shell="player"] .bg-art .moon{opacity:.4}
 @media (max-width:767px){.bg-art .moon{opacity:.55}}
 
@@ -66,8 +62,8 @@ html[data-shell="host"] .bg-art .moon,html[data-shell="player"] .bg-art .moon{op
 .role-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .role-tile,.role-group{--ts:#1B1B1F;--tn:#FFF4E6;--ta:#C9C9D6;--tt:#8DB6E8;border:1px solid var(--divider);border-left:1px solid var(--divider);border-radius:var(--f-r-field);
   background:var(--ts);color:var(--tn);min-height:132px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 6px 12px -6px rgba(0,0,0,.6);
-  transform:perspective(800px) translateY(var(--lift,0px)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform calc(320ms * var(--dur-scale)) var(--ease-butter),background calc(200ms * var(--dur-scale)),border-color calc(200ms * var(--dur-scale))}
-.role-tile[data-tilting],.role-group[data-tilting]{transition:transform calc(90ms * var(--dur-scale)) linear}
+  transform:perspective(800px) translateY(var(--lift,0px)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform 400ms var(--ease-butter)}
+.role-tile[data-tilting],.role-group[data-tilting]{transition:transform 180ms linear}
 .role-tile.a-mafia,.role-tile.a-third,.role-tile.a-town{border-left:1px solid var(--divider)}
 .role-tile.a-mafia{--tt:#FF7B73}
 .role-tile.a-third{--tt:#C8A8FF}
@@ -125,8 +121,8 @@ html[data-shell="host"] .bg-art .moon,html[data-shell="player"] .bg-art .moon{op
 .suggest-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .suggest-card{--lift:0px;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:172px;padding:18px 14px 16px;border-radius:var(--f-r-field);text-align:center;text-decoration:none;color:#FFF4E6;background:#1B1B1F;
   border:1px solid var(--divider);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 10px 18px -10px rgba(0,0,0,.7);
-  transform:perspective(800px) translateY(var(--lift)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform calc(320ms * var(--dur-scale)) var(--ease-butter)}
-.suggest-card[data-tilting]{transition:transform calc(90ms * var(--dur-scale)) linear}
+  transform:perspective(800px) translateY(var(--lift)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform 400ms var(--ease-butter)}
+.suggest-card[data-tilting]{transition:transform 180ms linear}
 .suggest-token{display:grid;place-items:center;width:64px;height:64px;border-radius:var(--f-r-round);background:var(--acc-bg);box-shadow:inset 0 0 0 2px var(--acc)}
 .suggest-token svg{width:34px;height:34px;color:var(--acc)}
 .suggest-name{font-family:var(--font-display);font-weight:800;font-size:1.5rem;line-height:1;letter-spacing:.03em;text-transform:uppercase}
@@ -135,13 +131,13 @@ html[data-shell="host"] .bg-art .moon,html[data-shell="player"] .bg-art .moon{op
 .suggest-card.is-gilded{--acc:#FF9A3D;--acc-bg:rgba(255,154,61,.1)}
 @media (min-width:768px){.suggest{max-width:42rem}}
 
-/* ---- kill splatter (about 1s, transform and opacity) ---- */
+/* ---- kill splatter (ends by 400ms, transform and opacity) ---- */
 .fx-blood{position:absolute;inset:-18% -12%;pointer-events:none;z-index:2;overflow:visible}
 .fx-blood svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.fx-blood .splat,.fx-blood .spot{transform-box:fill-box;transform-origin:50% 50%;fill:var(--blood);animation:splat calc(.38s * var(--dur-scale)) var(--ease-butter) both}
-.fx-blood .splat.d2{animation-delay:calc(.05s * var(--dur-scale));fill:#8A0C18}
-.fx-blood .run{transform-box:fill-box;transform-origin:50% 0;fill:var(--blood);animation:run calc(.95s * var(--dur-scale)) var(--ease-butter) both}
-.fx-blood .run.r2{animation-delay:calc(.1s * var(--dur-scale))}
+.fx-blood .splat,.fx-blood .spot{transform-box:fill-box;transform-origin:50% 50%;fill:var(--blood);animation:splat 300ms var(--ease-butter) both}
+.fx-blood .splat.d2{animation-delay:100ms;fill:#8A0C18}
+.fx-blood .run{transform-box:fill-box;transform-origin:50% 0;fill:var(--blood);animation:run 280ms var(--ease-butter) both}
+.fx-blood .run.r2{animation-delay:120ms}
 @keyframes splat{from{transform:scale(.1);opacity:0}60%{opacity:1}to{transform:scale(1);opacity:.92}}
 @keyframes run{from{transform:scaleY(0);opacity:0}15%{opacity:1}to{transform:scaleY(1);opacity:.95}}
 .fx-out.is-night .fx-card{position:relative;overflow:visible}
@@ -156,10 +152,10 @@ html[data-fx="off"] .dr-svg,html[data-fx="off"] .knife,html[data-fx="off"] .bg-a
 
 /* ---- first-load rise on the home screen ---- */
 html[data-fx="on"] .home-intro .home-paths > *{animation:rise var(--t-enter) var(--ease-out) both}
-html[data-fx="on"] .home-intro .home-paths > :nth-child(2){animation-delay:calc(15ms * var(--dur-scale))}
-html[data-fx="on"] .home-intro .home-paths > :nth-child(3){animation-delay:calc(30ms * var(--dur-scale))}
-html[data-fx="on"] .home-intro .home-paths > :nth-child(4){animation-delay:calc(45ms * var(--dur-scale))}
-html[data-fx="on"] .home-intro .home-paths > :nth-child(n+5){animation-delay:calc(60ms * var(--dur-scale))}
+html[data-fx="on"] .home-intro .home-paths > :nth-child(2){animation-delay:30ms}
+html[data-fx="on"] .home-intro .home-paths > :nth-child(3){animation-delay:60ms}
+html[data-fx="on"] .home-intro .home-paths > :nth-child(4){animation-delay:90ms}
+html[data-fx="on"] .home-intro .home-paths > :nth-child(n+5){animation-delay:120ms}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}}
 .home-intro .path-host{animation-name:rise}
 
@@ -217,11 +213,11 @@ h3,.appbar-title,.faq-q summary,.home-how h3,.role-name{font-family:var(--font-d
 .appbar-code .code{font-size:.95rem;letter-spacing:.04em}
 @media (max-width:480px){.appbar-code{font-size:.7rem}.appbar-code .code{font-size:.82rem;letter-spacing:.02em}}
 
-/* ---- arriving from the hub (game end of the handoff): ONE opacity fade of the page, 150ms base (300ms at --dur-scale 2).
+/* ---- arriving from the hub (game end of the handoff): ONE opacity fade of the page, 150ms.
    Nothing moves: the wordmark no longer flies in from the handoff pose (Nishant, Oct 28: "That logo moving on game night is
    kinda janky"), and the first-load rise of the home cards is skipped so the fade is the only motion. html.hub-in is set by
    the inline script in <head>, never under reduced motion or with effects off, and stays for the page's life so nothing replays. */
-html.hub-in #app,html.hub-in .bg-art{animation:hub-fade calc(.15s * var(--dur-scale)) var(--ease-butter) both}
+html.hub-in #app,html.hub-in .bg-art{animation:hub-fade 300ms var(--ease-butter) both}
 html.hub-in .home-intro .home-paths > *{animation:none}
 @keyframes hub-fade{from{opacity:0}to{opacity:1}}
 
@@ -273,10 +269,10 @@ h3,h4,.group-title,.sheet-title,.balance-title,.guide-title,.appbar-title,.faq-q
 /* ---- buttons: gold primary / outlined secondary / red-outlined danger ---- */
 .btn:not(#v2){min-height:var(--f-btn-h);padding:0 var(--s5);border:2px solid var(--brass);border-radius:var(--f-r-pill);background:var(--brass);color:var(--on-brass);
   font:600 var(--fs-md)/1.2 var(--font-ui);letter-spacing:0;text-transform:none;white-space:nowrap;text-overflow:clip;box-shadow:none;filter:none;
-  transition:background-color var(--f-dur-fast) var(--f-ease),border-color var(--f-dur-fast) var(--f-ease),transform var(--f-dur-fast) var(--f-ease)}
+  transition:transform var(--f-release) var(--f-ease)}
 .btn.big:not(#v2){display:flex;width:100%;min-height:var(--f-btn-h);font-size:var(--fs-md);letter-spacing:0}
 .action-dock .btn.big:not(#v2),.wrap.join .btn.big:not(#v2),.card-picker .btn.big:not(#v2){min-height:56px;font-size:var(--fs-lg);font-weight:600;border:2px solid var(--brass);box-shadow:none}
-.btn:not(#v2):active,.action-dock .btn.big:not(#v2):active{transform:scale(.98);box-shadow:none}
+.btn:not(#v2):active,.action-dock .btn.big:not(#v2):active{transform:scale(var(--f-press-scale));box-shadow:none}
 .btn.ghost:not(#v2),.block .btn.ghost:not(#v2),.whisper .btn.ghost:not(#v2),.guide .btn.ghost:not(#v2),.cue-body .btn.ghost:not(#v2),
 .block .btn:not(.big):not(.danger):not(#v2),.whisper .btn:not(.big):not(.danger):not(#v2),.guide .btn:not(.big):not(.danger):not(#v2),.cue-body .btn:not(.danger):not(#v2){
   min-height:var(--f-btn-h-sm);background:transparent;border:2px solid var(--rule-strong);color:var(--candle)}
@@ -318,7 +314,7 @@ h3,h4,.group-title,.sheet-title,.balance-title,.guide-title,.appbar-title,.faq-q
 .hw-title{margin:0 0 .5em;font-family:var(--f-display-font,inherit);font-weight:400;font-size:1.6em;line-height:1.15}
 .hw-line{margin:.4em 0;line-height:1.45}
 .hw-dots{display:flex;justify-content:center;gap:8px;margin:var(--f-space-3,12px) 0}
-.hw-dots i{width:8px;height:8px;border-radius:var(--f-r-round);background:currentColor;opacity:.3;transition:opacity calc(160ms * var(--dur-scale)),transform calc(160ms * var(--dur-scale))}
+.hw-dots i{width:8px;height:8px;border-radius:var(--f-r-round);background:currentColor;opacity:.3;transition:opacity 320ms,transform 320ms}
 .hw-dots i.on{opacity:1;transform:scale(1.25);background:var(--f-accent,currentColor)}
 @keyframes hw-in{from{opacity:0;transform:translateX(var(--hw-from,12px))}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.hw-card{animation:none}.hw-dots i{transition:none}}
@@ -332,7 +328,7 @@ h3,h4,.group-title,.sheet-title,.balance-title,.guide-title,.appbar-title,.faq-q
 .appbar-code svg{width:16px;height:16px;opacity:.7}
 @media (hover:hover){.appbar-code:hover{border-color:var(--brass)}}
 .night-progress{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--rule);overflow:hidden;pointer-events:none}
-.night-progress i{position:absolute;inset:0;background:var(--brass);transform-origin:0 50%;transform:scaleX(var(--p,0));transition:transform calc(300ms * var(--dur-scale)) cubic-bezier(.2,.8,.2,1)}
+.night-progress i{position:absolute;inset:0;background:var(--brass);transform-origin:0 50%;transform:scaleX(var(--p,0));transition:transform 400ms cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion:reduce){.night-progress i{transition:none}}
 html[data-fx="off"] .night-progress i{transition:none}
 .menu-list{display:grid;gap:var(--s2);margin-bottom:var(--s4)}
