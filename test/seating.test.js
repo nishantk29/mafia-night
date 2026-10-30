@@ -172,7 +172,7 @@ test('host DOM: the gate, the card back and the panel hold no role text; the hel
     const card = passLayer(hv, { id: ben, stage: 'card' });
     assert.deepEqual(roleWords(text(card)), [], 'the card back names no role');
     assert.match(card, /data-pass-face[^>]*><\/span>/, 'nothing is drawn on the card until it is held');
-    assert.match(card, /Hide and pass back/);
+    assert.match(card, /Hide and pass on/);
     const panel = passPanel(hv, []);
     assert.deepEqual(roleWords(text(panel)), [], 'the panel lists seats and no role');
     assert.ok(panel.includes('Ben') && panel.includes('Gil') && !panel.includes('Ana'));

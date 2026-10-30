@@ -86,7 +86,7 @@ function cardBody(k, c) {
 function playersCard({ v, local, n }) {
   const chips = v.players.map((p) => `<li class="chip"><span class="chip-i">${initial(p.name)}</span><span class="chip-name">${esc(p.name)}</span>${!local && !p.offline && p.connected ? `<span class="chip-phone" title="Joined on their own phone">${ui('phone')}<span class="sr-only">joined on their own phone</span></span>` : ''}<button type="button" class="chip-x" data-a="rmPlayer" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">${ui('x')}</button></li>`).join('');
   const anyPhone = !local && v.players.some((p) => !p.offline && p.connected);
-  return `${local ? '' : `<p class="room-chip">${ui('expand')} <span>Players join with code <b class="code">${esc(v.code)}</b></span><button type="button" class="linkish" data-a="showQr">Show QR</button></p>`}
+  return `${local ? '' : `<p class="room-chip">${ui('expand')} <span>Players join with code <b class="code">${esc(v.code)}</b></span><button type="button" class="linkish" data-a="showQr">Show QR code</button></p>`}
     <div class="tally-row"><b data-tick="players">${plural(n, 'player')}</b>${anyPhone ? `<span class="legend-phone">${ui('phone')} joined on their own phone</span>` : ''}</div>
     ${n ? (local ? `<ul class="chips">${chips}</ul>` : seatRows(v)) : `<p class="muted setup-empty">${local ? 'Nobody’s here yet. Add everyone’s names below.' : 'Nobody’s here yet. Share the code, or add names for people without phones.'}</p>`}
     <form class="add-name" data-a-submit="addNames"><input class="add-input" data-i="names" id="add-name" placeholder="Add a name" aria-label="Add a name" autocomplete="off" enterkeyhint="done" value="${esc(S.ui.draft.names || '')}"><button type="button" class="btn ghost" data-a="addNames">${local ? 'Add' : 'Seat on this phone'}</button></form>
@@ -121,7 +121,7 @@ function seatingCard({ v, st }) {
   let more = '';
   if (cur === 'own' && byName.length) {
     more = `<p class="callout is-warn" role="note">${ui('warning')} <span>${list(byName)} ${byName.length === 1 ? 'was' : 'were'} added by name and ${byName.length === 1 ? 'has' : 'have'} no phone. When you deal, ${byName.length === 1 ? 'they look' : 'each looks'} on this phone.</span></p>
-      <div class="btn-row"><button type="button" class="btn ghost" data-a="setupSeating" data-v="mixed">Seat on this phone</button><button type="button" class="linkish" data-a="setupGo" data-v="0">Back to Players</button></div>`;
+      <div class="btn-row"><button type="button" class="btn ghost" data-a="setupSeating" data-v="mixed">Seat on this phone</button><button type="button" class="linkish" data-a="setupGo" data-v="0">Back to players</button></div>`;
   } else if (cur === 'one' && phones.length) {
     more = `<p class="callout" role="note">${ui('info')} <span>${list(phones)} joined on ${phones.length === 1 ? 'their own phone' : 'their own phones'}. When you deal, ${phones.length === 1 ? 'that seat moves' : 'those seats move'} to this phone.</span></p>`;
   }
@@ -206,7 +206,7 @@ export function previewSheet(c, id) {
   const actions = fits
     ? `<button type="button" class="btn big" data-a="setupUse" data-v="${p.id}">Use this</button><button type="button" class="linkish" data-a="setupCustomizeFrom" data-v="${p.id}">Customize from here</button>`
     : `<p class="callout is-warn" role="note">${ui('warning')} <span>${esc(misfitLine(p, n))}</span></p><button type="button" class="btn big" data-a="setupAddPlayers">Add players</button><button type="button" class="linkish" data-a="setupSheetClose">Pick another</button>
-       <button type="button" class="linkish" data-a="setupUse" data-v="${p.id}">Use it anyway</button>`;
+       <button type="button" class="linkish" data-a="setupUse" data-v="${p.id}">Use this</button>`;
   return sheetShell('pv', esc(p.name), `<p class="pp-vibe">${esc(p.vibe)}</p><p class="pp-meta">${p.saved ? '★ Saved · ' : ''}${esc(rangeText(p, n))} ${p.difficulty === 'Saved' ? '' : esc(p.difficulty)} ${diffDots(p.difficulty)}</p>
     <ul class="mix-list">${rows}</ul>${balanceBar(mix)}${balanceLine(mix, p.hiddenSetup)}<div class="sheet-actions">${actions}</div>`);
 }
