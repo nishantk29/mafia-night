@@ -1,7 +1,7 @@
 // usage: node scripts/build-deploy.mjs <outFile>   (run `node scripts/build-embedded.mjs` first)
-// Writes a Cloudflare-API deploy function file. Worker name, DO bindings and compatibility_date come from wrangler.jsonc only.
+// Writes a Cloudflare-API deploy function file. Worker name, bindings (ROOM, AI, vars) and compatibility_date come from wrangler.jsonc only.
 import fs from 'node:fs';
-import { deployConfig } from './deploy-config.mjs';
+import { deployConfig, deployFunction } from './deploy-config.mjs';
 import { computeVersion, swVersion, FIX_HINT } from './sw-version.mjs';
 import { runGate } from './test-gate.mjs';
 
@@ -15,14 +15,6 @@ if (!gate.ok) {
 if (swVersion() !== computeVersion()) { console.error('public/sw.js VERSION is stale (public/ changed since make-pwa); installed PWAs would keep old files.\n' + FIX_HINT); process.exit(1); }
 const { name, metadata } = deployConfig(fs.readFileSync('wrangler.jsonc', 'utf8'));
 const W = fs.readFileSync('dist-embedded/worker.js', 'utf8');
-const fn = `async () => { const ACC="a3303cef4b0984b2859ef104bd74df1e"; const NAME=${JSON.stringify(name)}; const WORKER=${JSON.stringify(W)};
- const metadata = ${JSON.stringify(metadata)};
- const B = '----cn' + Date.now();
- const body = ['--' + B, 'Content-Disposition: form-data; name="metadata"', 'Content-Type: application/json', '', JSON.stringify(metadata),
-   '--' + B, 'Content-Disposition: form-data; name="worker.js"; filename="worker.js"', 'Content-Type: application/javascript+module', '', WORKER, '--' + B + '--', ''].join('\\r\\n');
- const put = await cloudflare.request({ method: 'PUT', path: '/accounts/' + ACC + '/workers/scripts/' + NAME, body, contentType: 'multipart/form-data; boundary=' + B, rawBody: true });
- const sub = await cloudflare.request({ method: 'POST', path: '/accounts/' + ACC + '/workers/scripts/' + NAME + '/subdomain', body: { enabled: true, previews_enabled: false } });
- return { script: put.success, errors: put.errors, etag: put.result && put.result.etag, subdomain: sub.success };
-}`;
+const fn = deployFunction({ name, metadata, worker: W });
 try { fs.writeFileSync(out, fn); } catch (e) { fs.rmSync(out, { force: true }); throw e; } // never leave a half-written deploy file
-console.log(out, fn.length, 'worker=' + name);
+console.log(out, fn.length, 'worker=' + name, 'bindings=' + metadata.bindings.map((b) => b.name).join(','));
