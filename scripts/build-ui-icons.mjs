@@ -65,6 +65,8 @@ const KEYS = {
   hand: ['ph', 'hand-bold'],
   pick: ['ph', 'user-focus-bold'],
   rules: ['ph', 'sliders-horizontal-bold'],
+  undo: ['ph', 'arrow-u-up-left-bold'],
+  redo: ['ph', 'arrow-u-up-right-bold'],
 };
 
 const sets = { ph: read('@iconify-json/ph/icons.json'), 'game-icons': read('@iconify-json/game-icons/icons.json') };

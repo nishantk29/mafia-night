@@ -2,7 +2,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { errorResponse } from './error-page.js';
 import { newRoom, migrateRoleIds, messagesFor, justEnded } from '../public/js/room.js';
-import { commit, KEY, SNAP_EVERY, LOG_VERSION, chunkOf, writesAfterAppend } from '../public/js/event-log.js';
+import { GameLog, KEY, LOG_VERSION, chunkOf } from '../public/js/event-log.js';
+import { NOTIFY_ON_UNDO } from '../public/js/config-defaults.js';
 import { handleAiInternal } from './ai.js';
 import { askRule } from './ask.js';
 import { RULES_INDEX, RULES_HASH } from './rules-index.js';
@@ -75,51 +76,74 @@ export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.room = null;
-    this.elog = null;
+    this.log = null; // GameLog: every change to the room as an event (public/js/event-log.js)
     this.ready = ctx.blockConcurrencyWhile(async () => {
       this.room = migrateRoleIds((await ctx.storage.get('room')) || null);
-      if (this.room) await this.loadLog(await ctx.storage.get(KEY.meta));
+      if (this.room) await this.loadLog();
     });
   }
 
-  // The event log (public/js/event-log.js) kept in this room's storage next to `room`. Only the meta and the
-  // current chunk are held in memory. A room stored before the log existed, or one whose log is out of step with
-  // `room` (written by an older build after a rollback), starts a fresh log with its current state as the base.
-  async loadLog(meta) {
-    if (meta?.v === LOG_VERSION && meta.updated === this.room.updated && meta.cursor === meta.len) {
-      const tail = meta.len % meta.snapEvery ? (await this.ctx.storage.get(KEY.chunk(chunkOf(meta.len, meta.snapEvery)))) || [] : [];
-      if (tail.length === meta.len % meta.snapEvery) { this.elog = { meta, tail, writes: {} }; return; }
-    }
+  // The event log lives in this room's storage next to `room`: elog:meta, elog:base, elog:c:<k> (events in chunks of
+  // SNAP_EVERY) and elog:s:<k> (a checkpoint every SNAP_EVERY events). Loading replays from the last checkpoint and
+  // must give back the stored `room` exactly. A room from before the log, or a log an older build left out of step
+  // (after a rollback), or one the reducer now replays differently (after a rules fix), starts a fresh log from `room`.
+  async loadLog() {
+    const st = this.ctx.storage; const meta = await st.get(KEY.meta);
+    try {
+      if (meta?.v === LOG_VERSION && meta.len >= meta.cursor && meta.cursor >= 0) {
+        const events = [];
+        for (let k = 0; k * meta.snapEvery < meta.len; k++) events.push(...((await st.get(KEY.chunk(k))) || []));
+        if (events.length >= meta.len) {
+          events.length = meta.len;
+          const snaps = [];
+          for (let k = 1; k * meta.snapEvery <= meta.len; k++) { const s = await st.get(KEY.snap(k)); if (s) snaps.push([k * meta.snapEvery, s]); }
+          const log = GameLog.restore({ base: await st.get(KEY.base), events, cursor: meta.cursor, rev: meta.rev, snaps }, { snapEvery: meta.snapEvery });
+          if (JSON.stringify(migrateRoleIds(log.room)) === JSON.stringify(this.room)) { this.log = log; this.room = log.room; this.dirty = null; return; }
+        }
+      }
+    } catch (e) { console.error(`event log unreadable for room ${this.room.code}, starting a fresh one:`, e?.message || e); }
     this.startLog();
   }
   startLog() {
-    const meta = { v: LOG_VERSION, rev: 0, cursor: 0, len: 0, snapEvery: SNAP_EVERY, updated: this.room.updated };
-    this.elog = { meta, tail: [], writes: { [KEY.base]: structuredClone(this.room), [KEY.meta]: meta } };
+    this.log = new GameLog(this.room);
+    this.room = this.log.room;
+    this.dirty = { base: true, from: 0 };
+  }
+  metaOf() { const L = this.log; return { v: LOG_VERSION, rev: L.rev, cursor: L.cursor, len: L.events.length, snapEvery: L.snapEvery }; }
+  markDirty(from) { this.dirty ||= {}; this.dirty.from = Math.min(this.dirty.from ?? from, from); }
+
+  // Every change to the room goes through here: the message is applied as an event and kept if it changed the room.
+  // A new move after Undo drops the steps that were undone (the redo branch).
+  apply(actor, msg) {
+    const r = this.log.apply(actor, msg, Date.now());
+    this.room = this.log.room;
+    if (r.kept) {
+      this.markDirty(this.log.cursor - 1);
+      if (this.log.events.length >= MAX_EVENTS && ['lobby', 'dealt', 'over'].includes(this.room.phase)) this.startLog(); // a long-running room: keep the log bounded at a game boundary
+    }
+    return { res: r, changed: !!r.kept };
   }
 
-  // Every change to the room goes through here: the message is applied as an event, and kept if it changed the room.
-  apply(actor, msg) {
-    const r = commit(this.room, actor, msg, Date.now());
-    if (r.changed) {
-      const L = this.elog;
-      L.tail.push(r.ev);
-      L.meta = { ...L.meta, len: L.meta.len + 1, cursor: L.meta.len + 1, rev: L.meta.rev + 1, updated: this.room.updated };
-      Object.assign(L.writes, writesAfterAppend(L.meta, L.tail.slice(), structuredClone(this.room)));
-      if (L.meta.len % L.meta.snapEvery === 0) L.tail = [];
-    }
-    return r;
+  // The room, the log meta, the changed chunks and any new checkpoints go out together: puts with no await between
+  // them are one atomic write in a Durable Object.
+  writes() {
+    const L = this.log; const out = { room: this.room, [KEY.meta]: this.metaOf() };
+    if (!this.dirty) return out;
+    if (this.dirty.base) out[KEY.base] = L.base;
+    const len = L.events.length; const E = L.snapEvery;
+    for (let k = chunkOf(this.dirty.from ?? len, E); k * E < len; k++) out[KEY.chunk(k)] = L.events.slice(k * E, (k + 1) * E);
+    for (const [i, s] of L.snaps) if (i > (this.dirty.from ?? len) && i <= len) out[KEY.snap(i / E)] = s;
+    return out;
   }
 
   // A failed write must never swallow a move: retry once, and if storage is still unhappy keep going with the
   // in-memory room (it is what every screen is showing) and try again on the next action.
-  // The room, the log meta, the current chunk and any checkpoint go out together: puts with no await between them
-  // are one atomic write in a Durable Object.
   async save() {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const writes = { room: this.room, ...(this.elog?.writes || {}) };
-        await Promise.all(Object.entries(writes).map(([k, v]) => this.ctx.storage.put(k, v)));
-        if (this.elog) this.elog.writes = {};
+        const w = this.writes();
+        await Promise.all(Object.entries(w).map(([k, v]) => this.ctx.storage.put(k, v)));
+        this.dirty = null;
         await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL_MS);
         return true;
       } catch (e) {
@@ -135,7 +159,7 @@ export class Room extends DurableObject {
   // Close the room for good: tell every socket why, drop them, wipe storage. The code is free to be dealt again.
   async closeRoom(reason) {
     for (const ws of this.ctx.getWebSockets()) { this.send(ws, { type: 'closed', reason }); try { ws.close(1000, 'closed'); } catch { /* already closed */ } }
-    this.room = null; this.elog = null;
+    this.room = null; this.log = null;
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
   }
@@ -171,12 +195,38 @@ export class Room extends DurableObject {
 
   send(ws, obj) { try { ws.send(JSON.stringify(obj)); } catch { /* socket gone */ } }
 
+  // Each view carries the log's revision; the Host's also says what Undo and Redo would do.
+  stamp(m, att) {
+    if (m.type !== 'view') return m;
+    return att?.who === 'host' ? { ...m, rev: this.log.rev, hist: this.log.history() } : { ...m, rev: this.log.rev };
+  }
+  viewsFor(ws, connected, announce) { const att = ws.deserializeAttachment(); return messagesFor(this.room, att, connected, announce).map((m) => this.stamp(m, att)); }
+
   // `announce`: the game just ended, so each socket also gets the game-over event (see messagesFor).
   broadcast(announce = false) {
     if (!this.room) return; // closed: the sockets are already gone
     const connected = this.connectedIds();
-    for (const ws of this.ctx.getWebSockets()) {
-      for (const m of messagesFor(this.room, ws.deserializeAttachment(), connected, announce)) this.send(ws, m.type === 'view' ? { ...m, rev: this.elog?.meta.rev ?? 0 } : m);
+    for (const ws of this.ctx.getWebSockets()) for (const m of this.viewsFor(ws, connected, announce)) this.send(ws, m);
+  }
+
+  // Undo / Redo (Host only): one Host step back or forward on the log. The room is rebuilt by replay, so deaths,
+  // saves, blocks, results, wins and the morning report are exactly what they were at that step.
+  async step(ws, msg) {
+    const dir = msg.type === 'undo' ? 'undo' : 'redo';
+    if (typeof msg.rev !== 'number' || msg.rev !== this.log.rev) {
+      this.send(ws, { type: 'error', error: 'The game moved on. Showing the latest.' });
+      for (const m of this.viewsFor(ws, this.connectedIds())) this.send(ws, m);
+      return;
+    }
+    const before = this.room; const was = publicFace(before);
+    const label = dir === 'undo' ? this.log.undoStep() : this.log.redoStep();
+    if (label === null) { this.send(ws, { type: 'error', error: dir === 'undo' ? 'Nothing to undo.' : 'Nothing to redo.' }); return; }
+    this.room = this.log.room;
+    await this.save();
+    this.broadcast(justEnded(before.phase, this.room));
+    this.send(ws, { type: 'stepped', dir, label, host: true });
+    if (NOTIFY_ON_UNDO && publicFace(this.room) !== was) {
+      for (const s of this.ctx.getWebSockets()) if (s !== ws && s.deserializeAttachment()?.who) this.send(s, { type: 'stepped', dir });
     }
   }
 
@@ -217,17 +267,24 @@ export class Room extends DurableObject {
       return;
     }
 
+    // ---- back and forward (host only) ----
+    if (msg.type === 'undo' || msg.type === 'redo') {
+      if (att.who !== 'host') { this.send(ws, { type: 'error', error: 'Host only.' }); return; }
+      await this.step(ws, msg);
+      return;
+    }
+
     // ---- actions ----
     const actor = att.who === 'host' ? { host: true } : { playerId: att.playerId };
-    const before = this.room.phase;
     // A Host message sent against an older revision (a second Host phone, a late retry) is refused, never applied
     // to a later step. Clients that send no `rev` are not checked.
-    if (actor.host && typeof msg.rev === 'number' && msg.rev !== this.elog.meta.rev) {
+    if (actor.host && typeof msg.rev === 'number' && msg.rev !== this.log.rev) {
       this.send(ws, { type: 'error', error: 'The game moved on. Showing the latest.' });
-      for (const m of messagesFor(this.room, att, this.connectedIds())) this.send(ws, m.type === 'view' ? { ...m, rev: this.elog.meta.rev } : m);
+      for (const m of this.viewsFor(ws, this.connectedIds())) this.send(ws, m);
       return;
     }
     const { rev: _rev, ...intent } = msg;
+    const before = this.room.phase;
     const { res, changed } = this.apply(actor, intent);
     if (res.error) { if (changed) await this.save(); this.send(ws, { type: 'error', error: res.error }); return; }
     await this.save();
@@ -238,3 +295,8 @@ export class Room extends DurableObject {
   async webSocketClose(ws) { try { ws.close(); } catch { /* already closed */ } await this.ready; this.broadcast(); }
   async webSocketError() { await this.ready; this.broadcast(); }
 }
+
+// What every player can see of the game: the phase, the day and night, who is alive, and the winner. Undo or Redo
+// that changes none of it (a night pick, a note) is not announced to players.
+const publicFace = (r) => JSON.stringify([r.phase, r.day, r.night, r.players.map((p) => [p.id, p.alive]), r.winner?.side || null]);
+const MAX_EVENTS = 6000;

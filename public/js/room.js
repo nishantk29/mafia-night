@@ -49,7 +49,7 @@ function resetDeal(room) {
   room.copSalt = rand01(); // seeds the neutral "Cop 1/2/..." numbering for this game
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.condemnedDay = null; room.usage = {}; room.dayUsed = {};
   room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.results = []; room.shield = false; room.framed = [];
-  delete room.graveyard;
+  delete room.graveyard; delete room.nightUi;
 }
 
 // Restart: a fresh game for the same room. Keeps code, hostKey, players and config; moves the room to the latest night version.
@@ -273,7 +273,7 @@ export function reduce(room, actor, a) {
       const blindFirst = isBlind(room) && room.night === 0;
       if (!blindFirst && room.players.some((p) => !p.roleId)) return err('Every player needs a role first.');
       if (room.upgradeNext) { room.nightVersion = Math.max(nightVersion(room), Math.min(room.upgradeNext, upgradeTarget(room))); delete room.upgradeNext; }
-      room.night += 1; room.phase = 'night'; room.condemnedDay = null; assignCallNumbers(room);
+      room.night += 1; room.phase = 'night'; room.condemnedDay = null; delete room.nightUi; assignCallNumbers(room);
       if (room.night === 1) {
         finalizeBlind(room);
         assignTargets(room);
@@ -310,6 +310,7 @@ export function reduce(room, actor, a) {
       }
       finalizeBlind(room);
       log(room, `${ROLE_BY_ID[a.roleId].name} identified.`);
+      applyWinChecks(room); // once every card is matched the rules may already say who won (checkWin waits for that)
       return { ok: true };
     }
     case 'skipIdentify': { // nobody holds this card: it is not in play, so the night can go on
@@ -320,16 +321,24 @@ export function reduce(room, actor, a) {
       for (const m of room.deck.map) if (left && m.roleId === a.roleId && !m.unused) { m.unused = true; left--; }
       finalizeBlind(room);
       log(room, `${ROLE_BY_ID[a.roleId].name}: no one has this card.`, { private: true });
+      applyWinChecks(room); // e.g. no one has the Mafia card: Town has already won, so night 1 ends here
       return { ok: true };
     }
     case 'setTarget': {
       const p = playerById(room, a.playerId); if (!p) return err('Bad player.');
       p.target = a.targetId || null; return { ok: true };
     }
+    case 'nightUi': { // the Host's picks so far tonight, kept in the room so a reload, a second Host phone and Undo all see them
+      if (room.phase !== 'night') return err('It is not night.');
+      const ui = cleanNightUi(a.ui, room);
+      if (!ui) return err('Bad night state.');
+      room.nightUi = ui; return { ok: true };
+    }
     case 'submitNight': {
       if (room.phase !== 'night') return err('It is not night.');
+      if (Number.isInteger(a.n) && a.n !== room.night) return err('That night is already over.'); // a late send from another phone never lands on a later night
       if (room.players.some((p) => !p.roleId)) return err('Some players are not matched to a role yet.');
-      resolveNight(room, a.actions || {}); return { ok: true };
+      resolveNight(room, a.actions || {}); delete room.nightUi; return { ok: true };
     }
     case 'condemn': {
       if (room.phase !== 'day') return err('It is not day.');
@@ -397,6 +406,31 @@ export function reduce(room, actor, a) {
     case 'newGame': { restartGame(room); return { ok: true }; }
     default: return err('Unknown action.');
   }
+}
+
+// The Host's night screen state, as the client keeps it (actions per step, picks in progress, the step in focus,
+// checks shown). Only plain data for this night's steps and players is kept; anything else is dropped.
+const NIGHT_UI_MAX = 12000;
+function cleanNightUi(ui, room) {
+  if (!ui || typeof ui !== 'object' || ui.n !== room.night) return null;
+  const ids = new Set(room.players.map((p) => p.id));
+  const keys = new Set(nightScript(room).map((st) => st.key));
+  const idList = (x) => (Array.isArray(x) ? x.filter((id) => ids.has(id)).slice(0, 60) : []);
+  const out = { n: room.night, seq: Number.isInteger(ui.seq) ? ui.seq : 0, actions: {}, picks: {}, acked: {}, opened: !!ui.opened, focus: keys.has(ui.focus) ? ui.focus : null };
+  for (const [k, v] of Object.entries(ui.actions || {})) {
+    if (!keys.has(k) || !v || typeof v !== 'object') continue;
+    const x = { targets: idList(v.targets) };
+    if (typeof v.on === 'boolean') x.on = v.on;
+    if (v.done === true) x.done = true;
+    if (v.skipped === true) x.skipped = true;
+    if (v.flip === 'heads' || v.flip === 'tails') x.flip = v.flip;
+    if (v.coin === 'mafia' || v.coin === 'innocent') x.coin = v.coin;
+    if (Number.isFinite(v.flipAt)) x.flipAt = v.flipAt;
+    out.actions[k] = x;
+  }
+  for (const [k, v] of Object.entries(ui.picks || {})) if (keys.has(k)) out.picks[k] = idList(v);
+  for (const [k, v] of Object.entries(ui.acked || {})) if (keys.has(k) && v) out.acked[k] = true;
+  return JSON.stringify(out).length <= NIGHT_UI_MAX ? out : null;
 }
 
 // Validates the setup and deals (app mode: roles to phones; cards mode: builds the deck).
@@ -491,6 +525,7 @@ export function viewForHost(room, connected = new Set()) {
       deathCause: p.deathCause || null, roleHidden: !!p.roleHidden, convertedFrom: p.convertedFrom || null, becameJester: !!p.becameJester, jesterSeen: !!p.jesterSeen,
     })),
     deck: room.deck, copSalt: room.copSalt, callNo: room.callNo, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
+    nightUi: room.phase === 'night' && room.nightUi?.n === room.night ? room.nightUi : null,
     report: room.lastReport, log: room.log.slice(-60), winner: room.winner, winners: over ? finalWinners(room) : [],
     sideWins: room.sideWins, usage: room.usage, dayUsed: room.dayUsed, shield: room.shield,
     stalemate: stalemateOf(room),

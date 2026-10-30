@@ -53,11 +53,12 @@ export function hostScreen(v, local) {
   if (rolesGateOpen(v)) return rolesLayer(v); // the first look at the setup comes before the console, so it holds the one gold button
   const { body, dock, bar = '' } = ({ lobby, dealt, night, day, over })[v.phase](v, local);
   const tabs = [['game', 'Game'], ['table', 'Table'], ['log', 'Log']];
-  return `<header class="appbar">
+  const hist = historyButtons(v); // during a game Undo and Redo take the Help spot (Help stays in the menu: How hosting works)
+  return `<header class="appbar${hist ? ' has-history' : ''}${S.hist?.canRedo && hist ? ' has-redo' : ''}">
     <a class="appbar-mark" href="#/" aria-label="Home page">${ui('brand')}<span class="appbar-mark-label">Home</span></a>
     <div class="appbar-title">${title}</div>
     ${['night', 'day'].includes(v.phase) ? '' : phaseBadge(picon, plabel, '')}${v.phase !== 'lobby' && (timerRunning() || turnRunning()) ? toolsButton() : ''}
-    ${v.phase !== 'lobby' ? rolesChip(rolesModel(v)) : ''}${hostHelpButton()}<button type="button" class="icon-btn" data-a="openSettings" aria-label="Menu" title="Menu">${ui('gear')}</button>${bar}
+    ${v.phase !== 'lobby' ? rolesChip(rolesModel(v)) : ''}${hist || hostHelpButton()}<button type="button" class="icon-btn" data-a="openSettings" aria-label="Menu" title="Menu">${ui('gear')}</button>${bar}
   </header>
   <main class="console" data-tab="${tab}" data-side="${side}">
     <section class="pane pane-game" aria-label="Game">${v.stalemate ? `<section class="block stalemate"><p class="note">${ui('crown')} ${esc(v.stalemate.reason)}</p><div class="btn-row"><button type="button" class="btn" data-a="declare">Declare a winner</button></div></section>` : ''}${body}
@@ -73,7 +74,7 @@ export function hostScreen(v, local) {
     </div>
   </main>
   <nav class="tabbar" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-a="tab" data-v="${k}" ${tab === k ? 'aria-current="page"' : ''}>${ui(tab === k ? `${k}-on` : k)}<span>${l}</span></button>`).join('')}</nav>
-  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${rolesLayer(v)}${S.ui.seatSheet ? seatSheet(v, S.ui.seatSheet) : ''}${S.ui.addRole && v.phase === 'lobby' ? addRoleSheet(v) : ''}${S.ui.settings ? settingsSheet() : ''}${hostHelpOverlay(v)}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
+  ${sheet(v)}${S.ui.showKey ? keyOverlay(v) : ''}${S.ui.showCode && !local ? codeOverlay(v) : ''}${S.ui.showQr && !local ? qrOverlay(v) : ''}${S.ui.modal === 'role' ? roleModal() : ''}${S.ui.tools ? toolsPanel(v, true) : ''}${rolesLayer(v)}${S.ui.seatSheet ? seatSheet(v, S.ui.seatSheet) : ''}${S.ui.addRole && v.phase === 'lobby' ? addRoleSheet(v) : ''}${S.ui.settings ? settingsSheet() : ''}${hostHelpOverlay(v)}${S.ui.gy && S.mode === 'host' ? graveyardSheet() : ''}${S.ui.endConfirm && !local ? endGameSheet() : ''}${S.ui.undoOverConfirm && v.phase === 'over' ? undoOverSheet() : ''}${S.ui.restartConfirm && v.phase !== 'lobby' ? restartSheet() : ''}${S.ui.declare && ['day', 'night'].includes(v.phase) ? declareSheet(v) : ''}`;
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
@@ -126,6 +127,22 @@ function restartSheet() {
     <div class="sheet-head"><h2 class="sheet-title" id="restart-title">Restart the game?</h2><button type="button" class="icon-btn x-btn" data-a="restartNo" aria-label="Close">${ui('x')}</button></div>
     <p>Same code and players. Everyone gets a new role and goes back to the reveal.</p>
     <div class="btn-row"><button type="button" class="btn ghost" data-a="restartNo">Keep playing</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button><button type="button" class="btn" data-a="restart">Restart game</button></div>
+  </div></div>`;
+}
+
+// Undo and Redo: one Host step back or forward, the same on every phone. Shown once the game is dealt.
+function historyButtons(v) {
+  const h = S.hist; if (!h || v.phase === 'lobby') return '';
+  const b = (a, on, label, why) => `<button type="button" class="icon-btn" data-a="${a}" aria-label="${esc(label)}" title="${esc(label)}"${on ? '' : ` aria-disabled="true" data-why="${esc(why)}"`}>${ui(a)}</button>`;
+  // Redo shows only when there is something to redo, so a phone header has room for it (see styles.css .has-redo).
+  return b('undo', h.canUndo, h.canUndo ? `Undo: ${h.undoLabel}` : 'Undo', 'Nothing to undo.') + (h.canRedo ? b('redo', true, `Redo: ${h.redoLabel}`, '') : '');
+}
+function undoOverSheet() {
+  return `<div class="sheet-bg" data-a="undoOverNo"><div class="sheet is-entering" role="alertdialog" aria-modal="true" aria-labelledby="undo-over-title" data-stop>
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><h2 class="sheet-title" id="undo-over-title">Go back into the game?</h2><button type="button" class="icon-btn x-btn" data-a="undoOverNo" aria-label="Close">${ui('x')}</button></div>
+    <p>The game goes back one step. Every phone hides the roles again.</p>
+    <div class="btn-row"><button type="button" class="btn ghost" data-a="undoOverNo">Stay on the end screen</button><button type="button" class="btn" data-a="undoOverYes">Go back</button></div>
   </div></div>`;
 }
 
