@@ -124,6 +124,19 @@ async function run(engine, motion) {
     await host.page.locator('#fx [data-fx-continue]').click();
     L.check(`${tag}: host Close removes the host's card`, (await card(host).count()) === 0);
     L.check(`${tag}: ${watcher.name}'s card waits for their own tap`, (await card(watcher).count()) === 1);
+    // Engine PR C: Host Undo, then Redo, re-render every phone. The undone vote-out takes its card away; the Redo shows it
+    // once on each phone, never queued twice (Fennel, Oct 30 2026).
+    const nCards = (P) => P.page.evaluate(() => document.querySelectorAll('#fx .fx-out').length);
+    if (await host.page.locator('[data-a="undo"]').count()) {
+      await host.page.locator('[data-a="undo"]').click(); await wait(host, 900);
+      L.check(`${tag}: after Undo ${town.name} is back and ${watcher.name}'s card is gone`, (await nCards(watcher)) === 0 && (await nCards(host)) === 0, `${await nCards(watcher)}/${await nCards(host)}`);
+      await host.page.locator('[data-a="redo"]').click(); await wait(host, 900);
+      await wait(host, 1500); // any second card would have queued by now
+      const hc = await nCards(host); const wc = await nCards(watcher);
+      L.check(`${tag}: after Redo each phone shows the vote card once (host ${hc}, ${watcher.name} ${wc})`, hc === 1 && wc === 1 && /Voted out/i.test((await cardState(watcher))?.text || ''));
+      await host.page.locator('#fx [data-fx-continue]').click(); await wait(host, 300);
+      L.check(`${tag}: one Close on the host and nothing queued behind it`, (await nCards(host)) === 0);
+    } else L.check(`${tag}: host Undo button present (Engine PR C)`, false);
     await watcher.page.locator('#fx [data-fx-continue]').click();
     L.check(`${tag}: ${watcher.name}'s Close removes it`, (await card(watcher).count()) === 0);
     const next = await host.page.evaluate(() => document.querySelector('.action-dock .btn.big')?.textContent || '');

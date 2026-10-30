@@ -80,12 +80,17 @@ export function day() {
 // items: [{ name, how: 'vote' | 'night', role?: string }]. Public facts only: callers pass a role only when the room shows it.
 // The card stays until someone taps Close (Nishant, Oct 30 2026: "The card that shows who died is too quick"). No timer
 // or animationend removes it. With animations off or reduced motion it still shows, with no spring, wash or shake.
-// A second death while one card is up waits its turn, so no name is skipped.
-let outEl = null; const outQueue = [];
+// A second death while one card is up waits its turn, so no name is skipped. The same death never shows twice: a card
+// that is up or waiting is not queued again, and a Host Undo that brings a player back drops their card (a Redo then
+// shows it once).
+let outEl = null; let outKey = ''; const outQueue = [];
+const keyOf = (items) => items.map((i) => `${i.id ?? i.name}:${i.how}`).sort().join('|');
 export const deathCardOpen = () => !!outEl;
+export const deathCardsWaiting = () => outQueue.length;
 export function popOut(items) {
   if (!items?.length) return;
-  if (outEl) { outQueue.push(items); return; }
+  const key = keyOf(items);
+  if (outEl) { if (key !== outKey && !outQueue.some((q) => keyOf(q) === key)) outQueue.push(items); return; }
   const vote = items.every((i) => i.how === 'vote');
   const names = items.map((i) => esc(i.name)).join(' and ');
   const role = items.length === 1 && items[0].role ? `<p class="fx-pop-role">${esc(items[0].role)}</p>` : '';
@@ -98,7 +103,7 @@ export function popOut(items) {
       <button type="button" class="btn big fx-continue" data-fx-continue>Close</button>
     </div></div></div>`);
   if (!node) return;
-  outEl = node;
+  outEl = node; outEl.items = items; outKey = key;
   const btn = node.querySelector('[data-fx-continue]');
   btn?.addEventListener('click', closeDeathCard);
   try { btn?.focus({ preventScroll: true }); } catch { /* old browser */ }
@@ -108,12 +113,19 @@ export function popOut(items) {
 // Close: the card goes, and the next waiting card (if any) comes up.
 export function closeDeathCard() {
   if (!outEl) return;
-  outEl.remove(); outEl = null;
+  outEl.remove(); outEl = null; outKey = '';
   const next = outQueue.shift();
   if (next) popOut(next);
 }
 // A new game, another room or leaving the room: no card from the old game stays up.
-export function clearDeathCards() { outQueue.length = 0; outEl?.remove(); outEl = null; }
+export function clearDeathCards() { outQueue.length = 0; outEl?.remove(); outEl = null; outKey = ''; }
+// Players who are alive again (Host Undo, Bring back): their waiting cards go, and the card up now goes if it was only theirs.
+export function forgetDeaths(ids) {
+  if (!ids?.length) return;
+  const back = new Set(ids); const gone = (i) => back.has(i.id);
+  for (let k = outQueue.length - 1; k >= 0; k--) { outQueue[k] = outQueue[k].filter((i) => !gone(i)); if (!outQueue[k].length) outQueue.splice(k, 1); }
+  if (outEl?.items?.length && outEl.items.every(gone)) closeDeathCard();
+}
 
 // A short shake of the page content (not the fixed bars), on dramatic beats.
 export function shake() {
@@ -159,6 +171,7 @@ export function observe(prev, next) {
   if (next.phase === 'over') return; // the victory card takes the stage
   const was = new Map((prev.players || []).map((p) => [p.id, p]));
   const out = [];
+  forgetDeaths((next.players || []).filter((p) => p.alive && was.get(p.id) && !was.get(p.id).alive).map((p) => p.id));
   for (const p of next.players || []) {
     const b = was.get(p.id);
     if (!b || !b.alive || p.alive) continue;
@@ -166,10 +179,12 @@ export function observe(prev, next) {
     let role = null;
     if (next.kind === 'host') { if (next.config?.rules?.revealOnDeath !== false && !p.roleHidden) role = ROLE_BY_ID[p.roleId]?.name || null; }
     else role = p.role?.name || null;
-    out.push({ name: p.name, how: vote ? 'vote' : 'night', role });
+    out.push({ id: p.id, name: p.name, how: vote ? 'vote' : 'night', role });
   }
   // delay only lets the day scene play first; it never removes anything
-  if (out.length) { if (delay) setTimeout(() => popOut(out), delay); else popOut(out); }
+  // (an Undo inside that wait brings the player back: only names still dead on the current view are shown)
+  const stillDead = () => out.filter((i) => !(S.view?.players || []).some((p) => p.id === i.id && p.alive));
+  if (out.length) { if (delay) setTimeout(() => popOut(stillDead()), delay); else popOut(out); }
 }
 
 // ---------------------------------------------------------------- after every render

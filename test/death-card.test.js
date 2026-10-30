@@ -116,3 +116,51 @@ test('CSS: the card has no exit animation, takes taps, and shows (without motion
   const pop = js.slice(js.indexOf('export function popOut'), js.indexOf('export function closeDeathCard'));
   assert.doesNotMatch(pop, /animationend|transitionend|add\(`[\s\S]*`, \d+\)/, 'popOut never schedules its own removal');
 });
+
+// Engine PR C: the Host's Undo and Redo re-render every phone with the step before or after. A death undone and redone
+// shows its card once, never twice (Fennel, Oct 30 2026: "it shouldn't queue twice").
+const vote = (alive) => pv('day', [{ id: 'a', name: 'Ana', alive, cause: alive ? null : 'condemned' }, { id: 'b', name: 'Ben', alive: true }]);
+for (const closedFirst of [false, true]) {
+  test(`Undo then Redo of a vote-out shows the card once (${closedFirst ? 'card closed before Undo' : 'card still up at Undo'})`, (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] });
+    reset(); media.matches = true; fx.syncFx();
+    fx.observe(vote(true), vote(false)); // the vote
+    assert.equal(cards().length, 1);
+    if (closedFirst) cards()[0].btn.click();
+    fx.observe(vote(false), vote(true)); // Undo: Ana is back
+    assert.equal(cards().length, 0, 'Undo takes away the card of a death that no longer happened');
+    fx.observe(vote(true), vote(false)); // Redo
+    fx.observe(vote(false), vote(false)); // the Redo's re-render (same view again)
+    t.mock.timers.tick(SIXTY_S);
+    assert.equal(cards().length, 1, 'one card after the Redo');
+    assert.equal(fx.deathCardsWaiting(), 0, 'nothing queued behind it');
+    cards()[0].btn.click();
+    assert.equal(cards().length, 0); assert.equal(fx.deathCardOpen(), false);
+  });
+}
+
+test('the same death is never queued twice behind another card; Undo drops a waiting card', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] });
+  reset(); media.matches = true; fx.syncFx();
+  fx.popOut([{ id: 'x', name: 'Cal', how: 'night' }]);
+  fx.popOut([{ id: 'a', name: 'Ana', how: 'vote' }]);
+  fx.popOut([{ id: 'a', name: 'Ana', how: 'vote' }]);
+  assert.equal(fx.deathCardsWaiting(), 1, 'Ana once in the queue');
+  fx.forgetDeaths(['a']);
+  assert.equal(fx.deathCardsWaiting(), 0, 'Undo brought Ana back: her waiting card goes');
+  assert.match(cards()[0].html, /Cal/, 'the card that is up stays');
+  cards()[0].btn.click();
+  assert.equal(cards().length, 0);
+});
+
+test('an Undo during the day scene wait: the delayed card skips a player who is alive again', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] });
+  reset(); media.matches = false; fx.setAnim(true);
+  const { S } = await import('../public/js/state.js');
+  const hv = (phase, alive) => ({ kind: 'host', code: 'ABCDEF', phase, day: 1, night: 1, config: { rules: { revealOnDeath: false } }, players: [{ id: 'a', name: 'Ana', roleId: 'doctor', alive, deathCause: alive ? null : 'killed' }] });
+  S.view = hv('day', false); fx.observe(hv('night', true), S.view);
+  S.view = hv('night', true); // Undo lands before the 400 ms day scene is over
+  t.mock.timers.tick(SIXTY_S);
+  assert.equal(cards().length, 0);
+  S.view = null;
+});
