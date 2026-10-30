@@ -1229,11 +1229,12 @@ html[data-noblur="1"] .glass::after{display:none}
 @keyframes fx-rays{0%{transform:scale(.15) rotate(0);opacity:0}30%{opacity:1}100%{transform:scale(1) rotate(28deg);opacity:0}}
 
 /* pop-out reveal: a glass card springs out, a stamp slams on it */
-.fx-out{display:grid;place-items:center}
-.fx-out::before{background:rgba(8,5,3,.5);animation:fx-wash 400ms var(--ease-out) both}
+/* the death card waits for Continue: the wash fades in and stays, the card springs in and stays (no exit, no timer) */
+.fx-out{display:grid;place-items:center;pointer-events:auto}
+.fx-out::before{background:rgba(8,5,3,.5);opacity:1;animation:rc-fade 143ms var(--ease-out) both}
 .fx-in{position:relative;width:min(86vw,340px);perspective:900px}
-.fx-out .fx-in{animation:fx-spring-out 400ms var(--ease-out) both;will-change:transform,opacity}
-@keyframes fx-spring-out{0%{transform:scale(.3) rotateX(38deg);opacity:0}24%{transform:scale(1.13) rotateX(-6deg);opacity:1}38%{transform:scale(.97) rotateX(2deg)}52%,82%{transform:scale(1);opacity:1}100%{transform:scale(.94) translateY(-16px);opacity:0}}
+.fx-out .fx-in{animation:fx-spring-stay 286ms var(--ease-out) both}
+.fx-out .fx-continue{margin-top:var(--s3)}
 .fx-card,.fx-v-card{display:grid;justify-items:center;gap:var(--s2);padding:30px 22px 26px;border-radius:var(--f-r-sheet);text-align:center;
   transform:rotateX(calc(var(--ty,0) * -7deg)) rotateY(calc(var(--tx,0) * 9deg));transition:transform 114ms var(--ease-out)}
 .fx-out.is-vote .fx-card{--tint:var(--brass)}
@@ -1288,10 +1289,11 @@ html[data-fx="off"] .rcard-inner,html[data-fx="off"] .rcard[data-face="back"] .r
 html[data-fx="off"] .rcard-face,html[data-fx="off"] .rcard-face.rcard-back{transform:none;-webkit-backface-visibility:visible;backface-visibility:visible}
 html[data-fx="off"] .rcard[data-face="front"] .rcard-back,html[data-fx="off"] .rcard[data-face="back"] .rcard-front{visibility:hidden}
 html[data-fx="off"] .rcard.is-flipping .rcard-front::after{display:none}
-html[data-fx="off"] .fx-scene{display:none}
+html[data-fx="off"] .fx-scene:not(.fx-out){display:none}
 @media (prefers-reduced-motion:reduce){
   [data-tilt]{transform:none!important}
-  .fx-scene{display:none}
+  .fx-scene:not(.fx-out){display:none}
+  .fx-out::before,.fx-out .fx-in,.fx-out .fx-stamp{animation:none}
   .btn:active,.pk:active{transform:none}.pk[aria-pressed="true"]{transform:none}
 }
 

@@ -19,7 +19,7 @@ import { worldOf, applyClosed } from './world.js';
 import { patchGraveyard, scrollGraveyard } from './graveyard.js';
 import { playerScreen, joinForm, notesKey } from './player.js';
 import { faqScreen, wireFaqSearch } from './faq.js';
-import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn, restartIn } from './fx.js';
+import { observe, afterRender, showVictory, closeVictory, victoryOpen, setAnim, animOn, restartIn, deathCardOpen, closeDeathCard } from './fx.js';
 import { gameOverEvent, isNewGame } from './room.js';
 import { SEAT_ACTIONS } from './seating-actions.js';
 import { seatingOf } from './setup-store.js';
@@ -722,6 +722,7 @@ document.addEventListener('click', (ev) => { if (swallowClick) { clearTimeout(sw
 // ---------------- keyboard ----------------
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && drag) { dragEnd(false); return; }
+  if (ev.key === 'Escape' && deathCardOpen()) { closeDeathCard(); return; }
   if (ev.key === 'Escape' && S.ui.checkCard) { A.closeCheck(); return; }
   if (ev.key === 'Escape' && victoryOpen()) { A.closeVictory(); return; }
   if (ev.key === 'Escape') {
