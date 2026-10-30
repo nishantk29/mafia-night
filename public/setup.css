@@ -73,7 +73,13 @@
 .page-head{display:flex;justify-content:space-between;align-items:center;gap:var(--s3)}.page-head .setup-h{margin-bottom:var(--s2)}
 .btn.small{min-height:44px;padding:0 var(--s4)}
 .setup-sheet .sheet-actions{display:grid;gap:var(--s2);margin-top:var(--s4)}
-.setup-sheet .mix-list{max-height:34dvh;overflow:auto}
+/* preset sheet: the sheet is the one scroll container; every role row is the same grid (count | 32px icon box | name) */
+.setup-sheet .mix-list{gap:0}
+.setup-sheet .mix-row{display:grid;grid-template-columns:1.5rem 32px minmax(0,1fr);column-gap:var(--s3);align-items:start;min-height:44px;padding:var(--s2) 0}
+.setup-sheet .mix-n{min-width:0;height:32px;display:flex;align-items:center;justify-content:flex-end;font-variant-numeric:tabular-nums}
+.setup-sheet .mix-ico{width:32px;height:32px;display:grid;place-items:center}
+.setup-sheet .mix-ico .ico{width:28px;height:28px;max-width:none;flex:none;vertical-align:0}
+.setup-sheet .mix-name{padding-top:6px;min-width:0;overflow-wrap:break-word}
 .advice{list-style:none;display:grid;gap:var(--s2);margin:var(--s3) 0}
 .note.is-error{border-color:var(--mafia)}
 .btn.danger{background:var(--mafia);color:#1B0A0A}
