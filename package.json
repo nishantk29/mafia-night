@@ -11,7 +11,8 @@
     "assets": "node scripts/build-assets.mjs",
     "art:brief": "node scripts/art-brief.mjs",
     "art:slice": "node scripts/slice-art.mjs",
-    "icons:ui": "node scripts/build-ui-icons.mjs"
+    "icons:ui": "node scripts/build-ui-icons.mjs",
+    "test:spacing": "node test/kit/spacing-check.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/alegreya": "^5.3.0",
