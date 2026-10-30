@@ -70,7 +70,6 @@ export const isNewGame = (prev, next) => !!prev && !!next && !!prev.code && prev
 // Only the dead and the Host may post, and only the dead and the Host are ever sent it (see messagesFor).
 // Any other channel is rejected, so a future living chat inherits "the dead can't speak to the living".
 const GY_MAX = 150, GY_LEN = 280, GY_RATE = 5, GY_WINDOW = 10000;
-const gyRate = new WeakMap(); // room -> sender -> recent post times (runtime only, never stored or sent)
 export const canSeeGraveyard = (room, att) => hasGraveyard(room) && room.hostKey !== 'local' && (att?.who === 'host' || (att?.who === 'player' && playerById(room, att.playerId)?.alive === false));
 function postChat(room, actor, a) {
   const err = (e) => ({ error: e });
@@ -81,11 +80,10 @@ function postChat(room, actor, a) {
   const text = String(a.text ?? '').replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/ {2,}/g, ' ').trim().slice(0, GY_LEN).trim();
   if (!text) return err('Write something first.');
   const from = actor.host ? 'host' : me.id, now = nowMs();
-  let m = gyRate.get(room); if (!m) gyRate.set(room, m = new Map());
-  const recent = (m.get(from) || []).filter((x) => now - x < GY_WINDOW);
-  if (recent.length >= GY_RATE) { m.set(from, recent); return err('Slow down a little.'); }
-  recent.push(now); m.set(from, recent);
+  // The limit is counted from the posts in the room itself (each has its sender and time), so a cold start, an
+  // Undo or a replay from any checkpoint counts the same posts and gives the same answer as the live room did.
   const list = room.graveyard ||= [];
+  if (list.filter((x) => x.from === from && now - x.at < GY_WINDOW).length >= GY_RATE) return err('Slow down a little.');
   const id = (list.at(-1)?.id || 0) + 1;
   list.push({ id, from, name: actor.host ? 'Host' : me.name, text, at: now });
   if (list.length > GY_MAX) list.splice(0, list.length - GY_MAX);
@@ -257,7 +255,10 @@ export function reduce(room, actor, a) {
     case 'setRole': { // manual correction by the host
       const p = playerById(room, a.playerId);
       if (!p || !ROLE_BY_ID[resolveRoleId(a.roleId)]) return err('Bad role.');
-      p.roleId = resolveRoleId(a.roleId); assignCallNumbers(room); return { ok: true };
+      if (room.phase === 'over') return err('The game is over. Use Undo to go back and fix it.');
+      p.roleId = resolveRoleId(a.roleId); assignCallNumbers(room);
+      if (['day', 'night'].includes(room.phase)) applyWinChecks(room); // e.g. the last Mafia corrected to a Villager: Town has won
+      return { ok: true };
     }
     case 'upgradeNight': { // host opt-in for legacy rooms; always applied when the next night starts, never mid-step
       const target = upgradeTarget(room); // a room already in a game stops before the Detective merge
@@ -326,6 +327,8 @@ export function reduce(room, actor, a) {
     }
     case 'setTarget': {
       const p = playerById(room, a.playerId); if (!p) return err('Bad player.');
+      if (room.phase === 'over') return err('The game is over. Use Undo to go back and fix it.');
+      if (a.targetId && (!playerById(room, a.targetId) || a.targetId === p.id)) return err('Bad target.');
       p.target = a.targetId || null; return { ok: true };
     }
     case 'nightUi': { // the Host's picks so far tonight, kept in the room so a reload, a second Host phone and Undo all see them
@@ -357,6 +360,7 @@ export function reduce(room, actor, a) {
       const p = playerById(room, a.playerId);
       if (!p) return err('Bad player.');
       if (!['day', 'night'].includes(room.phase)) return err('The game is not in play.');
+      if (!p.alive) return err(`${p.name} is already dead.`);
       killPlayer(room, p.id, String(a.cause || 'eliminated').slice(0, 60));
       log(room, `${p.name} was eliminated (${a.cause || 'host'}).`);
       applyWinChecks(room);
@@ -370,6 +374,7 @@ export function reduce(room, actor, a) {
       p.alive = true; p.deathCause = null; p.roleHidden = false; p.deathDay = null; p.deathNight = null;
       if (nightVersion(room) >= 8) for (const q of room.players) if (q.roleId === 'executioner' && q.target === p.id && !q.jesterSeen) delete q.becameJester; // not told yet: nothing changed
       room.pending = room.pending.filter((x) => x.playerId !== p.id); // no dead-player prompt for someone back in play
+      if (room.lastReport?.deaths) room.lastReport.deaths = room.lastReport.deaths.filter((d) => d.id !== p.id); // the morning no longer reads them out
       if (nightVersion(room) >= 7 && wasCondemned) { // undoing a condemnation also undoes what it set off
         room.sideWins = (room.sideWins || []).filter((s) => s.by !== p.id);
         if (ROLE_BY_ID[p.roleId]?.shield) room.shield = false;
@@ -380,6 +385,7 @@ export function reduce(room, actor, a) {
     }
     case 'useDay': {
       const p = playerById(room, a.playerId); if (!p) return err('Bad player.');
+      if (room.phase !== 'day') return err('Day abilities are used in the day.');
       room.dayUsed[p.id] = (room.dayUsed[p.id] || 0) + (a.undo ? -1 : 1);
       if (room.dayUsed[p.id] < 0) room.dayUsed[p.id] = 0;
       return { ok: true };

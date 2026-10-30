@@ -231,8 +231,9 @@ function playGame(g, plan, R, rec) {
       }
       settle();
       if (room.phase === 'over') break;
-      if (R.chance(0.03) && alive.length) {
-        act({ type: 'kill', playerId: R.pick(alive).id, cause: 'storyteller' });
+      const stillAlive = room.players.filter((p) => p.alive); // after the vote and any prompts: a kill on the dead is refused
+      if (R.chance(0.03) && stillAlive.length) {
+        act({ type: 'kill', playerId: R.pick(stillAlive).id, cause: 'storyteller' });
         settle();
         if (room.phase === 'over') break;
       }
