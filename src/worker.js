@@ -136,8 +136,7 @@ export class Room extends DurableObject {
     return out;
   }
 
-  // A failed write must never swallow a move: retry once, and if storage is still unhappy keep going with the
-  // in-memory room (it is what every screen is showing) and try again on the next action.
+  // One write with a retry. Returns false if storage refused both times (see commit).
   async save() {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
@@ -150,6 +149,20 @@ export class Room extends DurableObject {
         console.error(`save failed (attempt ${attempt}) for room ${this.room.code}:`, e?.message || e);
       }
     }
+    return false;
+  }
+
+  // Save a move, or take it back. A move storage would not keep must not stay on the phones: an evicted DO would
+  // come back without it. So on a failed save the room goes back to what storage holds, the sender is told, and every
+  // phone gets the saved room. Returns whether the move was kept.
+  async commit(ws) {
+    if (await this.save()) return true;
+    try {
+      const stored = migrateRoleIds((await this.ctx.storage.get('room')) || null);
+      if (stored) { this.room = stored; await this.loadLog(); }
+    } catch (e) { console.error(`reload after a failed save failed for room ${this.room?.code}:`, e?.message || e); }
+    this.send(ws, { type: 'error', error: 'That move could not be saved. Try it again.' });
+    this.broadcast();
     return false;
   }
 
@@ -175,7 +188,7 @@ export class Room extends DurableObject {
       this.room = newRoom(code, hostKey);
       this.room.updated = Date.now();
       this.startLog();
-      await this.save();
+      if (!(await this.save())) { this.room = null; this.log = null; return new Response('storage', { status: 503 }); } // the caller tries another code
       return new Response(JSON.stringify({ code, hostKey }), { status: 200 });
     }
     if (url.pathname === '/exists') return new Response(null, { status: this.room ? 200 : 404 });
@@ -222,7 +235,7 @@ export class Room extends DurableObject {
     const label = dir === 'undo' ? this.log.undoStep() : this.log.redoStep();
     if (label === null) { this.send(ws, { type: 'error', error: dir === 'undo' ? 'Nothing to undo.' : 'Nothing to redo.' }); return; }
     this.room = this.log.room;
-    await this.save();
+    if (!(await this.commit(ws))) return;
     this.broadcast(justEnded(before.phase, this.room));
     this.send(ws, { type: 'stepped', dir, label, host: true });
     if (NOTIFY_ON_UNDO && publicFace(this.room) !== was) {
@@ -248,8 +261,8 @@ export class Room extends DurableObject {
         ws.serializeAttachment({ who: 'player', playerId: p.id });
       } else if (msg.join) {
         const { res, changed } = this.apply({ anon: true }, { type: 'join', name: msg.join });
-        if (res.error) { if (changed) await this.save(); this.send(ws, { type: 'error', error: res.error }); return; }
-        await this.save();
+        if (res.error) { if (changed) await this.commit(ws); this.send(ws, { type: 'error', error: res.error }); return; }
+        if (!(await this.commit(ws))) return;
         ws.serializeAttachment({ who: 'player', playerId: res.data.playerId });
         this.send(ws, { type: 'joined', ...res.data });
       } else {
@@ -286,8 +299,8 @@ export class Room extends DurableObject {
     const { rev: _rev, ...intent } = msg;
     const before = this.room.phase;
     const { res, changed } = this.apply(actor, intent);
-    if (res.error) { if (changed) await this.save(); this.send(ws, { type: 'error', error: res.error }); return; }
-    await this.save();
+    if (res.error) { if (changed) await this.commit(ws); this.send(ws, { type: 'error', error: res.error }); return; }
+    if (!(await this.commit(ws))) return;
     this.broadcast(justEnded(before, this.room));
     if (res.data?.error) this.send(ws, { type: 'error', error: res.data.error }); // a restart that could not deal: the Host lands on setup with the reason
   }
