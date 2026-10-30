@@ -35,7 +35,7 @@ export const isMeta = (ev) => !!ev?.a?.host && META.has(ev?.m?.type);
 // A step in an earlier game can't be changed: these start a new one.
 const BOUNDARY = new Set(['deal', 'restart', 'playAgain', 'newGame', 'undeal']);
 // Never pause the game: a draft or talk that no longer fits is void (kept in the log, not applied).
-const SOFT = new Set(['nightUi', 'chat', 'join']);
+const SOFT = new Set(['nightUi', 'dayStage', 'chat', 'join']);
 // What a past step may be changed into (a vote can become "no one", a match can become "no one has this card").
 export const FAMILY = {
   submitNight: ['submitNight'], condemn: ['condemn', 'noCondemn'], noCondemn: ['noCondemn', 'condemn'], resolvePending: ['resolvePending'],
@@ -382,14 +382,14 @@ const VERB = {
   submitNight: () => 'End of the night', startNight: () => 'Start of the night', startDay: () => 'Start of the day', deal: () => 'The deal', undeal: () => 'Back to setup',
   condemn: (n) => `${n} voted out`, noCondemn: () => 'No one voted out', kill: (n) => `${n} eliminated`, revive: (n) => `${n} brought back`,
   resolvePending: () => 'A last shot', declareWinner: () => 'The winner', identifyRole: () => 'Marking a role', skipIdentify: () => 'Skipping a role',
-  nightUi: () => 'A night pick', edit: () => 'A change to an earlier step', drop: () => 'Removing a step', insert: () => 'An added step', cut: () => 'Ending the game there', assignCard: (n) => `${n}’s card`, clearCard: (n) => `${n}’s card`, setRole: (n) => `${n}’s role`, setTarget: (n) => `${n}’s target`,
+  nightUi: () => 'A night pick', dayStage: (n, ev) => ({ talk: 'Talk it out', vote: 'Start of the vote' })[ev?.m?.stage] || 'Back to the morning', edit: () => 'A change to an earlier step', drop: () => 'Removing a step', insert: () => 'An added step', cut: () => 'Ending the game there', assignCard: (n) => `${n}’s card`, clearCard: (n) => `${n}’s card`, setRole: (n) => `${n}’s role`, setTarget: (n) => `${n}’s target`,
   playAgain: () => 'Play again', restart: () => 'Restart', newGame: () => 'New game', setConfig: () => 'A setup change', useDay: (n) => `${n}’s day ability`,
   toggleTag: (n) => `A note on ${n}`, setNote: (n) => `A note on ${n}`, moveSeat: (n) => `${n}’s seat`, seatWhere: (n) => `${n}’s seat`, renamePlayer: () => 'A name change',
 };
 export function stepLabel(ev, room) {
   if (!ev) return '';
   const name = room?.players?.find((p) => p.id === ev.m?.playerId)?.name || 'A player';
-  return (VERB[ev.m?.type] || (() => 'The last change'))(name);
+  return (VERB[ev.m?.type] || (() => 'The last change'))(name, ev);
 }
 export function historyInfo(events, cursor, room, opts) {
   const u = undoTarget(events, cursor, room, opts); const f = firstHost(events, cursor);

@@ -2,8 +2,8 @@
 // Layout (DESIGN.md 6.2): app bar, then a console with the game pane and a side (table, who is who, log).
 // Phones show one pane at a time via the tab bar; tablets show game + side switch; wide screens show everything.
 import { castList } from './world.js';
-import { S, esc, initial, loadLibrary, store } from './state.js';
-import { loadDayStage } from './day-talk.js';
+import { S, esc, initial, loadLibrary } from './state.js';
+import { dayStageOf } from './day-talk.js';
 import { ROLES, ROLE_BY_ID, registerRoles, ACTION_TYPES, pickerEntries, GROUP_BY_ID, groupAlsoText } from './roles.js';
 import { board, legend, sheet, roleChip, pc, cardText, teamName } from './board.js';
 import { ico } from './art.js';
@@ -429,8 +429,7 @@ function upgradeCard(v) {
 
 // ---------------- day ----------------
 function day(v) {
-  if (!S.ui.dayStage) { const saved = loadDayStage(store, v.code, v.gameNo, v.day); if (saved) S.ui.dayStage = saved; } // a refresh mid-talk comes back to the step
-  const ds = S.ui.dayStage?.day === v.day ? S.ui.dayStage : {};
+  const ds = dayStageOf(v) || {}; // kept in the room: a refresh, a second Host phone or an Undo shows the same step
   const m = dayModel(v, { stage: ds.stage, minutes: ds.minutes, startedAt: ds.startedAt, talkDone: ds.talkDone, sel: S.ui.condemn, result: S.ui.dayResult?.day === v.day ? S.ui.dayResult.text : '' }, v.config.rules?.revealOnDeath !== false);
   const { rep, alive } = m;
   const pend = v.pending.map((p) => `<section class="cue is-current pending"><div class="cue-body">

@@ -7,7 +7,7 @@ import { dealt, hostScreen, S, ok, freshUi, host } from './night-drive-lib.mjs';
 const gold = (html) => [...html.matchAll(/<button[^>]*class="btn big([^"]*)"[^>]*>/g)]
   .filter((m) => !/disabled|danger|ghost|secondary/.test(m[1]) && !/aria-disabled|\sdisabled[\s>]/.test(m[0]));
 const check = (name, html) => assert.ok(gold(html).length <= 1, `${name}: ${gold(html).map((m) => m[0]).join(' | ')}`);
-const render = (view, local = true, ui = {}) => { Object.assign(S.ui, { night: null, condemn: null, dayStage: { day: 1, stage: 'vote' }, ...ui }); return hostScreen(view, local); };
+const render = (view, local = true, { dayStage = { day: 1, stage: 'vote' }, ...ui } = {}) => { Object.assign(S.ui, { night: null, condemn: null, ...ui }); return hostScreen(view.phase === 'day' ? { ...view, dayStage } : view, local); }; // the day step is in the room (view.dayStage)
 
 test('lobby and dealt screens', () => {
   const room = newRoom('NN', 'k');

@@ -7,7 +7,7 @@ import { themeOf, themeText, themeDom } from './theme.js';
 import { TOOL_ACTIONS, tickTools } from './tools.js';
 import { TALK_MINUTES, UNDO_PAST_GAME_OVER, NOTIFY_ON_UNDO } from './config-defaults.js';
 import { GameLog } from './event-log.js';
-import { clampMinutes, talkDoneText, saveDayStage } from './day-talk.js';
+import { clampMinutes, dayStageOf, loadDayStage, forgetDayStage } from './day-talk.js';
 const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.me?.name].filter(Boolean);
 import { ico } from './art.js';
 import { ui } from './ui_icons.js';
@@ -248,7 +248,7 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); if (m.view?.phase === 'over' && prev?.phase !== 'over') S.ui.anim = 'roles'; S.view = m.view; S.rev = m.rev; S.hist = m.hist || null; adoptNightUi(m.view); leftOver(prev, m.view); if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
+        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); if (m.view?.phase === 'over' && prev?.phase !== 'over') S.ui.anim = 'roles'; S.view = m.view; S.rev = m.rev; S.hist = m.hist || null; adoptNightUi(m.view); adoptDayStage(m.view); leftOver(prev, m.view); if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
       else if (m.type === 'graveyard') { S.graveyard = m.entries; S.render(); }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
@@ -319,7 +319,7 @@ function localTransport() {
   const emit = (stepMsg) => {
     store.set(KEY, JSON.stringify(room)); registerRoles(room.config.customRoles);
     try { localStorage.setItem(LOG_KEY, JSON.stringify(log.toJSON())); } catch { store.del(LOG_KEY); } // too big for this browser: Undo still works until a reload
-    const prev = S.view; const next = viewForHost(room, new Set()); if (isNewGame(prev, next)) newGameUi(next); S.view = next; S.rev = log.rev; S.hist = log.history(); adoptNightUi(next); leftOver(prev, next); autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
+    const prev = S.view; const next = viewForHost(room, new Set()); if (isNewGame(prev, next)) newGameUi(next); S.view = next; S.rev = log.rev; S.hist = log.history(); adoptNightUi(next); setTimeout(() => adoptDayStage(next), 0); leftOver(prev, next); autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
     if (stepMsg) stepped(stepMsg);
     if (prev && prev.phase !== 'over' && room.phase === 'over') showVictory(gameOverEvent(room)); // single device: no server to announce it
   };
@@ -567,13 +567,16 @@ const A = {
   resolve() { send({ type: 'submitNight', actions: S.ui.night.actions, n: S.view.night }); },
   // day
   selCondemn(el) { S.ui.condemn = S.ui.condemn === el.dataset.id ? null : el.dataset.id; S.render(); },
-  dayTalk() { setDayStage({ stage: 'talk', minutes: TALK_MINUTES, startedAt: Date.now() }); },
-  talkAdj(el) { const d = S.ui.dayStage; if (d?.stage === 'talk') setDayStage({ ...d, minutes: clampMinutes(d.minutes + Number(el.dataset.v)) }); },
-  talkSkip() { setDayStage({ stage: 'vote', talkDone: talkDoneText({ skipped: true }) }); },
-  dayVote() { // the Next from the talk step: the minutes used go into the timeline
-    const d = S.ui.dayStage?.day === S.view.day ? S.ui.dayStage : null;
-    setDayStage(d?.stage === 'talk' ? { stage: 'vote', talkDone: talkDoneText({ timed: !!S.view.advanced?.dayTimer, startedAt: d.startedAt, now: Date.now() }) } : { stage: 'vote' });
+  // The day steps are room moves: the room keeps the step and its times (room.js dayStage).
+  dayTalk() { send({ type: 'dayStage', stage: 'talk', minutes: TALK_MINUTES }); },
+  talkAdj(el) { // quick taps count from this phone's last tap until the room's view catches up
+    const d = dayStageOf(S.view); if (d?.stage !== 'talk') return;
+    const base = S.ui.talkNext?.startedAt === d.startedAt ? S.ui.talkNext.minutes : d.minutes;
+    const minutes = clampMinutes(base + Number(el.dataset.v)); S.ui.talkNext = { startedAt: d.startedAt, minutes };
+    send({ type: 'dayStage', stage: 'talk', minutes });
   },
+  talkSkip() { send({ type: 'dayStage', stage: 'vote', skipped: true }); },
+  dayVote() { send({ type: 'dayStage', stage: 'vote' }); }, // from the talk step the room writes the minutes used into the timeline
   condemn() { if (!S.ui.condemn) return; const id = S.ui.condemn; const name = S.view.players.find((p) => p.id === id)?.name || 'They'; S.ui.condemn = null; S.ui.dayResult = { day: S.view.day, text: `${name} was voted out` }; buzz([30, 40, 30]); send({ type: 'condemn', playerId: id }); },
   noCondemn() { S.ui.condemn = null; S.ui.dayResult = { day: S.view.day, text: 'No one was voted out' }; send({ type: 'noCondemn' }); },
   seeRoles() { markRolesSeen(S.view); S.render(); },
@@ -628,9 +631,14 @@ const A = {
   pickCard(el) { S.ui.claim = el.dataset.v; S.ui.claimSuit = suitOf(el.dataset.v); S.render(); },
   claim() { if (S.ui.claim) send({ type: 'claimCard', card: S.ui.claim }); },
 };
-// The day step on the Host's phone, saved so a refresh comes back to it.
-function setDayStage(next) {
-  S.ui.dayStage = { ...next, day: S.view.day }; saveDayStage(store, S.view.code, S.view.gameNo, S.ui.dayStage); S.render();
+// A room that was mid-day when this update arrived: its step was saved on this phone, not in the room. Move it into the
+// room once (the countdown starts again), then forget the phone's copy, so an Undo never brings an old step back.
+function adoptDayStage(v) {
+  if (S.ui.talkNext && dayStageOf(v)?.minutes === S.ui.talkNext.minutes) S.ui.talkNext = null; // the room caught up
+  if (v?.kind !== 'host' || v.phase !== 'day') return;
+  const saved = loadDayStage(store, v.code, v.gameNo, v.day); if (!saved) return;
+  forgetDayStage(store);
+  if (!v.dayStage && saved.stage !== 'morning') send({ type: 'dayStage', stage: saved.stage, ...(saved.stage === 'talk' ? { minutes: saved.minutes } : {}) });
 }
 Object.assign(A, TOOL_ACTIONS, SETUP_ACTIONS, SEAT_ACTIONS);
 wireSetupGestures();

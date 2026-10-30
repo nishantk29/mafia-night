@@ -10,7 +10,8 @@ import { randBytes, rand01, nowMs } from './entropy.js';
 import { ROLE_BY_ID, factionOf, registerRoles, sanitizeRole, resolveRoleId, legacyRoleId, pinStoredId, storedToMerged } from './roles.js';
 import { roleGuide } from './role_guide.js';
 import { ROOM_MODES, CARD_FLOWS } from './modes.js';
-import { ADVANCED_DEFAULTS, ALLOW_SEAT_TAKEOVER } from './config-defaults.js';
+import { ADVANCED_DEFAULTS, ALLOW_SEAT_TAKEOVER, TALK_MINUTES } from './config-defaults.js';
+import { clampMinutes, talkDoneText } from './day-talk.js';
 
 export const DOT_COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white'];
 const DEFAULT_LEGEND = {
@@ -49,7 +50,7 @@ function resetDeal(room) {
   room.copSalt = rand01(); // seeds the neutral "Cop 1/2/..." numbering for this game
   room.deck = null; room.phase = 'lobby'; room.day = 0; room.night = 0; room.condemnedDay = null; room.usage = {}; room.dayUsed = {};
   room.pending = []; room.winner = null; room.sideWins = []; room.lastReport = null; room.results = []; room.shield = false; room.framed = [];
-  delete room.graveyard; delete room.nightUi;
+  delete room.graveyard; delete room.nightUi; delete room.dayStage;
 }
 
 // Restart: a fresh game for the same room. Keeps code, hostKey, players and config; moves the room to the latest night version.
@@ -274,7 +275,7 @@ export function reduce(room, actor, a) {
       const blindFirst = isBlind(room) && room.night === 0;
       if (!blindFirst && room.players.some((p) => !p.roleId)) return err('Every player needs a role first.');
       if (room.upgradeNext) { room.nightVersion = Math.max(nightVersion(room), Math.min(room.upgradeNext, upgradeTarget(room))); delete room.upgradeNext; }
-      room.night += 1; room.phase = 'night'; room.condemnedDay = null; delete room.nightUi; assignCallNumbers(room);
+      room.night += 1; room.phase = 'night'; room.condemnedDay = null; delete room.nightUi; delete room.dayStage; assignCallNumbers(room);
       if (room.night === 1) {
         finalizeBlind(room);
         assignTargets(room);
@@ -336,6 +337,18 @@ export function reduce(room, actor, a) {
       const ui = cleanNightUi(a.ui, room);
       if (!ui) return err('Bad night state.');
       room.nightUi = ui; return { ok: true };
+    }
+    case 'dayStage': { // the day's step (morning, talk, vote), kept in the room so a reload, a second Host phone and Undo all see it
+      if (room.phase !== 'day') return err('It is not day.');
+      if (!['morning', 'talk', 'vote'].includes(a.stage)) return err('Bad day step.');
+      const cur = room.dayStage?.day === room.day ? room.dayStage : null; const now = nowMs(); // the event's clock: a replay gives the same times
+      let next = { stage: 'morning' };
+      if (a.stage === 'talk') next = { stage: 'talk', minutes: clampMinutes(a.minutes ?? cur?.minutes ?? TALK_MINUTES), startedAt: cur?.stage === 'talk' ? cur.startedAt : now };
+      else if (a.stage === 'vote') {
+        const done = a.skipped ? talkDoneText({ skipped: true }) : cur?.stage === 'talk' ? talkDoneText({ timed: !!advancedOf(room).dayTimer, startedAt: cur.startedAt, now }) : null;
+        next = { stage: 'vote', ...(done ? { talkDone: done } : {}) };
+      }
+      room.dayStage = { ...next, day: room.day }; return { ok: true };
     }
     case 'submitNight': {
       if (room.phase !== 'night') return err('It is not night.');
@@ -532,6 +545,7 @@ export function viewForHost(room, connected = new Set()) {
     })),
     deck: room.deck, copSalt: room.copSalt, callNo: room.callNo, script: room.phase === 'night' ? nightScript(room) : [], pending: room.pending,
     nightUi: room.phase === 'night' && room.nightUi?.n === room.night ? room.nightUi : null,
+    dayStage: room.phase === 'day' && room.dayStage?.day === room.day ? room.dayStage : null,
     report: room.lastReport, log: room.log.slice(-60), winner: room.winner, winners: over ? finalWinners(room) : [],
     sideWins: room.sideWins, usage: room.usage, dayUsed: room.dayUsed, shield: room.shield,
     stalemate: stalemateOf(room),

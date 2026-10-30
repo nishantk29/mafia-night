@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newRoom, reduce, viewForHost, advancedOf } from '../public/js/room.js';
 import { dayModel, talkBody } from '../public/js/host-timeline.js';
-import { clampMinutes, talkLeft, talkDoneText, loadDayStage, saveDayStage } from '../public/js/day-talk.js';
+import { clampMinutes, talkLeft, talkDoneText, loadDayStage, forgetDayStage, dayStageOf } from '../public/js/day-talk.js';
 import { TALK_MINUTES, TALK_MIN, TALK_MAX } from '../public/js/config-defaults.js';
 
 const HOST = { host: true };
@@ -17,7 +17,7 @@ function dayRoom({ dayTimer = false, night = true } = {}) {
 }
 const NOW = 1_800_000_000_000;
 const MIN = 60000;
-const mem = () => { const m = new Map(); return { get: (k) => m.get(k) ?? null, set: (k, v) => m.set(k, v) }; };
+const mem = () => { const m = new Map(); return { get: (k) => m.get(k) ?? null, set: (k, v) => m.set(k, v), del: (k) => m.delete(k) }; };
 
 test('defaults: 5 minutes, adjustable 1 to 15', () => {
   assert.equal(TALK_MINUTES, 5); assert.equal(TALK_MIN, 1); assert.equal(TALK_MAX, 15);
@@ -97,14 +97,21 @@ test('adjust: the stored minutes move one at a time and stay in range', () => {
   assert.equal(dayModel(v, { stage: 'talk', minutes: clampMinutes(15 + 1), startedAt: NOW }, true, NOW).talk.minutes, 15);
 });
 
-test('refresh mid-talk restores the step; another room, game or day does not', () => {
+test('a step an older build saved on the phone is read once (to move it into the room); another room, game or day is not', () => {
   const st = mem(); const s = { day: 1, stage: 'talk', minutes: 7, startedAt: NOW - 2 * MIN };
-  saveDayStage(st, 'TALKRM', 1, s);
+  st.set('mafia.talk.v1', JSON.stringify({ ...s, code: 'TALKRM', gameNo: 1 })); // what the older build wrote
   assert.deepEqual(loadDayStage(st, 'TALKRM', 1, 1), { ...s, code: 'TALKRM', gameNo: 1 });
   const v = viewForHost(dayRoom({ dayTimer: true }));
   assert.equal(dayModel(v, loadDayStage(st, 'TALKRM', 1, 1), true, NOW).talk.left, 5 * MIN);
   assert.equal(loadDayStage(st, 'OTHER1', 1, 1), null); assert.equal(loadDayStage(st, 'TALKRM', 2, 1), null); assert.equal(loadDayStage(st, 'TALKRM', 1, 2), null);
   st.set('mafia.talk.v1', '{broken'); assert.equal(loadDayStage(st, 'TALKRM', 1, 1), null); // bad storage falls back to the morning
+  st.set('mafia.talk.v1', JSON.stringify({ ...s, code: 'TALKRM', gameNo: 1 })); forgetDayStage(st); assert.equal(loadDayStage(st, 'TALKRM', 1, 1), null);
+});
+
+test('the host view carries the room\'s day step for the day on screen only', () => {
+  const r = dayRoom({ dayTimer: true }); r.dayStage = { day: 1, stage: 'talk', minutes: 7, startedAt: NOW };
+  assert.deepEqual(dayStageOf(viewForHost(r)), r.dayStage);
+  r.dayStage = { ...r.dayStage, day: 0 }; assert.equal(dayStageOf(viewForHost(r)), null, 'a step from another day is not shown');
 });
 
 test('copy lint: the talk step wording is plain, with no em dashes', async () => {
