@@ -29,8 +29,12 @@ export function step(paint) {
   const key = stepKey();
   // The room's first view replacing the "connecting" placeholder is the same screen arriving, not a new step: no second slide.
   const settling = last !== null && last.endsWith(':wait') && last.split(':')[0] === key.split(':')[0];
+  const prevKey = last;
   const changed = last !== null && key !== last && !settling; last = key;
   if (!changed || !animOn()) return paint();
+  // Opening or leaving the FAQ (Nishant, Oct 30 2026: "janky"): no view transition. Its snapshot groups animate width, height
+  // and backdrop-filter, and the home card morph ran 400ms. The page fades and slides in on opacity + transform only (.faq-in, 220ms).
+  if (isFaq(prevKey) || isFaq(key)) { paint(); replay('faq-in'); return undefined; }
   if (hasVT()) {
     $html.dataset.vt = '1';
     const t = document.startViewTransition(paint);
@@ -39,9 +43,14 @@ export function step(paint) {
     return undefined;
   }
   paint();
-  const col = document.querySelector('#app .pane-game, #app > main');
-  if (col) { col.classList.remove('step-in'); void col.offsetWidth; col.classList.add('step-in'); col.addEventListener('animationend', () => col.classList.remove('step-in'), { once: true }); }
+  replay('step-in');
   return undefined;
+}
+const isFaq = (k) => typeof k === 'string' && k.startsWith('faq:');
+// Replays a one-shot entrance class on the main column; the class is dropped when it ends (will-change never lingers).
+function replay(cls) {
+  const col = document.querySelector('#app .pane-game, #app > main');
+  if (col) { col.classList.remove(cls); void col.offsetWidth; col.classList.add(cls); col.addEventListener('animationend', () => col.classList.remove(cls), { once: true }); }
 }
 
 // ---------------------------------------------------------------- screen wake lock (host device while a game runs)
