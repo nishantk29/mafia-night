@@ -24,7 +24,15 @@ const tally = (x, k) => { x[k] = (x[k] || 0) + 1; };
 
 export function newGame(seed, Log, o = {}) {
   const g = kitGame(seed, { Log, ...o });
-  return { log: g.log, R: simRng(seed * 7919 + 13) };
+  // The game's own clock and seed words for every later move and change (the DO uses Date.now and crypto), so a
+  // failing seed fails the same way every run.
+  const { log } = g; let t = 1_900_000_000_000, n = seed * 100_000;
+  const next = () => { n++; return [Math.imul(n, 2654435761) >>> 0, (n ^ 0x9e3779b9) >>> 0, Math.imul(n, 40503) >>> 0, 7]; };
+  // Plain functions on `this`, so a fork() of the log (the dry run) keeps the clock but acts on itself.
+  const P = Object.getPrototypeOf(log);
+  log.apply = function (a, m, now = (t += 1000), e = next()) { return P.apply.call(this, a, m, now, e); };
+  if (P.op) log.op = function (m, x = {}) { return P.op.call(this, m, { now: (t += 1000), seed: next(), ...x }); };
+  return { log, R: simRng(seed * 7919 + 13) };
 }
 export function play(log, R, max = 300) {
   for (let i = 0; i < max && !log.hold; i++) {

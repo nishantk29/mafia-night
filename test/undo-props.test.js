@@ -162,7 +162,7 @@ test(`steps that draw dice replay exactly from their own seed, and differently f
 // E1-E5 and EDICE live in test/kit/mafia-edit-props.mjs. They run against GameLog once it has edit(); before that
 // they are skipped. EDIT_LOG=<module exporting EditLog> runs them against a prototype (how the harness was checked).
 const EditLog = process.env.EDIT_LOG ? (await import(process.env.EDIT_LOG)).EditLog : (typeof GameLog.prototype.edit === 'function' ? GameLog : null);
-const EGAMES = Math.min(GAMES, 40);
+const EGAMES = +(process.env.EGAMES || Math.min(GAMES, 40)); // EGAMES=500 for a long run
 for (const [name, fn, about] of [['E1', EP.E.E1, 'edit then undo gives back the exact log and room; redo gives the edit back'],
   ['E2', EP.E.E2, 'an edit to the same value is a no-op, and forced through it flags nothing'],
   ['E3', EP.E.E3, 'after any edit, two cold replays agree, and the room is valid or paused with a reason'],
