@@ -3,8 +3,8 @@
    formatted log, game suggestions, background art, kill splatter.
    Motion: transform and opacity only, ease cubic-bezier(.2,.8,.2,1). All of it is off with reduced motion / data-fx="off".
    ====================================================================================== */
-@font-face{font-family:"Limelight";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/limelight-400.woff2) format("woff2")}
-:root{--font-display:"Limelight","Rubik",system-ui,sans-serif;--ease-butter:cubic-bezier(.2,.8,.2,1);--blood:#B3121F;--blood-deep:#6E0A14}
+@font-face{font-family:"Mafia Deco";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/mafia-deco-400-core.woff2) format("woff2");unicode-range:U+20-7E,U+A0,U+B7,U+D7,U+2013-2014,U+2018-2019,U+201C-201D,U+2022,U+2026,U+2212}@font-face{font-family:"Mafia Deco";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/mafia-deco-400-ext.woff2) format("woff2");unicode-range:U+1,U+A1-B6,U+B8-D6,U+D8-FF,U+131,U+152-153,U+2C6,U+2DA,U+2DC,U+201A,U+201E,U+2039-203A,U+2044,U+20AC,U+2122}
+:root{--font-display:"Mafia Deco","Rubik",system-ui,sans-serif;--ease-butter:cubic-bezier(.2,.8,.2,1);--blood:#B3121F;--blood-deep:#6E0A14}
 html{background:#0B0B0D;hyphens:manual}
 *{hyphens:none}
 
@@ -345,7 +345,7 @@ html[data-fx="off"] .night-progress i{transition:none}
 .step-links{display:flex;gap:var(--s4);flex-wrap:wrap}
 .step-links .link,.cue-after .link,.earlier .link{min-height:44px;display:inline-flex;align-items:center}
 /* Say: large Limelight, high contrast, no hyphens. */
-.cue-body .story-line q,.cue-body .story-then q,.cue-body .tell-say b,.story-say .story-line q{font-family:"Limelight",var(--font-display);font-weight:400;font-size:clamp(1.6rem,1.2rem + 2vw,2rem);line-height:1.45;color:#fff;hyphens:none;overflow-wrap:break-word}
+.cue-body .story-line q,.cue-body .story-then q,.cue-body .tell-say b,.story-say .story-line q{font-family:"Mafia Deco",var(--font-display);font-weight:400;font-size:clamp(1.6rem,1.2rem + 2vw,2rem);line-height:1.45;color:#fff;hyphens:none;overflow-wrap:break-word}
 .cue-body .story-then q{font-size:clamp(1.3rem,1.1rem + 1.4vw,1.6rem)}
 .cue-body .tell-say b{display:block}
 .cue-body .tell-say{display:block}
@@ -433,7 +433,7 @@ html[data-fx="off"] .check-card{animation:none}
    ====================================================================================== */
 @font-face{font-family:"Limelight Fallback";src:local("Arial"),local("Helvetica"),local("Liberation Sans");size-adjust:118%;ascent-override:77%;descent-override:26%;line-gap-override:0%}
 @font-face{font-family:"Rubik Fallback";src:local("Arial"),local("Helvetica"),local("Liberation Sans");size-adjust:103.5%;ascent-override:90%;descent-override:24%;line-gap-override:0%}
-:root{--mafia-display:"Limelight","Limelight Fallback",serif;--f-display-font:var(--mafia-display);--font-display:var(--mafia-display);
+:root{--mafia-display:"Mafia Deco","Limelight Fallback",serif;--f-display-font:var(--mafia-display);--font-display:var(--mafia-display);
   --font-ui:"Rubik","Rubik Fallback",system-ui,-apple-system,"Segoe UI",sans-serif;--font-voice:var(--font-ui)}
 .wordmark,h1,h2,.phase-title,.block-title,.path-title,.table-phase,.home-how-title,.rcard-name,.fx-pop-name,.fx-v-team,.fx-stamp,.check-text,.suggest-title,.hw-title{font-family:var(--mafia-display)}
 .role-name,.rrow-role,.suggest-name,.home-rules b,.faq-roles b,.faq-q summary,.faq-a,.btn,.tabbar button,.role-filter button,.code,.room-code{font-family:var(--font-ui);text-transform:none;letter-spacing:0}

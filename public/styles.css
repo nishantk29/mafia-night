@@ -7,7 +7,7 @@
 /* =================================================================== tokens */
 :root{
   /* family hooks (family.css) */
-  --f-accent:#E0AE52; --f-display-font:"Limelight","Rubik",system-ui,sans-serif; --f-bg:#0B0B0D; --f-ink:#F1E6D2;
+  --f-accent:#E0AE52; --f-display-font:"Mafia Deco","Rubik",system-ui,sans-serif; --f-bg:#0B0B0D; --f-ink:#F1E6D2;
   /* surfaces */
   --room:#1B1410;
   --room-night:#150F0C;
@@ -1490,9 +1490,9 @@ html[data-fx="off"] .coin-after.is-waiting,html[data-fx="off"] .coin-label.is-wa
    Motion pass: step transitions, night rail, scroll reveals, join QR, hold-to-reveal role card, display face.
    Transforms and opacity only. Every effect is off with prefers-reduced-motion or html[data-fx="off"].
    ====================================================================================== */
-@font-face{font-family:"Limelight";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/limelight-400.woff2) format("woff2")}
+@font-face{font-family:"Mafia Deco";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/mafia-deco-400-core.woff2) format("woff2");unicode-range:U+20-7E,U+A0,U+B7,U+D7,U+2013-2014,U+2018-2019,U+201C-201D,U+2022,U+2026,U+2212}@font-face{font-family:"Mafia Deco";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/mafia-deco-400-ext.woff2) format("woff2");unicode-range:U+1,U+A1-B6,U+B8-D6,U+D8-FF,U+131,U+152-153,U+2C6,U+2DA,U+2DC,U+201A,U+201E,U+2039-203A,U+2044,U+20AC,U+2122}
 /* the noir display face: the logo and h1/h2-level headers only; body, UI, the role card and names keep Rubik */
-.wordmark,h1,h2,.phase-title,.block-title,.path-title,.sheet-title,.guide-title,.balance-title{font-family:"Limelight",var(--font-display);font-weight:400;letter-spacing:.012em;text-wrap:balance}
+.wordmark,h1,h2,.phase-title,.block-title,.path-title,.sheet-title,.guide-title,.balance-title{font-family:"Mafia Deco",var(--font-display);font-weight:400;letter-spacing:.012em;text-wrap:balance}
 .rcard-name,.fx-pop-name,.room-code,.code-show-code{font-family:var(--font-display);font-weight:800;letter-spacing:-.005em}
 
 /* step transitions: View Transitions where available, the same slide in plain CSS elsewhere */
@@ -1590,7 +1590,7 @@ html,body{overflow-x:clip}
 .gy-list{min-width:0;list-style:none;margin:0;padding:0;display:grid;align-content:start;gap:var(--s2);max-height:min(46vh,360px);min-height:96px;overflow-y:auto;overscroll-behavior:contain}
 .gy-msg{box-sizing:border-box;min-width:0;display:grid;gap:2px;max-width:min(88%,100%);justify-self:start;padding:var(--s2) var(--s3);background:var(--room-night);border:1px solid var(--divider);border-radius:var(--r-row);overflow-wrap:break-word;hyphens:none}
 .gy-msg.is-mine{justify-self:end;background:var(--lacquer);border-color:var(--divider-strong)}
-.gy-name{font-family:"Limelight",var(--font-display);font-weight:400;font-size:var(--fs-sm,.875rem);color:var(--brass)}
+.gy-name{font-family:"Mafia Deco",var(--font-display);font-weight:400;font-size:var(--fs-sm,.875rem);color:var(--brass)}
 .gy-msg.is-host .gy-name{color:var(--candle)}
 .gy-text{min-width:0;color:var(--candle);line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;hyphens:none}
 .gy-empty{color:var(--faint);text-align:center;padding:var(--s3)}
@@ -1606,9 +1606,9 @@ html[data-fx="off"] .gy-in{animation:none}
 /* ---- v4 storyteller script: read-aloud block, Just-for-you notes, full-screen check card ---- */
 .story-say{margin:var(--s3) 0;padding:var(--s4);border-radius:var(--r2,12px);background:#140E0B;border:1px solid var(--brass-lo);color:var(--candle)}
 .story-line,.story-then{margin:0}
-.story-tag{display:block;font-family:"Limelight",var(--font-display);font-weight:400;font-size:var(--fs-md);color:var(--brass);letter-spacing:.04em;margin-bottom:var(--s1)}
+.story-tag{display:block;font-family:"Mafia Deco",var(--font-display);font-weight:400;font-size:var(--fs-md);color:var(--brass);letter-spacing:.04em;margin-bottom:var(--s1)}
 .story-line q,.story-then q{quotes:"\201C" "\201D";font-family:var(--font-ui);font-weight:600;font-size:clamp(1.25rem,1.1rem + .8vw,1.4rem);line-height:1.4;color:var(--candle)}
-.story-line q::before,.story-line q::after,.story-then q::before,.story-then q::after{font-family:"Limelight",serif;font-weight:400;color:var(--brass)}
+.story-line q::before,.story-line q::after,.story-then q::before,.story-then q::after{font-family:"Mafia Deco",serif;font-weight:400;color:var(--brass)}
 .story-then{margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--rule-strong)}
 .story-then .story-tag{font-size:var(--fs-sm)}
 .story-then q{font-size:1.05rem}
@@ -1617,7 +1617,7 @@ html[data-fx="off"] .gy-in{animation:none}
 .story-just{display:flex;gap:var(--s1);align-items:center;margin:0 0 var(--s1);font-family:var(--font-ui);font-size:var(--fs-sm);font-weight:700;color:var(--smoke)}
 .story-just > .ui-ico{color:var(--brass)}
 .check-card{position:fixed;inset:0;z-index:2147483000;background:#0A0706;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--s5,24px);text-align:center;cursor:pointer;animation:check-in var(--t-enter) cubic-bezier(.2,.8,.2,1) both}
-.check-text{margin:0;font-family:"Limelight",var(--font-display);font-weight:400;font-size:clamp(3rem,16vw,7rem);line-height:1.05;color:var(--candle);text-transform:uppercase;overflow-wrap:break-word;hyphens:none;max-width:100%}
+.check-text{margin:0;font-family:"Mafia Deco",var(--font-display);font-weight:400;font-size:clamp(3rem,16vw,7rem);line-height:1.05;color:var(--candle);text-transform:uppercase;overflow-wrap:break-word;hyphens:none;max-width:100%}
 .check-card.is-mafia .check-text{color:#E5484D}
 .check-card.is-role .check-text{color:var(--brass)}
 .check-close{position:absolute;bottom:max(var(--s4,16px),env(safe-area-inset-bottom));margin:0;font-size:var(--fs-sm);color:var(--smoke)}
@@ -1644,7 +1644,7 @@ html[data-fx="off"][data-world] body::before,html[data-fx="off"][data-world] bod
 
 /* Dead player: the first screen says it plainly, the Graveyard comes first, the ghost card sits below. */
 .gy-hero{display:grid;gap:var(--s1);margin:var(--s3) 0 var(--s4)}
-.gy-hero-title{margin:0;font-family:"Limelight",var(--font-display);font-weight:400;font-size:var(--fs-2xl,1.75rem);line-height:1.1;color:var(--candle);text-transform:none;letter-spacing:0}
+.gy-hero-title{margin:0;font-family:"Mafia Deco",var(--font-display);font-weight:400;font-size:var(--fs-2xl,1.75rem);line-height:1.1;color:var(--candle);text-transform:none;letter-spacing:0}
 .gy-hero .muted{margin:0}
 .hand.is-ghost{filter:grayscale(1) brightness(.8);opacity:.6}
 .seat-view > .gy{margin-bottom:var(--s5)}

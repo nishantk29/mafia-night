@@ -1,7 +1,7 @@
 // Builds the generated asset modules:
 //   public/icons/roles.svg     SVG sprite of the game-icons used by role_icons.js (scripts/icon-sprite.mjs)
 //   public/js/art_manifest.js  which role portraits exist in public/art/<roleId>.(webp|png|jpg)
-//   public/fonts/*.woff2       self-hosted fonts copied from node_modules
+//   scripts/fonts/src/*.woff2  font sources copied from node_modules (public/fonts is written by scripts/fonts/subset.py)
 // Run: npm run assets
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,7 +36,10 @@ console.log(`portraits: ${art.length}`);
 // All SIL OFL 1.1. The app UI uses Rubik (variable, from shared/family) and Limelight for headings; Alegreya Sans is
 // only used by the printable guide (print.css), at 400 and 700. Alegreya Sans has no variable version, so only the two
 // weights print.css asks for are shipped (test/font-files.test.js fails if a font file is unreferenced or missing).
+// These copies are the SOURCES for scripts/fonts/subset.py (scripts/fonts/src/, not deployed). After a font update,
+// run the subsetter by hand (see its header) and commit public/fonts/ + scripts/fonts/manifest.json.
 const fonts = [400, 700].map((w) => [`@fontsource/alegreya-sans/files/alegreya-sans-latin-${w}-normal.woff2`, `alegreya-sans-${w}.woff2`]);
-fs.mkdirSync(pub('fonts'), { recursive: true });
-for (const [src, dst] of fonts) fs.copyFileSync(path.join(root, 'node_modules', src), pub('fonts', dst));
-console.log('fonts: copied', fonts.length);
+const fontSrc = path.join(root, 'scripts', 'fonts', 'src');
+fs.mkdirSync(fontSrc, { recursive: true });
+for (const [src, dst] of fonts) fs.copyFileSync(path.join(root, 'node_modules', src), path.join(fontSrc, dst));
+console.log('fonts: copied', fonts.length, 'sources to scripts/fonts/src (now run scripts/fonts/subset.py)');
