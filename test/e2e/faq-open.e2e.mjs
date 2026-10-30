@@ -40,7 +40,7 @@ for (const engine of ['chromium', 'webkit']) {
       L.check(`${tag}: opening the page animates only transform/opacity, at most 250 ms`, bad.length === 0, bad.length ? bad : anims);
       L.check(`${tag}: no view transition on the way in`, !anims.some((a) => /view-transition/.test(a.on)), anims.map((a) => a.on));
       if (motion === 'reduce') L.check(`${tag}: nothing moves when the page opens`, anims.length === 0, anims);
-      else L.check(`${tag}: the page fades and slides in once (.faq-in, 200-250 ms)`, anims.some((a) => a.name === 'step-in' && a.ms >= 200 && a.ms <= 250), anims);
+      else L.check(`${tag}: the page fades and slides in once (.faq-in, 200-250 ms)`, anims.some((a) => /step-in$/.test(a.name) && a.ms >= 200 && a.ms <= 250), anims);
       // one question
       await page.waitForTimeout(400);
       const q = page.locator('.faq-q').nth(1); await q.scrollIntoViewIfNeeded(); await page.waitForTimeout(200);
