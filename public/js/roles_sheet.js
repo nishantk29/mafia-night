@@ -84,7 +84,7 @@ export function rolesPanel(m, { gate = false, button = 'See my role', openId = n
   const lead = m.hidden ? '' : `<p class="rs-lead">${m.players} players. Every phone shows this same list.</p>`;
   const body = m.hidden ? hiddenBody(m) : groups(m.groups, openId, m.rules);
   const foot = m.hidden ? '' : '<p class="rs-foot">This is what’s in the game, not who has what. Tap a role for its full rules.</p>';
-  const act = gate ? `<button type="button" class="btn big" data-a="seeRoles">${esc(button)}</button>` : `<button type="button" class="btn big" data-a="closeRoles">${m.hidden ? 'Got it' : 'Close'}</button>`;
+  const act = gate ? `<button type="button" class="btn big" data-a="seeRoles">${esc(button)}</button>` : `<button type="button" class="btn big" data-a="closeRoles">Close</button>`;
   const inner = `<div class="sheet-grab"></div>
     <h2 class="sheet-title" id="roles-title">Roles in this game</h2>${lead}<div class="rs-body">${body}${foot}</div><div class="rs-act">${act}</div>`;
   return gate
@@ -109,6 +109,6 @@ export function markRolesSeen(v) {
 // The panel layer for any screen: the gate when it is due, else the sheet when the chip opened it.
 export const rolesLayer = (v) => {
   const m = rolesModel(v);
-  if (rolesGateOpen(v)) return rolesPanel(m, { gate: true, button: v.kind === 'host' ? 'Continue' : 'See my role', openId: S.ui.rolesOpen });
+  if (rolesGateOpen(v)) return rolesPanel(m, { gate: true, button: v.kind === 'host' ? (v.config?.rules?.dayStart && !(v.config?.mode === 'cards' && v.config?.cardFlow === 'blind') ? 'Next: Day 1' : 'Next: Night 1') : 'See my role', openId: S.ui.rolesOpen });
   return S.ui.roles ? rolesPanel(m, { openId: S.ui.rolesOpen }) : '';
 };

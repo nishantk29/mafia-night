@@ -24,7 +24,7 @@ export function joinForm(code) {
   <main class="wrap join">
     <h1 class="phase-title">Join room <span class="code">${esc(code)}</span></h1>
     <label class="field"><span>Your name</span><input data-i="joinName" maxlength="20" autocomplete="given-name" enterkeyhint="go" value="${esc(S.ui.draft.joinName || '')}" placeholder="The name everyone calls you"></label>
-    <button type="button" class="btn big" data-a="join">Join game</button>
+    <button type="button" class="btn big" data-a="join">Join</button>
   </main>`;
 }
 
@@ -46,7 +46,7 @@ export function playerScreen(v) {
   <main class="wrap seat-view">
     ${top}
     <section class="table-side" aria-label="The table">${tableSide(v)}</section>
-    <p class="leave-row"><button type="button" class="linkish" data-a="leaveGame">${ui('back')} Leave this game</button></p>
+    <p class="leave-row"><button type="button" class="linkish" data-a="leaveGame">${ui('back')} Leave game</button></p>
   </main>${S.ui.tools ? toolsPanel(v, false) : ''}${rolesLayer(v)}`;
 }
 
@@ -163,7 +163,7 @@ function cardPicker(me) {
     <p class="muted">Keep your card hidden and tap the same one here to see your role.</p>
     ${step1}${step2}
     ${sel ? `<p class="muted">You picked the ${esc(cardName(sel))}.</p>` : ''}${tries}
-    <button type="button" class="btn big ${sel ? '' : 'disabled'}" ${sel ? '' : 'aria-disabled="true" data-why="Pick your card first"'} data-a="claim">${ui('eye')} Show my role</button></section>`;
+    <button type="button" class="btn big ${sel ? '' : 'disabled'}" ${sel ? '' : 'aria-disabled="true" data-why="Pick your card first"'} data-a="claim">${ui('eye')} See my role</button></section>`;
 }
 
 function over(v) {

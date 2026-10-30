@@ -38,7 +38,7 @@ export function seatSheet(v, sh) {
       : w === 'dropped' ? `${esc(p.name)}’s phone isn’t connected. It reconnects by itself, or you can move the seat to this phone.` : `${esc(p.name)} plays on their own phone.`;
   return shell(esc(p.name), `<p class="muted seat-how">${whereLine(p)} <span>${how}</span></p>
     <label class="field"><span>Name</span><input class="add-input" data-i="seatName" maxlength="20" autocomplete="off" value="${esc(S.ui.draft.seatName ?? p.name)}"></label>
-    <div class="sheet-actions"><button type="button" class="btn big" data-a="seatRename" data-id="${p.id}">Save name</button>${acts.join('')}</div>`);
+    <div class="sheet-actions"><button type="button" class="btn big" data-a="seatRename" data-id="${p.id}">Save</button>${acts.join('')}</div>`);
 }
 
 // ---- pass the phone ----
@@ -71,7 +71,7 @@ export function passLayer(v, ps) {
   return `<main class="pass pass-look" aria-label="${name}’s card"><p class="pass-top" tabindex="-1">${name}’s card. Only ${name} looks.</p>
     <button type="button" class="pass-hold" data-hold aria-label="Hold to look at ${name}’s card. Let go to hide it. It hides by itself after 3 seconds."><span class="rcard-back pass-back" aria-hidden="true"><span class="rcard-back-mark">${ui('brand')}</span></span><span class="pass-face" data-pass-face aria-live="polite"></span></button>
     <p class="pass-hint">${ui('hand')} Press and hold the card to look. Let go to hide.</p>
-    <div class="pass-dock"><button type="button" class="btn big" data-a="passDone">Hide and pass back</button></div></main>`;
+    <div class="pass-dock"><button type="button" class="btn big" data-a="passDone">Hide and pass on</button></div></main>`;
 }
 
 // On the dealt screen: who plays on this phone, with no role anywhere. Identical for every seat.
@@ -88,4 +88,4 @@ export function passPanel(v, seen) {
 
 export const goneScreen = () => `<main class="wrap gone"><h1 class="phase-title">This seat moved</h1>
   <p class="muted">The host moved this seat to the host phone, or someone took it over. To play, join again with your name.</p>
-  <a class="btn big" href="#/">Back to home</a></main>`;
+  <a class="btn big" href="#/">Mafia Night home</a></main>`;

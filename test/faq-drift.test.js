@@ -39,6 +39,6 @@ describe('FAQ matches the game', () => {
   test('no stale names or raw filenames in links', () => {
     assert.ok(!/Council Night/i.test(html));
     assert.ok(!/>[^<]*\.(html|css|js|pdf)</.test(html), 'link text must not be a filename');
-    assert.deepEqual(GAME_LINKS.map(([n]) => n), ['All Games', 'Quest Night', 'The Gilded Chamber']);
+    assert.deepEqual(GAME_LINKS.map(([n]) => n), ['All games', 'Quest Night', 'The Gilded Chamber']);
   });
 });

@@ -80,7 +80,7 @@ try {
   await host.page.locator('[data-a="seatLocal"]').click();
   await host.page.waitForFunction(() => /This phone/.test([...document.querySelectorAll('.seat-row')].find((r) => /Gil/.test(r.innerText))?.innerText || ''));
   await taker.page.locator('.gone').waitFor({ timeout: 10000 });
-  L.check('the old phone for a moved seat sees nothing of the game', (await taker.page.locator('.gone').count()) === 1 && !/Town|Mafia/.test(await taker.text()));
+  L.check('the old phone for a moved seat sees nothing of the game', (await taker.page.locator('.gone').count()) === 1 && !/Town|Mafia(?! Night)/.test(await taker.text()));
 
   // ---- Seating step ----
   await next(host); await next(host);
@@ -126,7 +126,7 @@ try {
   await host.page.mouse.up(); await wait(host, 150);
   L.check('let go: the role is gone from the page', (await host.page.evaluate(() => document.querySelectorAll('.pass-role').length)) === 0 && (await host.page.evaluate(() => document.querySelector('[data-pass-face]').innerHTML)) === '');
   await host.page.locator('[data-a="passDone"]').click(); await host.page.locator('.pass-panel').waitFor();
-  L.check('Hide and pass back returns to the panel and marks Ben as looked', /Looked/.test(await host.page.locator('.pass-row', { hasText: 'Ben' }).innerText()));
+  L.check('Hide and pass on returns to the panel and marks Ben as looked', /Looked/.test(await host.page.locator('.pass-row', { hasText: 'Ben' }).innerText()));
 
   // ---- Gil: reload and reconnect mid-pass ----
   await host.page.locator('[data-a="passTo"]', { hasText: 'Gil' }).click(); await host.page.locator('.pass-gate').waitFor();

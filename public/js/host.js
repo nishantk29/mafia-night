@@ -112,7 +112,7 @@ function settingsSheet() {
       <span class="rule-text"><span class="rule-title">Animations</span><span class="rule-desc">Night and day scenes, card flips and the win screen. Off keeps everything still.</span></span>
       <span class="switch" aria-hidden="true"><i></i></span></button></div>
     ${hostHelpSettingsRow()}
-    ${S.view?.phase && S.view.phase !== 'lobby' ? `<div class="end-game"><button type="button" class="btn ghost" data-a="restartAsk">Restart</button>
+    ${S.view?.phase && S.view.phase !== 'lobby' ? `<div class="end-game"><button type="button" class="btn ghost" data-a="restartAsk">Restart game</button>
       <p class="muted">Same code and players. New roles, back to the reveal.</p></div>` : ''}
     ${S.mode === 'host' ? `<div class="end-game"><button type="button" class="btn danger" data-a="endGameAsk">End game</button>
       <p class="muted">Closes the room for everyone and frees the code.</p></div>` : ''}
@@ -125,7 +125,7 @@ function restartSheet() {
     <div class="sheet-grab"></div>
     <div class="sheet-head"><h2 class="sheet-title" id="restart-title">Restart the game?</h2><button type="button" class="icon-btn x-btn" data-a="restartNo" aria-label="Close">${ui('x')}</button></div>
     <p>Same code and players. Everyone gets a new role and goes back to the reveal.</p>
-    <div class="btn-row"><button type="button" class="btn ghost" data-a="restartNo">Keep playing</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button><button type="button" class="btn" data-a="restart">Restart now</button></div>
+    <div class="btn-row"><button type="button" class="btn ghost" data-a="restartNo">Keep playing</button><button type="button" class="btn ghost" data-a="restartSetup">Change setup first</button><button type="button" class="btn" data-a="restart">Restart game</button></div>
   </div></div>`;
 }
 
@@ -135,7 +135,7 @@ function endGameSheet() {
     <div class="sheet-grab"></div>
     <div class="sheet-head"><h2 class="sheet-title" id="end-title">End the game?</h2><button type="button" class="icon-btn x-btn" data-a="endGameNo" aria-label="Close">${ui('x')}</button></div>
     <p>This closes the room for every player and frees the code. It can’t be undone.</p>
-    <div class="btn-row"><button type="button" class="btn ghost" data-a="endGameNo">Keep playing</button><button type="button" class="btn danger" data-a="endGameYes">End game for everyone</button></div>
+    <div class="btn-row"><button type="button" class="btn ghost" data-a="endGameNo">Keep playing</button><button type="button" class="btn danger" data-a="endGameYes">End game</button></div>
   </div></div>`;
 }
 
@@ -310,7 +310,7 @@ function stepCard(v, c, alive) {
   const body = stepBody(v, s, n, alive);
   const peek = s.hint || v.story?.steps?.[s.key]?.notes?.length
     ? `<button type="button" class="linkish st-peek" data-a="toggleUi" data-k="peek" aria-expanded="${!!S.ui.peek}">${ui('ear')} ${S.ui.peek ? 'Hide private note' : 'Private note'}</button>${S.ui.peek ? `<div class="story-notes"><ul>${[s.hint, s.realRole && `Real role: ${s.realRole}`, ...(v.story?.steps?.[s.key]?.notes || [])].filter(Boolean).map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}` : '';
-  const after = set ? `${afterBits(v, s, set)}${s.kind === 'action' && checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Show card again</button>` : ''}` : '';
+  const after = set ? `${afterBits(v, s, set)}${s.kind === 'action' && checkFor(v, s, set) ? `<button type="button" class="link" data-a="showCheck" data-key="${s.key}">Reveal again</button>` : ''}` : '';
   return card({ kicker: c.name, key: s.key, say: c.say, todo: c.todo, dead: c.dead, body: `${body}${after}${peek}`, then: set ? '' : c.then });
 }
 
@@ -419,7 +419,7 @@ function day(v) {
   const pend = v.pending.map((p) => `<section class="cue is-current pending"><div class="cue-body">
       <span class="meta">${esc(pname(v, p.playerId))}</span><p class="say">${esc(p.text)}</p>
       <div class="pick">${alive.map((q) => `<button type="button" class="pk" data-a="pend" data-pid="${p.id}" data-id="${q.id}">${esc(q.name)}</button>`).join('')}</div>
-      <button type="button" class="link" data-a="pend" data-pid="${p.id}" data-id="">Nobody</button></div></section>`).join('');
+      <button type="button" class="link" data-a="pend" data-pid="${p.id}" data-id="">No one</button></div></section>`).join('');
   const names2 = (ids) => ids.map((id) => pname(v, id)).join(' and ');
   let current;
   if (m.stage === 'morning') {
@@ -504,7 +504,7 @@ function logPane(v) {
     ${lines ? `<div class="log-head" aria-hidden="true"><span></span><span>Round · What happened</span></div><ol class="log">${lines}</ol>` : empty('log', 'The log fills up once night 1 starts.')}
     ${v.sideWins.length ? `<section class="block"><h2 class="block-title">Side wins</h2>${v.sideWins.map((s) => `<p class="note">${ui('trophy')} ${esc(s.reason)}</p>`).join('')}</section>` : ''}
     ${v.phase !== 'lobby' && v.phase !== 'over' ? `<section class="block tools"><h2 class="block-title">Host tools</h2>
-      <div class="btn-row"><button type="button" class="btn ghost" data-a="declare">${ui('crown')} Declare a winner</button><button type="button" class="btn ghost" data-a="restartAsk">Restart</button></div></section>` : ''}`;
+      <div class="btn-row"><button type="button" class="btn ghost" data-a="declare">${ui('crown')} Declare a winner</button><button type="button" class="btn ghost" data-a="restartAsk">Restart game</button></div></section>` : ''}`;
 }
 
 // ---------------- custom role editor ----------------
@@ -540,6 +540,6 @@ function roleModal() {
       ${d.alignment === 'mafia' ? check('meetingMafia', d.meeting === 'mafia', 'Joins the Mafia night meeting') : ''}
       ${d.alignment === 'third' ? check('jesterWin', d.sideWin === 'condemned', 'Wins if condemned') : ''}
     </div>
-    <div class="btn-row modal-foot"><button type="button" class="btn ghost" data-a="closeModal">Cancel</button><button type="button" class="btn" data-a="saveRole">Save role</button></div>
+    <div class="btn-row modal-foot"><button type="button" class="btn ghost" data-a="closeModal">Cancel</button><button type="button" class="btn" data-a="saveRole">Save</button></div>
   </div></div>`;
 }

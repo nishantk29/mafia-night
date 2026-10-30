@@ -32,7 +32,7 @@ test('every phase the app has gets help', () => {
   }
   const m = hostHelp({ phase: 'day', day: 1, night: 1, report: { night: 1 } });
   assert.match(m.lines[0], /announcement/);
-  assert.match(hostHelp({ phase: 'day', day: 2, night: 1 }).lines.join(' '), /Nobody today/);
+  assert.match(hostHelp({ phase: 'day', day: 2, night: 1 }).lines.join(' '), /[Tt]ap No one/);
   assert.match(hostHelp({ phase: 'over' }).lines.join(' '), /Restart/);
 });
 
@@ -87,7 +87,7 @@ test('core has no game text and walkthrough/sheet render accessibly', () => {
   assert.doesNotMatch(src, /^import /m);
   const w = walkthrough(WALKTHROUGH, 0);
   assert.match(w, /Skip/); assert.match(w, /data-a="hhNext"/);
-  assert.match(walkthrough(WALKTHROUGH, WALKTHROUGH.length - 1), /Got it/);
+  assert.match(walkthrough(WALKTHROUGH, WALKTHROUGH.length - 1), />Done</);
   assert.equal((w.match(/<i/g) || []).length, WALKTHROUGH.length);
   assert.match(helpButton('<svg/>'), /aria-label="What do I do now\?"/);
   assert.match(helpSheet({ title: 'T', lines: ['a', 'b'] }, { icons: { x: 'x' } }), /sheet-bg/);

@@ -28,7 +28,9 @@
   --f-fs-3xl:clamp(3.25rem,2rem + 6vw,7.5rem);
 
   /* radii */
-  --f-r-sm:8px; --f-r-md:14px; --f-r-lg:24px; --f-r-pill:999px;
+  /* radii (Nishant 2026-10-29): every border-radius is one of these. sm/md/lg are kept as aliases. */
+  --f-r-inset:4px; --f-r-field:12px; --f-r-card:20px; --f-r-sheet:28px; --f-r-pill:999px; --f-r-round:50%; --f-r-face:6% / 4.3%;
+  --f-r-sm:var(--f-r-field); --f-r-md:var(--f-r-field); --f-r-lg:var(--f-r-card);
 
   /* sizes */
   --f-btn-h:52px; --f-btn-h-sm:44px; --f-tap:44px; --f-header-h:56px;

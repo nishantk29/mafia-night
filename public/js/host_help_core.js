@@ -16,7 +16,7 @@ export function helpSheet(help, { icons, replay = 'How hosting works', close = '
     <div class="sheet-grab"></div>
     <div class="sheet-head"><h2 class="sheet-title" id="hh-title">${esc(help.title)}</h2><button type="button" class="icon-btn x-btn" data-a="${close}" aria-label="Close">${icons.x}</button></div>
     <ol class="hh-lines">${help.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ol>
-    <div class="btn-row"><button type="button" class="btn ghost" data-a="${replayAction}">${esc(replay)}</button><button type="button" class="btn" data-a="${close}">Got it</button></div>
+    <div class="btn-row"><button type="button" class="btn ghost" data-a="${replayAction}">${esc(replay)}</button><button type="button" class="btn" data-a="${close}">Done</button></div>
   </div></div>`;
 }
 
@@ -32,6 +32,6 @@ export function walkthrough(cards, i, { dir = 1, label = 'How hosting works', cl
       ${c.lines.map((l) => `<p class="hw-line">${esc(l)}</p>`).join('')}
     </div>
     <div class="hw-dots" aria-hidden="true">${cards.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
-    <div class="btn-row hw-actions">${i > 0 ? `<button type="button" class="btn ghost" data-a="${back}">Back</button>` : `<button type="button" class="btn ghost" data-a="${close}">Skip</button>`}<button type="button" class="btn" data-a="${next}">${last ? 'Got it' : 'Next'}</button></div>
+    <div class="btn-row hw-actions">${i > 0 ? `<button type="button" class="btn ghost" data-a="${back}">Back</button>` : `<button type="button" class="btn ghost" data-a="${close}">Skip</button>`}<button type="button" class="btn" data-a="${next}">${last ? 'Done' : 'Next'}</button></div>
   </div></div>`;
 }
