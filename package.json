@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:ailook": "node test/kit/ailook-check.mjs",
     "dev": "wrangler dev --local",
     "test": "node --test \"test/**/*.test.js\"",
     "e2e": "node test/e2e/multi-phone.e2e.mjs",
@@ -10,7 +11,8 @@
     "assets": "node scripts/build-assets.mjs",
     "art:brief": "node scripts/art-brief.mjs",
     "art:slice": "node scripts/slice-art.mjs",
-    "icons:ui": "node scripts/build-ui-icons.mjs"
+    "icons:ui": "node scripts/build-ui-icons.mjs",
+    "test:spacing": "node test/kit/spacing-check.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/alegreya": "^5.3.0",
