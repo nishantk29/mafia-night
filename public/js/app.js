@@ -160,7 +160,7 @@ const connecting = (text) => `<main class="wrap"><div class="empty">${ui('cards'
 
 function screen() {
   const lost = !S.conn && (S.mode === 'host' || S.mode === 'play');
-  const banner = lost ? `<div class="banner${S.connLong ? ' banner-lost' : ''}" role="status"><span>${ui('wifi-off')} Reconnecting to the room…</span>${S.connLong ? errorButtons() : ''}</div>` : '';
+  const banner = lost ? `<div class="banner${S.connLong ? ' banner-lost' : ''}" role="status"><span>${ui('wifi-off')} Reconnecting to the room…</span>${S.connLong ? errorButtons() : ''}</div>` : pausedBanner();
   if (S.fatal) return errorScreen(S.fatal);
   if (S.ended) return endedScreen(S.ended);
   if (S.mode === 'home') return home();
@@ -173,6 +173,15 @@ function screen() {
     if (store.get(`mafia.player.${S.code}`)) return connecting('Connecting to the room…');
     return joinForm(S.code);
   }
+  return '';
+}
+
+// The host changed an earlier step and a later one no longer fits: players keep the last confirmed game and wait;
+// the host is told where it stopped and why (the fix sheet is PR E-3; until then Undo goes back to before the change).
+function pausedBanner() {
+  const h = S.mode === 'host' ? S.hist?.hold : null;
+  if (h) return `<div class="banner" role="status"><span>Paused: ${esc(h.label)}. ${esc(h.why?.[0] || '')} Undo goes back to before the change.</span></div>`;
+  if (S.mode === 'play' && S.paused && S.view?.kind === 'player') return '<div class="banner" role="status"><span>The host is fixing an earlier step. Hold on.</span></div>';
   return '';
 }
 
@@ -248,12 +257,14 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); if (m.view?.phase === 'over' && prev?.phase !== 'over') S.ui.anim = 'roles'; S.view = m.view; S.rev = m.rev; S.hist = m.hist || null; adoptNightUi(m.view); adoptDayStage(m.view); leftOver(prev, m.view); if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
+        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); if (m.view?.phase === 'over' && prev?.phase !== 'over') S.ui.anim = 'roles'; S.view = m.view; S.rev = m.rev; S.hist = m.hist || null; S.paused = !!m.paused; adoptNightUi(m.view); adoptDayStage(m.view); leftOver(prev, m.view); if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
       else if (m.type === 'graveyard') { S.graveyard = m.entries; S.render(); }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
       else if (m.type === 'error') S.toast(m.error);
       else if (m.type === 'stepped') stepped(m);
+      else if (m.type === 'changed') S.toast(m.host ? m.label : 'The host changed an earlier step');
+      else if (m.type === 'paused') S.toast(m.error);
       else if (m.type === 'joined') store.set(`mafia.player.${code}`, JSON.stringify({ playerId: m.playerId, token: m.token }));
       else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); applyClosed(m, S.mode, closeVictory); S.render(); }
       else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = FATAL.closed; S.render(); } }

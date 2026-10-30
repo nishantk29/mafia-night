@@ -168,6 +168,7 @@ export class GameLog {
   // in such a log, so the replay is the recording).
   stampOld() {
     if (this.events.every((ev) => ev.c) || this.events.some(isMeta)) return;
+    this.stamped = true; // the caller can save the derived stamps once
     const room = clone(this.base);
     this.events = this.events.map((ev) => {
       if (ev.c) { applyEvent(room, ev); return ev; }
@@ -319,6 +320,31 @@ export class GameLog {
   history(opts) { return { ...historyInfo(this.events, this.cursor, this.room, opts), ...(this.hold ? { hold: this.hold } : {}) }; }
   toJSON() { return { v: LOG_VERSION, base: this.base, events: this.events, cursor: this.cursor, rev: this.rev, snaps: [...this.snaps] }; }
 
+  // ---- what players see while the host fixes a flagged step ----
+  // The last confirmed position: the newest prefix of the log that isn't paused. A paused log always ends in a
+  // change (new moves are refused while paused), so this walks back over changes only. Pure, so a reload agrees.
+  confirmedAt() {
+    if (!this.hold) return this.cursor;
+    let j = this.cursor - 1;
+    while (j > 0 && this.compute(j).hold) j--;
+    return j;
+  }
+  confirmedRoom() { return this.hold ? this.compute(this.confirmedAt()).room : this.room; }
+  // The pause in words, for the host: which step, why, and what can be done there.
+  holdInfo() {
+    const h = this.hold; if (!h) return null;
+    const el = this.els[h.pos]; const room = this.room;
+    const why = [...new Set(h.probs.map((p) => whyText(p)))];
+    const choices = [...(FAMILY[el.m.type] ? ['pick'] : []), ...(el.m.type === 'startNight' && room.pending?.length ? ['insert'] : []), 'drop', ...(room.phase === 'over' ? ['cut'] : [])];
+    return { id: h.id, type: h.type, label: stepLabel({ a: el.a, m: el.m }, room), why, choices };
+  }
+  // The current game's events from `since` on (never before the game began), for the host phone's copy of the log.
+  eventsSince(since = 0) {
+    const gs = this.gameStart(); const first = gs > 0 ? this.els[gs - 1].id + 1 : 0;
+    const from = Math.max(first, Math.min(Number.isInteger(since) && since >= 0 ? since : 0, this.cursor));
+    return { from, cursor: this.cursor, rev: this.rev, events: this.events.slice(from, this.cursor) };
+  }
+
   // ---- the confirm sheet: a dry run of a change. Nothing is recorded; the server replays for itself. ----
   fork() {
     const g = Object.create(Object.getPrototypeOf(this)); Object.assign(g, this);
@@ -386,6 +412,17 @@ const VERB = {
   playAgain: () => 'Play again', restart: () => 'Restart', newGame: () => 'New game', setConfig: () => 'A setup change', useDay: (n) => `${n}’s day ability`,
   toggleTag: (n) => `A note on ${n}`, setNote: (n) => `A note on ${n}`, moveSeat: (n) => `${n}’s seat`, seatWhere: (n) => `${n}’s seat`, renamePlayer: () => 'A name change',
 };
+// Why a step was flagged, in words the host reads on the pause.
+const WHY = {
+  tgt: 'A player it picks can’t be picked now.', live: 'The player who acted is dead now.', actor: 'The player who acted is dead now.',
+  step: 'That role isn’t called that night now.', role: 'That player has a different role now.', power: 'That ability is used up now.',
+  distinct: 'The same player is picked twice.', bind: 'That last shot’s player is alive now.', 'prompt-gone': 'That last shot’s player is alive now.',
+  stalemate: 'That stalemate isn’t there now.', 'now-accepted': 'This step was turned down before and would go through now.',
+};
+export function whyText(p) {
+  if (p.startsWith('refused: ')) return p.slice(9);
+  return WHY[p.split(':')[0]] || 'This step no longer fits.';
+}
 export function stepLabel(ev, room) {
   if (!ev) return '';
   const name = room?.players?.find((p) => p.id === ev.m?.playerId)?.name || 'A player';
