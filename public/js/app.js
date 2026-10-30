@@ -1,11 +1,12 @@
 // App shell: routing, transports (live WebSocket / local), event handling.
 import { S, esc, store, loadLibrary, saveLibrary, buzz } from './state.js';
-import { newRoom, reduce, viewForHost, migrateRoleIds } from './room.js';
+import { newRoom, viewForHost, migrateRoleIds } from './room.js';
 import { registerRoles, ROLE_BY_ID } from './roles.js';
 import { rebalance, DEFAULT_RULES, REVEAL_POLICY, flipCoin } from './engine.js';
 import { themeOf, themeText, themeDom } from './theme.js';
 import { TOOL_ACTIONS, tickTools } from './tools.js';
-import { TALK_MINUTES } from './config-defaults.js';
+import { TALK_MINUTES, UNDO_PAST_GAME_OVER, NOTIFY_ON_UNDO } from './config-defaults.js';
+import { GameLog } from './event-log.js';
 import { clampMinutes, talkDoneText, saveDayStage } from './day-talk.js';
 const seatNames = () => [...(S.view?.players || []).map((p) => p.name), S.view?.me?.name].filter(Boolean);
 import { ico } from './art.js';
@@ -247,11 +248,12 @@ function wsTransport(code, helloFn) {
       if (m.type === 'view') {
         // A new deal (different role) starts face down, so a phone left showing the old role doesn't flash the new one.
         if (m.view?.kind === 'player' && S.view?.kind === 'player' && m.view.me?.role?.id !== S.view.me?.role?.id) { S.ui.reveal = false; if (m.view.me?.role) S.ui.anim = 'deal'; }
-        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); if (m.view?.phase === 'over' && prev?.phase !== 'over') S.ui.anim = 'roles'; S.view = m.view; if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
+        const prev = S.view; if (isNewGame(prev, m.view)) newGameUi(m.view); if (m.view?.phase === 'over' && prev?.phase !== 'over') S.ui.anim = 'roles'; S.view = m.view; S.rev = m.rev; S.hist = m.hist || null; adoptNightUi(m.view); leftOver(prev, m.view); if (m.view?.kind === 'player' && m.view.me?.alive) S.graveyard = null; autoDeclare(prev, m.view); S.render(); observe(prev, m.view);
       }
       else if (m.type === 'graveyard') { S.graveyard = m.entries; S.render(); }
       else if (m.type === 'gameOver') showVictory(m); // sent by the room to every connected client at once
       else if (m.type === 'error') S.toast(m.error);
+      else if (m.type === 'stepped') stepped(m);
       else if (m.type === 'joined') store.set(`mafia.player.${code}`, JSON.stringify({ playerId: m.playerId, token: m.token }));
       else if (m.type === 'closed') { closed = true; store.del(`mafia.host.${code}`); store.del(`mafia.player.${code}`); applyClosed(m, S.mode, closeVictory); S.render(); }
       else if (m.type === 'fatal') { closed = true; if (m.clear) { store.del(`mafia.player.${code}`); S.view = null; S.toast(m.error); S.render(); } else { S.fatal = FATAL.closed; S.render(); } }
@@ -265,6 +267,28 @@ function wsTransport(code, helloFn) {
     send: (a) => { if (ws?.readyState === 1) ws.send(JSON.stringify(a)); else S.toast('Not connected to the room yet. Try again in a moment.'); },
     close: () => { closed = true; stopWake(); clearTimeout(timer); clearTimeout(longTimer); ws?.close(); },
   };
+}
+
+// ---------- back and forward ----------
+// The room keeps the Host's night picks (nightUi). A view brings them back after a reload, an Undo or on a second
+// Host phone. Picks this phone sent that the room hasn't echoed yet (a higher seq) are not overwritten.
+function adoptNightUi(v) {
+  if (v?.kind !== 'host' || v.phase !== 'night') return;
+  const s = v.nightUi;
+  if (s && s.n === v.night) { if ((s.seq || 0) >= (S.nightSeq || 0)) { S.ui.night = structuredClone(s); S.nightSeq = s.seq || 0; } }
+  else if (!S.nightSeq && S.ui.night.n === v.night) S.ui.night = { n: v.night, actions: {}, picks: {}, acked: {}, opened: S.ui.night.opened };
+}
+// The Host's night screen changed on this phone: keep it in the room.
+function syncNight() {
+  if (!['host', 'local'].includes(S.mode) || S.view?.phase !== 'night') return;
+  S.nightSeq = (S.nightSeq || 0) + 1;
+  send({ type: 'nightUi', ui: { ...S.ui.night, seq: S.nightSeq } });
+}
+// Undo past the end screen: the victory card closes and every role is hidden again.
+function leftOver(prev, v) { if (prev?.phase === 'over' && v && v.phase !== 'over') closeVictory(); }
+function stepped(m) {
+  if (m.host) return S.toast(`${m.dir === 'undo' ? 'Undid' : 'Redid'}: ${m.label}`);
+  if (NOTIFY_ON_UNDO) S.toast(m.dir === 'undo' ? 'The host went back a step' : 'The host went forward a step');
 }
 
 // A restarted game (same code, new gameNo): forget everything tied to the old game; the stored player token still works.
@@ -282,20 +306,33 @@ function autoDeclare(prev, view) {
 }
 
 function localTransport() {
-  const KEY = 'mafia.local';
+  const KEY = 'mafia.local', LOG_KEY = 'mafia.local.log';
   let room;
   try { room = migrateRoleIds(JSON.parse(store.get(KEY) || 'null')); } catch { room = null; }
   if (!room) { room = newRoom('LOCAL', 'local'); room.config.mode = 'cards'; }
-  const emit = () => {
+  // The same event log as the room server: Undo and Redo on this device, kept across a reload when it fits.
+  let log = null;
+  try { const j = JSON.parse(store.get(LOG_KEY) || 'null'); if (j) { const g = GameLog.restore(j); if (JSON.stringify(migrateRoleIds(g.room)) === JSON.stringify(room)) log = g; } } catch { log = null; }
+  if (!log) log = new GameLog(room);
+  room = log.room;
+  const fresh = () => { const r = newRoom('LOCAL', 'local'); r.config.mode = 'cards'; log = new GameLog(r); room = log.room; };
+  const emit = (stepMsg) => {
     store.set(KEY, JSON.stringify(room)); registerRoles(room.config.customRoles);
-    const prev = S.view; const next = viewForHost(room, new Set()); if (isNewGame(prev, next)) newGameUi(next); S.view = next; autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
+    try { localStorage.setItem(LOG_KEY, JSON.stringify(log.toJSON())); } catch { store.del(LOG_KEY); } // too big for this browser: Undo still works until a reload
+    const prev = S.view; const next = viewForHost(room, new Set()); if (isNewGame(prev, next)) newGameUi(next); S.view = next; S.rev = log.rev; S.hist = log.history(); adoptNightUi(next); leftOver(prev, next); autoDeclare(prev, S.view); S.render(); observe(prev, S.view);
+    if (stepMsg) stepped(stepMsg);
     if (prev && prev.phase !== 'over' && room.phase === 'over') showVictory(gameOverEvent(room)); // single device: no server to announce it
   };
   setTimeout(emit, 0);
   return {
     send(a) {
-      if (a.type === 'resetLocal') { room = newRoom('LOCAL', 'local'); room.config.mode = 'cards'; emit(); return; }
-      const r = reduce(room, { host: true }, a);
+      if (a.type === 'resetLocal') { fresh(); emit(); return; }
+      if (a.type === 'undo' || a.type === 'redo') {
+        const label = a.type === 'undo' ? log.undoStep() : log.redoStep();
+        if (label === null) return S.toast(a.type === 'undo' ? 'Nothing to undo.' : 'Nothing to redo.');
+        room = log.room; emit({ dir: a.type, label, host: true }); return;
+      }
+      const r = log.apply({ host: true }, a, Date.now()); room = log.room;
       if (r.error) S.toast(r.error);
       else if (r.data?.skipped?.length) S.toast(`Skipped: ${r.data.skipped.join(', ')}`);
       if (r.data?.error) S.toast(r.data.error);
@@ -495,30 +532,39 @@ const A = {
       const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
       if (next.length >= need) { n.actions[key] = { targets: next.slice(0, need) }; if (step.check === 'random') Object.assign(n.actions[key], { flip: flipCoin(), flipAt: Date.now() }); delete n.picks[key]; n.focus = key; } else n.picks[key] = next;
     }
-    S.render();
+    syncNight(); S.render();
   },
   focusStep(el) { S.ui.night.focus = el.dataset.key; S.render(); },
   confirmId(el) { S.ui.night.focus = null; const key = el.dataset.key; const ids = S.ui.night.picks[key] || []; delete S.ui.night.picks[key]; send({ type: 'identifyRole', roleId: el.dataset.role, playerIds: ids }); },
-  skip(el) { S.ui.night.focus = el.dataset.key; S.ui.night.actions[el.dataset.key] = { targets: [] }; delete S.ui.night.picks[el.dataset.key]; S.render(); },
+  skip(el) { S.ui.night.focus = el.dataset.key; S.ui.night.actions[el.dataset.key] = { targets: [] }; delete S.ui.night.picks[el.dataset.key]; syncNight(); S.render(); },
   skipIdentify(el) { const n = S.ui.night; n.focus = null; delete n.picks[el.dataset.key]; send({ type: 'skipIdentify', roleId: el.dataset.role }); },
   nextStep(el) {
     if (el.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why);
     const r = pressNext(S.view, S.ui.night);
     if (r.blocked) return S.toast(r.blocked);
-    if (r.send) return send(r.send);
-    S.render(); // followCue() scrolls to the next step
+    if (r.send) return send(r.send.type === 'submitNight' ? { ...r.send, n: S.view.night } : r.send);
+    syncNight(); S.render(); // followCue() scrolls to the next step
   },
-  alert(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { on: el.dataset.v === '1', targets: [] }; n.focus = k; S.render(); },
-  startCalls() { S.ui.night.opened = true; S.render(); },
-  infoDone(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { done: true }; n.focus = k; S.render(); },
-  undoStep(el) { delete S.ui.night.actions[el.dataset.key]; S.ui.night.focus = el.dataset.key; S.render(); },
+  alert(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { on: el.dataset.v === '1', targets: [] }; n.focus = k; syncNight(); S.render(); },
+  startCalls() { S.ui.night.opened = true; syncNight(); S.render(); },
+  infoDone(el) { const n = S.ui.night; const k = el.dataset.key; n.actions[k] = { done: true }; n.focus = k; syncNight(); S.render(); },
+  undoStep(el) { delete S.ui.night.actions[el.dataset.key]; S.ui.night.focus = el.dataset.key; syncNight(); S.render(); },
+  // Back and forward: one Host step on the room's event log, the same on every phone.
+  undo(el) {
+    if (el?.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why);
+    if (S.view?.phase === 'over' && UNDO_PAST_GAME_OVER) { S.ui.undoOverConfirm = true; S.ui.anim = 'modal'; return S.render(); }
+    S.nightSeq = 0; send({ type: 'undo', rev: S.rev });
+  },
+  undoOverYes() { S.ui.undoOverConfirm = false; S.nightSeq = 0; send({ type: 'undo', rev: S.rev }); S.render(); },
+  undoOverNo() { S.ui.undoOverConfirm = false; S.render(); },
+  redo(el) { if (el?.getAttribute('aria-disabled') === 'true') return S.toast(el.dataset.why); S.nightSeq = 0; send({ type: 'redo', rev: S.rev }); },
   // A coin flip for results that are random by design; kept with the step so the morning report says the same thing.
   coin(el) {
     const set = S.ui.night.actions[el.dataset.key]; if (!set) return;
-    set.coin = crypto.getRandomValues(new Uint8Array(1))[0] & 1 ? 'mafia' : 'innocent';
+    set.coin = crypto.getRandomValues(new Uint8Array(1))[0] & 1 ? 'mafia' : 'innocent'; syncNight();
     S.toast(set.coin === 'mafia' ? 'Heads: say MAFIA.' : 'Tails: say NOT Mafia.'); S.render();
   },
-  resolve() { send({ type: 'submitNight', actions: S.ui.night.actions }); },
+  resolve() { send({ type: 'submitNight', actions: S.ui.night.actions, n: S.view.night }); },
   // day
   selCondemn(el) { S.ui.condemn = S.ui.condemn === el.dataset.id ? null : el.dataset.id; S.render(); },
   dayTalk() { setDayStage({ stage: 'talk', minutes: TALK_MINUTES, startedAt: Date.now() }); },
@@ -693,6 +739,7 @@ document.addEventListener('keydown', (ev) => {
     if (S.ui.showCode) { A.hideCode(); return; }
     if (S.ui.showQr) { A.hideQr(); return; }
     if (S.ui.modal) { A.closeModal(); return; }
+    if (S.ui.undoOverConfirm) { A.undoOverNo(); return; }
     if (S.ui.endConfirm) { A.endGameNo(); return; }
     if (S.ui.restartConfirm) { A.restartNo(); return; }
     if (S.ui.declare) { A.closeDeclare(); return; }

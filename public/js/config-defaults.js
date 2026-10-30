@@ -26,3 +26,9 @@ export const TALK_MINUTES = 5; // the day "Talk it out" step: starting countdown
 export const TALK_MIN = 1; // shortest talk, in minutes (the quick -1 stops here)
 export const TALK_MAX = 15; // longest talk, in minutes (the quick +1 stops here)
 export const TALK_STORE_KEY = 'mafia.talk.v1'; // this phone's current day step, so a refresh mid-talk comes back to it
+
+// Back and forward (the Host's Undo and Redo). Both wait on Nishant's answer; flip here, nothing else changes.
+// UNDO_PAST_GAME_OVER: the Host may go back from the end screen (a confirm sheet says every phone hides the roles again).
+// NOTIFY_ON_UNDO: player phones get a short toast when the Host goes back or forward over something they could see.
+export const UNDO_PAST_GAME_OVER = true;
+export const NOTIFY_ON_UNDO = true;

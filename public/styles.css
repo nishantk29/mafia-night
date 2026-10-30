@@ -232,6 +232,13 @@ html[data-shell="host"] .console{padding-bottom:calc(var(--tabbar-h) + var(--doc
   background:transparent;color:var(--smoke);position:relative}
 .icon-btn .ui-ico{width:20px;height:20px;vertical-align:0}
 @media (hover:hover){.icon-btn:hover{color:var(--candle);background:var(--panel-2)}}
+.icon-btn[aria-disabled="true"]{color:var(--faint);cursor:not-allowed}
+/* Host header during a game: Undo and Redo need the room, so on phones the roles chip shows its icon only (the label stays in aria-label). */
+@media (max-width:480px){
+  .appbar.has-history .roles-chip{width:44px;flex:none;padding:0;justify-content:center}.appbar.has-history .roles-chip span{display:none}
+  .appbar.has-history .appbar-code{padding:0 var(--s2)}.appbar.has-history .appbar-code svg{display:none}
+  .appbar.has-redo .phase-badge{display:none}
+}
 .x-btn{margin-left:auto}
 
 .link{display:inline-flex;align-items:center;gap:var(--s1);min-height:44px;padding:0;border:0;background:none;color:var(--smoke);

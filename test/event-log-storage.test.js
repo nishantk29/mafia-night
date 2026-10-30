@@ -56,7 +56,7 @@ test('a cold start (DO evicted) carries on the same log; a refresh sees the same
   await send(room, host, { type: 'addPlayers', names: ['A', 'B', 'C', 'D', 'E'] });
   for (let i = 0; i < 70; i++) await send(room, host, { type: 'setNote', playerId: room.room.players[i % 5].id, note: `n${i}` });
   const again = new Room(f.ctx, {}); await again.ready;
-  assert.equal(again.elog.meta.len, 71); assert.equal(again.elog.tail.length, 71 - SNAP_EVERY);
+  assert.equal(again.log.events.length, 71); assert.equal(again.log.cursor, 71);
   const h2 = sock(); f.sockets.push(h2); await send(again, h2, { type: 'hello', hostKey: 'hk' });
   await send(again, h2, { type: 'toggleTag', playerId: again.room.players[0].id, tag: 'red' });
   const { meta, room: replayed } = storedReplay(f.store);
@@ -68,7 +68,7 @@ test('a room stored before the log existed loads as the starting point and keeps
   const old = newRoom('OLDROM', 'hk'); old.updated = 123; old.players.push({ id: 'p1', name: 'Ann', token: 't', offline: true, roleId: null, card: null, alive: true, tags: [], note: '', wrongClaims: 0 });
   const f = fakeCtx(new Map([['room', old]]));
   const room = new Room(f.ctx, {}); await room.ready;
-  assert.equal(room.elog.meta.len, 0);
+  assert.equal(room.log.events.length, 0);
   const host = sock(); f.sockets.push(host); await send(room, host, { type: 'hello', hostKey: 'hk' });
   await send(room, host, { type: 'toggleTag', playerId: 'p1', tag: 'red' });
   assert.deepEqual(f.store.get(KEY.base).players[0].tags, [], 'the base is the room as it was stored');
@@ -79,9 +79,9 @@ test('a room stored before the log existed loads as the starting point and keeps
 test('a log out of step with the room (an older build wrote the room after a rollback) starts again from the room', async () => {
   const f = fakeCtx(); const { room, host } = await hostedRoom(f);
   await send(room, host, { type: 'addPlayers', names: ['A', 'B', 'C', 'D', 'E'] });
-  const r = f.store.get('room'); r.updated += 999; r.players[0].note = 'old build'; f.store.set('room', r); // what the old code would write
+  const r = f.store.get('room'); r.players[0].note = 'old build'; f.store.set('room', r); // what the old code would write
   const again = new Room(f.ctx, {}); await again.ready;
-  assert.equal(again.elog.meta.len, 0);
+  assert.equal(again.log.events.length, 0);
   const h2 = sock(); f.sockets.push(h2); await send(again, h2, { type: 'hello', hostKey: 'hk' });
   await send(again, h2, { type: 'toggleTag', playerId: again.room.players[1].id, tag: 'red' });
   const { room: replayed } = storedReplay(f.store);

@@ -4,6 +4,7 @@
 // same room, because the reducer's randomness and clock come from the event (entropy.js).
 import { reduce } from './room.js';
 import { withEntropy, seededEntropy, newSeed } from './entropy.js';
+import { UNDO_PAST_GAME_OVER } from './config-defaults.js';
 
 export const SNAP_EVERY = 64; // a checkpoint (whole room) every 64 events, so a replay never runs more than 64
 export const LOG_VERSION = 1;
@@ -91,6 +92,10 @@ export class GameLog {
     this.cursor = i; this.rev++;
     return true;
   }
+  // One Host step back or forward (see undoTarget / redoTarget). Returns the step's label, or null.
+  undoStep(opts) { const i = undoTarget(this.events, this.cursor, this.room, opts); if (i === null) return null; const label = stepLabel(this.events[i], this.room); this.moveTo(i); return label; }
+  redoStep() { const i = redoTarget(this.events, this.cursor); if (i === null) return null; const label = stepLabel(this.events[this.cursor + firstHost(this.events, this.cursor)], this.stateAt(this.cursor)); this.moveTo(i); return label; }
+  history(opts) { return historyInfo(this.events, this.cursor, this.room, opts); }
   toJSON() { return { v: LOG_VERSION, base: this.base, events: this.events, cursor: this.cursor, rev: this.rev, snaps: [...this.snaps] }; }
 }
 
@@ -107,4 +112,44 @@ export function writesAfterAppend(meta, chunkEvents, room) {
   const out = { [KEY.meta]: meta, [KEY.chunk(k)]: chunkEvents };
   if (meta.len % meta.snapEvery === 0) out[KEY.snap(meta.len / meta.snapEvery)] = room;
   return out;
+}
+
+// ---------- Host steps: what Undo and Redo move over ----------
+// A step is one Host event. Undo goes back to just before the last Host event; anything players did after it (a
+// card claim, a Graveyard post) goes with it, because the room after an event depends on everything before it.
+// Redo goes forward over the next Host event and whatever players did after it, up to the next Host event.
+// Undo is off in the lobby (it would drop players who joined on their own phones) and, unless UNDO_PAST_GAME_OVER,
+// on the end screen.
+const isHost = (ev) => !!ev?.a?.host;
+function firstHost(events, from) { for (let i = from; i < events.length; i++) if (isHost(events[i])) return i - from; return -1; }
+export function undoTarget(events, cursor, room, { pastOver = UNDO_PAST_GAME_OVER } = {}) {
+  if (!room || room.phase === 'lobby' || (room.phase === 'over' && !pastOver)) return null;
+  for (let i = cursor - 1; i >= 0; i--) if (isHost(events[i])) return i;
+  return null;
+}
+export function redoTarget(events, cursor) {
+  const f = firstHost(events, cursor); if (f < 0) return null;
+  const j = cursor + f + 1; const g = firstHost(events, j);
+  return g < 0 ? events.length : j + g;
+}
+// "Undo: Sam voted out". Names come from the room the step was taken in (or the room now: names don't change mid-game).
+const VERB = {
+  submitNight: () => 'End of the night', startNight: () => 'Start of the night', startDay: () => 'Start of the day', deal: () => 'The deal', undeal: () => 'Back to setup',
+  condemn: (n) => `${n} voted out`, noCondemn: () => 'No one voted out', kill: (n) => `${n} eliminated`, revive: (n) => `${n} brought back`,
+  resolvePending: () => 'A last shot', declareWinner: () => 'The winner', identifyRole: () => 'Marking a role', skipIdentify: () => 'Skipping a role',
+  nightUi: () => 'A night pick', assignCard: (n) => `${n}’s card`, clearCard: (n) => `${n}’s card`, setRole: (n) => `${n}’s role`, setTarget: (n) => `${n}’s target`,
+  playAgain: () => 'Play again', restart: () => 'Restart', newGame: () => 'New game', setConfig: () => 'A setup change', useDay: (n) => `${n}’s day ability`,
+  toggleTag: (n) => `A note on ${n}`, setNote: (n) => `A note on ${n}`, moveSeat: (n) => `${n}’s seat`, seatWhere: (n) => `${n}’s seat`, renamePlayer: () => 'A name change',
+};
+export function stepLabel(ev, room) {
+  if (!ev) return '';
+  const name = room?.players?.find((p) => p.id === ev.m?.playerId)?.name || 'A player';
+  return (VERB[ev.m?.type] || (() => 'The last change'))(name);
+}
+export function historyInfo(events, cursor, room, opts) {
+  const u = undoTarget(events, cursor, room, opts); const f = firstHost(events, cursor);
+  return {
+    canUndo: u !== null, undoLabel: u !== null ? stepLabel(events[u], room) : '',
+    canRedo: f >= 0, redoLabel: f >= 0 ? stepLabel(events[cursor + f], room) : '',
+  };
 }
