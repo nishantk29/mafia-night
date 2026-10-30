@@ -54,7 +54,7 @@ scripts/art-brief.mjs, slice-art.mjs  ChatGPT/Gemini art workflow
 ## Run, test, deploy
 ```bash
 npm install            # wrangler and the simulator need Node 22+
-npm run dev            # http://localhost:8787
+npm run dev            # http://localhost:8787 (wrangler dev --local: no Cloudflare login, Workers AI off)
 npm test               # unit tests
 BASE=http://localhost:8787 node scripts/live-smoke.mjs   # needs `npm run dev` running
 BASE=http://localhost:8787 GAMES=50 SEED=1 node scripts/sim-games.mjs   # 50 simulated online games (ONLY=7 replays one)
