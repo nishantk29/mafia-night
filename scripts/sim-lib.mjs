@@ -1,7 +1,7 @@
 // Pure helpers for the game simulator: seeded randomness, role-coverage planning, storyteller-like night
 // choices and the rule oracles. No network here, so test/sim-oracles.test.js runs the same checks in node.
-import { ROLES, ROLE_BY_ID, factionOf, registerRoles } from '../public/js/roles.js';
-import { MIN_PLAYERS, setupWarnings, previewNight } from '../public/js/engine.js';
+import { ROLES, ROLE_BY_ID, factionOf, registerRoles, INVESTIGATOR_ID } from '../public/js/roles.js';
+import { MIN_PLAYERS, setupWarnings, previewNight, hasNightOnlyChecks, hasNightOnlyInfo, hasV8Rules, hasGodfatherDisguise, hasNumberedCalls } from '../public/js/engine.js';
 import { roomFromView } from '../public/js/room.js';
 
 // Every built-in role id, taken before any custom role is registered.
@@ -116,13 +116,21 @@ export function nightProblems(before, actions, after, previews) {
   const label = (s) => `${ROLE_BY_ID[s.roleId]?.name || s.roleId} (${s.actors.map(name).join(', ')})`;
 
   // v2 rooms still call dead roles; what the storyteller records for them does nothing, so no result may reach the report.
-  const inert = (s) => (before.nightVersion || 1) >= 2 && s.actors.every((id) => !before.players.find((p) => p.id === id)?.alive);
+  // v8: a used-up limited-use role is still called (s.spent), and the call does nothing.
+  const inert = (s) => !!s.spent || ((before.nightVersion || 1) >= 2 && s.actors.every((id) => !before.players.find((p) => p.id === id)?.alive));
   for (const s of steps.filter(inert)) if (info.has(s.key)) problems.push(`ORACLE: dead ${label(s)} got a result`);
+
+  // Night-only results (v5+ checks, v7+ track/watch/autopsy) are told only live, on the check card: the morning report
+  // must not carry them, and the live preview is what the investigator got (engine.js resolveNight `nightOnly`).
+  const vroom = roomFromView(before);
+  const nightOnly = (s) => (s.type === 'investigate' ? hasNightOnlyChecks(vroom) : hasNightOnlyInfo(vroom));
+  const told = (s) => (nightOnly(s) ? (previews[s.key] && !previews[s.key].blocked ? previews[s.key] : undefined) : info.get(s.key));
+  for (const s of steps.filter(nightOnly)) if (info.has(s.key)) problems.push(`ORACLE: night-only ${label(s)} result reached the morning report`);
 
   // 1) The live preview the storyteller read out must be what the morning report and the phone say.
   for (const [key, prev] of Object.entries(previews)) {
     const s = steps.find((x) => x.key === key);
-    if (inert(s)) continue;
+    if (inert(s) || nightOnly(s)) continue;
     const got = info.get(key);
     if (prev.blocked && got) problems.push(`ORACLE: ${label(s)} was told nothing live, but the report says "${got.text}"`);
     else if (!prev.blocked && !got) problems.push(`ORACLE: ${label(s)} was told "${prev.text}" live, but the report has no result`);
@@ -137,20 +145,31 @@ export function nightProblems(before, actions, after, previews) {
     const mayBeBlocked = touched(['jail', 'block'], s.actors)
       || steps.some((g) => g.type === 'blockVisitors' && t.includes(chosen(g)?.[0]) && g.key !== s.key);
     if (mayBeBlocked) continue;
-    const got = info.get(s.key);
+    const got = told(s);
     if (!got) { problems.push(`ORACLE: ${label(s)} was not blocked but got no result`); continue; }
     if (s.type !== 'investigate' && s.type !== 'autopsy') continue;
+    // v8: anybody who visited the Psychic clouds the vision. Only allowed when someone did pick them tonight.
+    if (got.novision) {
+      if (!hasV8Rules(vroom)) problems.push(`ORACLE: ${label(s)} got "No vision" before the v8 rules`);
+      else if (!steps.some((x) => x.key !== s.key && chosen(x)?.some((id) => s.actors.includes(id)))) problems.push(`ORACLE: ${label(s)} got "No vision" but nobody visited them`);
+      continue;
+    }
     const framed = touched(['frame'], t);
     const [a, b] = t.map((id) => pl.get(id));
     let want = null;
     if (s.type === 'autopsy') want = `${a.name} was the ${ROLE_BY_ID[a.roleId].name}.`;
+    else if (s.check === 'alignment' && s.roleId === 'psychic' && hasNumberedCalls(vroom)) want = `${a.name} is ${side(factionOf(a.roleId) === 'mafia' ? 'mafia' : 'innocent')}.`; // v7: the true side, past frames and disguises
     else if (s.check === 'alignment' && !framed) want = `${a.name} is ${side(looks(a.roleId))}.`;
     else if (s.check === 'inverted' && !framed) want = `${a.name} is ${side(looks(a.roleId) === 'mafia' ? 'innocent' : 'mafia')}.`;
     else if (s.check === 'naive') want = `${a.name} is NOT Mafia.`;
     else if (s.check === 'paranoid') want = `${a.name} is MAFIA.`;
     else if (s.check === 'random' && !framed) want = `${a.name} is ${side(actions[s.key].flip === 'heads' ? looks(a.roleId) : looks(a.roleId) === 'mafia' ? 'innocent' : 'mafia')}.`;
     else if (COIN.includes(s.check)) want = `${a.name} is ${side(actions[s.key].coin)}.`;
-    else if (s.check === 'role') want = `${a.name} is the ${ROLE_BY_ID[a.roleId].name}.`;
+    else if (s.check === 'role') {
+      // v6: the Godfather shows as a Villager to the exact-role check of the Investigator (and old Detective) and their look-alikes.
+      const disguised = hasGodfatherDisguise(vroom) && a.roleId === 'godfather' && [INVESTIGATOR_ID, 'detective_v1'].some((id) => s.roleId === id || ROLE_BY_ID[s.roleId]?.seesAs === id);
+      want = `${a.name} is the ${ROLE_BY_ID[disguised ? 'villager' : a.roleId].name}.`;
+    }
     else if (s.check === 'parity' && !framed) want = `${a.name} and ${b.name} are ${looks(a.roleId) === looks(b.roleId) ? 'on the SAME side' : 'on DIFFERENT sides'}.`;
     if (want && got.text !== want) problems.push(`ORACLE: ${label(s)} should be told "${want}" but got "${got.text}"`);
   }
