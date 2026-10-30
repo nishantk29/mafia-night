@@ -12,7 +12,7 @@
 .roles-gate .sheet-grab{display:none}
 .roles-gate .rs-act{position:fixed;left:0;right:0;bottom:0;padding:var(--s4) var(--gutter,16px) calc(var(--s3) + env(safe-area-inset-bottom));background:linear-gradient(to bottom,transparent,#070a10 38%)}
 .roles-sheet .rs-act{margin-top:var(--s4)}
-.roles-gate .sheet-title,.roles-sheet .sheet-title{font-family:"Limelight",var(--font-display);text-transform:none;font-weight:400;font-size:clamp(1.75rem,8vw,2.25rem);line-height:1.1;margin:0}
+.roles-gate .sheet-title,.roles-sheet .sheet-title{font-family:"Mafia Deco",var(--font-display);text-transform:none;font-weight:400;font-size:clamp(1.75rem,8vw,2.25rem);line-height:1.1;margin:0}
 .rs-lead,.rs-foot{margin:var(--s2) 0 0;color:var(--smoke);font-size:1.0625rem}
 .rs-foot{font-size:1rem;margin-top:var(--s5)}
 .rs-group{margin-top:var(--s5)}
@@ -56,7 +56,7 @@
 .st-rail .st-card + .st-line.is-next{margin-top:var(--s2)}
 .st-rail .st-card + .st-line.is-next::before{content:"";position:absolute;left:0;right:0;top:calc(-1 * var(--s3));border-top:1px solid var(--divider)}
 .st-kicker{margin:0 0 var(--s2);color:var(--brass);font:600 1.0625rem/1.2 var(--font-ui,Rubik,system-ui,sans-serif)}
-.st-say{margin:0 0 var(--s4);font-family:"Limelight",var(--font-display);font-weight:400;font-size:clamp(1.65rem,8.2vw,2.25rem);line-height:1.12;letter-spacing:.01em;color:var(--candle);text-transform:none;text-wrap:balance}
+.st-say{margin:0 0 var(--s4);font-family:"Mafia Deco",var(--font-display);font-weight:400;font-size:clamp(1.65rem,8.2vw,2.25rem);line-height:1.12;letter-spacing:.01em;color:var(--candle);text-transform:none;text-wrap:balance}
 .st-say b{font:inherit;font-weight:400}
 .st-todo{margin:0 0 var(--s2);font-size:1.0625rem;color:var(--candle)}
 .st-dead,.st-then{margin:0 0 var(--s3);font-size:1rem;color:var(--smoke)}

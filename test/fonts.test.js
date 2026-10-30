@@ -5,12 +5,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const css = (f) => readFileSync(new URL(`../public/${f}`, import.meta.url), 'utf8');
 
-test('Mafia loads Limelight itself: @font-face with swap, preload, and its own display variable', () => {
+// The subset Limelight is a Modified Version under the SIL OFL and Limelight is a Reserved Font Name, so it ships as
+// "Mafia Deco" (scripts/fonts/subset.py). Same outlines, same metrics.
+test('Mafia loads its Limelight-based display face itself: @font-face with swap, preload, and its own display variable', () => {
   const r = css('redesign.css');
-  assert.match(r, /@font-face\{font-family:"Limelight";[^}]*font-display:swap[^}]*limelight-400\.woff2/);
-  assert.match(r, /--mafia-display:"Limelight","Limelight Fallback"/);
+  assert.match(r, /@font-face\{font-family:"Mafia Deco";[^}]*font-display:swap[^}]*mafia-deco-400-core\.woff2/);
+  assert.match(r, /--mafia-display:"Mafia Deco","Limelight Fallback"/);
   assert.match(r, /--f-display-font:var\(--mafia-display\)/, 'family.css can drop Limelight without changing Mafia');
-  assert.match(css('index.html'), /rel="preload" href="\/fonts\/limelight-400\.woff2"/);
+  assert.match(css('index.html'), /rel="preload" href="\/fonts\/mafia-deco-400-core\.woff2"/);
 });
 test('metric-matched fallbacks for both fonts (no layout jump when the web fonts arrive)', () => {
   const r = css('redesign.css');

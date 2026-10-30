@@ -1,0 +1,10 @@
+{
+ "scan": ["public", "src"],
+ "common": "U+A0,U+2013-2014,U+2018-2019,U+201C-201D,U+2022,U+2026",
+ "features": ["ccmp", "locl", "mark", "mkmk", "kern", "liga", "clig", "calt", "rlig", "rvrn", "tnum"],
+ "fonts": [
+  {"src": "scripts/fonts/src/limelight-400.woff2", "out": "mafia-deco-400", "split": true, "rename": {"from": "Limelight", "to": "Mafia Deco"}},
+  {"src": "scripts/fonts/src/alegreya-sans-400.woff2", "out": "alegreya-sans-400-print", "split": false},
+  {"src": "scripts/fonts/src/alegreya-sans-700.woff2", "out": "alegreya-sans-700-print", "split": false}
+ ]
+}

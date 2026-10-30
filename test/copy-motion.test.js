@@ -13,7 +13,7 @@ test('user-facing copy says Host, never storyteller', () => {
 test('service worker precaches every public js file and the display font', () => {
   const sw = readFileSync(new URL('sw.js', pub), 'utf8');
   for (const n of readdirSync(new URL('js/', pub))) assert.ok(sw.includes(`'/js/${n}'`), n);
-  assert.ok(sw.includes("'/fonts/limelight-400.woff2'"));
+  assert.ok(sw.includes("'/fonts/mafia-deco-400-core.woff2'") && sw.includes("'/fonts/mafia-deco-400-ext.woff2'"));
 });
 
 test('no scroll-driven or scroll-snap effects', () => {
