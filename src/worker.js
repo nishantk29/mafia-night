@@ -2,7 +2,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { errorResponse } from './error-page.js';
 import { newRoom, migrateRoleIds, messagesFor, justEnded } from '../public/js/room.js';
-import { GameLog, KEY, LOG_VERSION, chunkOf } from '../public/js/event-log.js';
+import { GameLog, KEY, LOG_VERSION, chunkOf, META } from '../public/js/event-log.js';
 import { NOTIFY_ON_UNDO } from '../public/js/config-defaults.js';
 import { handleAiInternal } from './ai.js';
 import { askRule } from './ask.js';
@@ -98,7 +98,7 @@ export class Room extends DurableObject {
           const snaps = [];
           for (let k = 1; k * meta.snapEvery <= meta.len; k++) { const s = await st.get(KEY.snap(k)); if (s) snaps.push([k * meta.snapEvery, s]); }
           const log = GameLog.restore({ base: await st.get(KEY.base), events, cursor: meta.cursor, rev: meta.rev, snaps }, { snapEvery: meta.snapEvery });
-          if (JSON.stringify(migrateRoleIds(log.room)) === JSON.stringify(this.room)) { this.log = log; this.room = log.room; this.dirty = null; return; }
+          if (JSON.stringify(migrateRoleIds(log.room)) === JSON.stringify(this.room)) { this.log = log; this.room = log.room; this.dirty = log.stamped ? { from: 0 } : null; return; } // stamps worked out for an old log are saved with the next move
         }
       }
     } catch (e) { console.error(`event log unreadable for room ${this.room.code}, starting a fresh one:`, e?.message || e); }
@@ -118,7 +118,7 @@ export class Room extends DurableObject {
     const r = this.log.apply(actor, msg, Date.now());
     this.room = this.log.room;
     if (r.kept) {
-      this.markDirty(this.log.cursor - 1);
+      this.markDirty(this.log.cursor - 1); this.tailFrom ??= this.log.cursor - 1;
       if (this.log.events.length >= MAX_EVENTS && ['lobby', 'dealt', 'over'].includes(this.room.phase)) this.startLog(); // a long-running room: keep the log bounded at a game boundary
     }
     return { res: r, changed: !!r.kept };
@@ -209,17 +209,30 @@ export class Room extends DurableObject {
   send(ws, obj) { try { ws.send(JSON.stringify(obj)); } catch { /* socket gone */ } }
 
   // Each view carries the log's revision; the Host's also says what Undo and Redo would do.
+  // While the host fixes a flagged step, players see the last confirmed room (no unconfirmed deaths) and `paused`.
+  // The host's view also carries the pause in words, and `tail`: the events this change added, so a host phone's copy
+  // of the log stays current (it asks with {type:'log'} when it missed a rev).
   stamp(m, att) {
     if (m.type !== 'view') return m;
-    return att?.who === 'host' ? { ...m, rev: this.log.rev, hist: this.log.history() } : { ...m, rev: this.log.rev };
+    if (att?.who !== 'host') return this.log.hold ? { ...m, rev: this.log.rev, paused: true } : { ...m, rev: this.log.rev };
+    const hist = this.log.history(); if (hist.hold) hist.hold = this.log.holdInfo();
+    const tail = this.tailFrom != null && this.tailFrom < this.log.cursor ? { from: this.tailFrom, events: this.log.events.slice(this.tailFrom, this.log.cursor) } : undefined;
+    return { ...m, rev: this.log.rev, hist, ...(tail ? { tail } : {}) };
   }
-  viewsFor(ws, connected, announce) { const att = ws.deserializeAttachment(); return messagesFor(this.room, att, connected, announce).map((m) => this.stamp(m, att)); }
+  // What players are shown: the room, or while paused the last confirmed one.
+  shown() { return this.log?.hold ? this.log.confirmedRoom() : this.room; }
+  viewsFor(ws, connected, announce, shown = null) {
+    const att = ws.deserializeAttachment();
+    const room = att?.who === 'host' ? this.room : (shown || this.shown());
+    return messagesFor(room, att, connected, announce && !this.log.hold).map((m) => this.stamp(m, att));
+  }
 
   // `announce`: the game just ended, so each socket also gets the game-over event (see messagesFor).
   broadcast(announce = false) {
     if (!this.room) return; // closed: the sockets are already gone
-    const connected = this.connectedIds();
-    for (const ws of this.ctx.getWebSockets()) for (const m of this.viewsFor(ws, connected, announce)) this.send(ws, m);
+    const connected = this.connectedIds(); const shown = this.shown();
+    for (const ws of this.ctx.getWebSockets()) for (const m of this.viewsFor(ws, connected, announce, shown)) this.send(ws, m);
+    this.tailFrom = null;
   }
 
   // Undo / Redo (Host only): one Host step back or forward on the log. The room is rebuilt by replay, so deaths,
@@ -231,15 +244,46 @@ export class Room extends DurableObject {
       for (const m of this.viewsFor(ws, this.connectedIds())) this.send(ws, m);
       return;
     }
-    const before = this.room; const was = publicFace(before);
+    const seen = this.shown(); const was = publicFace(seen);
     const label = dir === 'undo' ? this.log.undoStep() : this.log.redoStep();
     if (label === null) { this.send(ws, { type: 'error', error: dir === 'undo' ? 'Nothing to undo.' : 'Nothing to redo.' }); return; }
     this.room = this.log.room;
     if (!(await this.commit(ws))) return;
-    this.broadcast(justEnded(before.phase, this.room));
+    this.broadcast(justEnded(seen.phase, this.shown())); // what the phones saw before: a pause hides an ending until it is confirmed
     this.send(ws, { type: 'stepped', dir, label, host: true });
-    if (NOTIFY_ON_UNDO && publicFace(this.room) !== was) {
+    if (NOTIFY_ON_UNDO && publicFace(this.shown()) !== was) {
       for (const s of this.ctx.getWebSockets()) if (s !== ws && s.deserializeAttachment()?.who) this.send(s, { type: 'stepped', dir });
+    }
+  }
+
+  // A change to an earlier step (edit, drop, insert, cut): one meta event, then the rest of the game is replayed
+  // with checks. It needs the current rev, like Undo. Either the replay reaches the end, and every phone is told
+  // "The host changed an earlier step", or it stops at the first step that no longer fits: the host gets the pause,
+  // and players keep the last confirmed room until it is fixed.
+  async change(ws, msg) {
+    if (typeof msg.rev !== 'number' || msg.rev !== this.log.rev) {
+      this.send(ws, { type: 'error', error: 'The game moved on. Showing the latest.' });
+      for (const m of this.viewsFor(ws, this.connectedIds())) this.send(ws, m);
+      return;
+    }
+    const { rev: _rev, ...m } = msg;
+    const seen = this.shown(); const wasHeld = !!this.log.hold;
+    const r = this.log.op(m, { now: Date.now() });
+    if (r.error) { this.send(ws, { type: 'error', error: r.error }); return; }
+    if (!r.kept) { this.send(ws, { type: 'error', error: 'That is already the choice there.' }); return; }
+    this.room = this.log.room; this.markDirty(this.log.cursor - 1); this.tailFrom ??= this.log.cursor - 1;
+    if (!(await this.commit(ws))) return;
+    this.broadcast(justEnded(seen.phase, this.shown()));
+    const hold = this.log.holdInfo();
+    this.send(ws, { type: 'changed', host: true, hold, label: hold ? `Paused: ${hold.label}` : 'Changed an earlier step' });
+    // Every other phone, every time the game goes on again: private results may have changed, and a toast sent only
+    // to the phones affected would point at them. While paused, the players' banner says it instead.
+    // When a pause just began, players get the banner's words as a toast too: the banner can sit under a full-screen
+    // card (a death card, the roles list).
+    for (const s of this.ctx.getWebSockets()) {
+      const who = s.deserializeAttachment()?.who;
+      if (!hold && s !== ws && who) this.send(s, { type: 'changed' });
+      else if (hold && !wasHeld && who === 'player') this.send(s, { type: 'paused', error: PAUSED });
     }
   }
 
@@ -260,6 +304,7 @@ export class Room extends DurableObject {
         if (!p || p.token !== msg.token) { this.send(ws, { type: 'fatal', error: 'Could not rejoin. Join again with a new name.', clear: true }); ws.close(1008, 'bad token'); return; }
         ws.serializeAttachment({ who: 'player', playerId: p.id });
       } else if (msg.join) {
+        if (this.log.hold) { this.send(ws, { type: 'error', error: PAUSED }); return; }
         const { res, changed } = this.apply({ anon: true }, { type: 'join', name: msg.join });
         if (res.error) { if (changed) await this.commit(ws); this.send(ws, { type: 'error', error: res.error }); return; }
         if (!(await this.commit(ws))) return;
@@ -287,6 +332,14 @@ export class Room extends DurableObject {
       return;
     }
 
+    // ---- change an earlier step, and the host phone's copy of the log (host only) ----
+    if (META.has(msg.type) || msg.type === 'log') {
+      if (att.who !== 'host') { this.send(ws, { type: 'error', error: 'Host only.' }); return; }
+      if (msg.type === 'log') { this.send(ws, { type: 'log', ...this.log.eventsSince(msg.since) }); return; }
+      await this.change(ws, msg);
+      return;
+    }
+
     // ---- actions ----
     const actor = att.who === 'host' ? { host: true } : { playerId: att.playerId };
     // A Host message sent against an older revision (a second Host phone, a late retry) is refused, never applied
@@ -296,6 +349,7 @@ export class Room extends DurableObject {
       for (const m of this.viewsFor(ws, this.connectedIds())) this.send(ws, m);
       return;
     }
+    if (this.log.hold && !actor.host) { this.send(ws, { type: 'error', error: PAUSED }); return; }
     const { rev: _rev, ...intent } = msg;
     const before = this.room.phase;
     const { res, changed } = this.apply(actor, intent);
@@ -313,3 +367,4 @@ export class Room extends DurableObject {
 // that changes none of it (a night pick, a note) is not announced to players.
 const publicFace = (r) => JSON.stringify([r.phase, r.day, r.night, r.players.map((p) => [p.id, p.alive]), r.winner?.side || null]);
 const MAX_EVENTS = 6000;
+const PAUSED = 'The host is fixing an earlier step. Hold on.';

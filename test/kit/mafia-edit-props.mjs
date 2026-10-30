@@ -26,8 +26,8 @@ export function newGame(seed, Log, o = {}) {
   const g = kitGame(seed, { Log, ...o });
   // The game's own clock and seed words for every later move and change (the DO uses Date.now and crypto), so a
   // failing seed fails the same way every run.
-  const { log } = g; let t = 1_900_000_000_000, n = seed * 100_000;
-  const next = () => { n++; return [Math.imul(n, 2654435761) >>> 0, (n ^ 0x9e3779b9) >>> 0, Math.imul(n, 40503) >>> 0, 7]; };
+  const { log } = g; let t = 1_900_000_000_000; const S = simRng(seed * 104729 + 17);
+  const next = () => [S.int(2 ** 32), S.int(2 ** 32), S.int(2 ** 32), S.int(2 ** 32)]; // independent words: correlated ones bias the coins
   // Plain functions on `this`, so a fork() of the log (the dry run) keeps the clock but acts on itself.
   const P = Object.getPrototypeOf(log);
   log.apply = function (a, m, now = (t += 1000), e = next()) { return P.apply.call(this, a, m, now, e); };
