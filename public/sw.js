@@ -3,7 +3,7 @@
 // - Navigations: network-first, falling back to the cached app shell.
 // - /api/* and /ws/* never touch the cache.
 // VERSION is a content hash of every precached file, so it changes whenever a file does.
-const VERSION = '7437bc33a3';
+const VERSION = '3b94af4147';
 const PREFIX = 'mafia-night-';
 const CACHE = PREFIX + VERSION;
 
@@ -16,7 +16,7 @@ const PRECACHE = [
   '/fonts/alegreya-sans-700-print.woff2',
   '/fonts/mafia-deco-400-core.woff2',
   '/fonts/mafia-deco-400-ext.woff2',
-  '/fonts/rubik-var.woff2',
+  '/fonts/rubik.woff2',
   '/icons/apple-touch-icon.png',
   '/icons/favicon-32.png',
   '/icons/favicon.svg',

@@ -1293,7 +1293,7 @@ html[data-fx="off"] .fx-scene{display:none}
    Rubik titles, big numbers, one full-width pill at the bottom. Tilt/lift is transform only (fx.js, rAF).
    Glass stays on sheets, pop-outs and overlays. Flat fallbacks: html[data-fx="off"], html[data-noblur="1"].
    ====================================================================================== */
-@font-face{font-family:"Rubik";src:url("/fonts/rubik-var.woff2") format("woff2");font-weight:500 900;font-style:normal;font-display:swap}
+@font-face{font-family:"Rubik";src:url("/fonts/rubik.woff2") format("woff2");font-weight:500 900;font-style:normal;font-display:swap}
 :root{--font-display:"Rubik",system-ui,sans-serif;--font-ui:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
   --room:#0B0B0D;--room-night:#07070A;--panel:#1A1A20;--panel-2:#26262E;--rule:#3A3A46;--rule-strong:#8A8A9A;--divider:var(--rule);--divider-strong:var(--rule-strong);--faint:#A9A9B8;
   --smoke:#C9C9D6;--candle:#FFF4E6;--brass:#F2C14E;--brass-hi:#FFD36B;--brass-lo:#B58A22;--on-brass:#2A0508;--red-deep:#A3101D}
