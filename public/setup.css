@@ -172,3 +172,25 @@ html[data-fx="off"] .setup-track{transition:none}
 .gone{display:grid;gap:var(--s3);padding-block:var(--s6)}
 /* Programmatic focus on the pass headings moves screen readers, not a visible ring (keyboard focus still shows on controls). */
 .pass [tabindex="-1"]:focus{outline:none}
+
+/* home, desktop: one centred container in two uneven columns. The masthead and the one primary lead on the left;
+   the ways to play and the rules sit beside them; How to play and More from Game Night share the row below.
+   .home-paths dissolves so its children take grid areas; the DOM (and the phone layout) stays as it is. */
+@media (min-width:900px){
+  .wrap.home{max-width:1120px;min-height:0;grid-template-columns:minmax(0,7fr) minmax(0,5fr);column-gap:var(--s7);row-gap:var(--s5);
+    align-items:start;align-content:start;padding-top:var(--s4);
+    grid-template-areas:"back back" "hero list" "cta rules" "how more" "foot foot"}
+  .wrap.home > .hub-link{grid-area:back;margin:0 0 0 calc(var(--s1) * -1)}
+  .wrap.home > .home-hero{grid-area:hero;align-self:start}
+  .wrap.home > .home-paths{display:contents}
+  .wrap.home .path-list{grid-area:list;margin:0;align-self:end}
+  .wrap.home .home-rules{grid-area:rules;align-self:center}
+  .wrap.home .suggest{grid-area:more;margin-top:var(--s6)}
+  .wrap.home .home-how{grid-area:how;margin-top:var(--s6)}
+  .wrap.home > .home-cta{grid-area:cta;position:static;align-self:center;width:min(100%,24rem);padding:0;background:none}
+  .wrap.home > .site-foot{grid-area:foot}
+  .wrap.home .how{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s6);padding:var(--s3) var(--s5)}
+  .wrap.home .how li{align-content:start}
+  .wrap.home .how li:nth-child(2){border-top:0}
+}
+@media (min-width:1024px){.wrap.home{column-gap:var(--s8)}}
