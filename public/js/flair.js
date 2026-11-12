@@ -25,7 +25,7 @@ export function knifeSvg() {
 const GAMES = [
   { href: 'https://avalon.hatethespurs.com/', cls: 'is-quest', name: 'Quest Night', line: 'Knights and traitors. A hidden-team quest for 5 to 10.',
     icon: '<path fill="currentColor" d="M4 18h16l1-9-5 3-4-6-4 6-5-3zM5 20h14v2H5z"/>' },
-  { href: 'https://secrethitler.hatethespurs.com/', cls: 'is-gilded', name: 'The Gilded Chamber', line: 'Pass laws, hunt the impostor. A secret-role game for 5 to 10.',
+  { href: 'https://gilded.hatethespurs.com/', cls: 'is-gilded', name: 'The Gilded Chamber', line: 'Pass laws, hunt the impostor. A secret-role game for 5 to 10.',
     icon: '<g fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 1l1.4 4h-2.8zM12 23l-1.4-4h2.8zM1 12l4-1.4v2.8zM23 12l-4 1.4v-2.8zM4.2 4.2l4 1.6-1.9 1.9zM19.8 19.8l-4-1.6 1.9-1.9zM19.8 4.2l-1.6 4-1.9-1.9zM4.2 19.8l1.6-4 1.9 1.9z"/></g>' },
 ];
 export function suggestions() {
