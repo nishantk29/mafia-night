@@ -4,8 +4,10 @@
 import { fileURLToPath } from 'node:url';
 import { engines, ledger, server } from './phones.mjs';
 
-const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
-const { chromium, webkit } = await import(`${PW}/index.mjs`);
+// playwright-core is an optional dev tool (not a package.json dependency): install it, or set PW to its folder.
+const PW = process.env.PW || 'playwright-core';
+const pwEntry = /^(\.|\/|[A-Za-z]:)/.test(PW) ? `${PW}/index.mjs` : PW; // a folder path, or the bare package name
+const { chromium, webkit } = await import(pwEntry);
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SHOTS = process.env.SHOTS || '';
 const L = ledger('mafia preset sheet e2e');
@@ -40,11 +42,11 @@ const measure = (page) => page.evaluate(() => {
     topOfStack: (() => { const x = sr.left + sr.width / 2; const el = document.elementFromPoint(x, sr.top + 4); return !!el && sheet.contains(el); })(),
   };
 });
-// Under heavy box load a real click can stall; fall back to a DOM click so the layout checks still run.
+// Under heavy machine load a real click can stall; fall back to a DOM click so the layout checks still run.
 const tap = (loc) => loc.click({ timeout: 10000 }).catch(() => loc.evaluate((b) => b.click()));
 const same = (a) => a.every((v) => Math.abs(v - a[0]) <= 0.5);
 
-// WebKit is skipped for an https BASE (the box WebKit has no TLS): see engines() in phones.mjs. E2E_WEBKIT=1 forces it.
+// WebKit is skipped for an https BASE (the dev machine's WebKit had no TLS): see engines() in phones.mjs. E2E_WEBKIT=1 forces it.
 const ENGINES = engines(srv.base, (process.env.ENGINES || 'chromium,webkit').split(','));
 for (const [engine, type] of [['chromium', chromium], ['webkit', webkit]].filter(([e]) => ENGINES.includes(e))) {
   const browser = engine === 'webkit' ? await type.launch({ timeout: 600000 }) : await type.launch({ timeout: 600000, executablePath: process.env.CHROME || '/usr/bin/google-chrome', args: ['--no-sandbox'] });

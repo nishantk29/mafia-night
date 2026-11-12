@@ -17,7 +17,7 @@
 | R9 | Nothing leaks to a phone: no other player's role (unless the host turned on "Show a player's card when they die", off by default since Oct 29 2026, or the game is over), result, call number, variant id, host key or token. | v1 (variant ids: v7) | rules-gate: `house rule: nothing leaks to a player phone` → `v4…v7 reveal false/true: no other role, token, key, call number or variant id on any phone, in any phase`; `a player view never shows another player's call number`. Also audit-v7 `phones never carry other players' secrets`. |
 | R10 | A room keeps the night version it was created with. Only starting the next night applies a host-requested upgrade. Restart and New game move it to the latest. A v1 room (no field) reads as 1 and is never rewritten. | v1 | rules-gate: `house rule: a room keeps the night version it was created with` → `new rooms get the latest version`, `v2…v6: kept through deal, night, day, condemn, kill, revive and another night`, `v2…v6: only startNight applies a pending upgrade`, `v2…v6: Restart and newGame move the room to the latest`, `a v1 room (no field) reads as 1 and is never backfilled…`, `in the lobby the upgrade applies at once…`. Also night-version-legacy, restart. |
 
-## v9 rules (Nishant 2026-10-28, pinned by `nightVersion` 9; older rooms keep their behaviour)
+## v9 rules (2026-10-28, pinned by `nightVersion` 9; older rooms keep their behaviour)
 | Rule | Test |
 |---|---|
 | Wake order: Mafia (and every other killer) pick before protectors; Mafia -> Doctor -> Cop in every mode | `test/night-order-v9.test.js` "v9 night order" |
@@ -118,7 +118,7 @@ All in `test/audit-v7.test.js` unless noted. Gated on v7 unless stated.
 
 ## Deaths do not reveal roles (Oct 29 2026)
 
-Nishant: "We dont reveal the role." By default a death, at night or by vote, never names a role: the morning line is
+The decision: deaths don't reveal the role. By default a death, at night or by vote, never names a role: the morning line is
 "Everyone, open your eyes. S was killed in the night." The "Show a player's card when they die" switch in Advanced is off
 by default (`ADVANCED_DEFAULTS.cardOnDeath`, `DEFAULT_RULES.revealOnDeath`). Game over still shows every role.
 

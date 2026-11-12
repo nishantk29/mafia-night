@@ -1,4 +1,4 @@
-// Nishant, Oct 29 2026 ("We dont reveal the role"): by default a death never names a role. With "show card on death"
+// Decided Oct 29 2026 ("We dont reveal the role"): by default a death never names a role. With "show card on death"
 // off (the default, and every room made before the default changed), the morning line, the vote result, the public log,
 // the roles sheet and every phone payload carry no role for the dead, across every preset and every role. Game over shows all.
 import { test } from 'node:test';

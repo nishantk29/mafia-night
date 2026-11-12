@@ -2,12 +2,14 @@
 // Polish sweep 2026-10-28. Before: Deal roles / Start night 1 are pressed from the bottom of a long page, and the next screen
 // (card key, night 1 script) opened scrolled down, past its heading. On phones the fixed Deal roles button also sat over the
 // names field and its Add players button while the keyboard was up. Runs On this device mode (no server) with public/ from disk.
-// Run: PW=/workspace/forge/pw/node_modules/playwright-core node test/e2e/host-top.e2e.mjs   (exit 1 on any failure)
+// Run: node test/e2e/host-top.e2e.mjs   (exit 1 on any failure)
 import { readFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
-const { chromium, webkit } = await import(`${PW}/index.mjs`);
+// playwright-core is an optional dev tool (not a package.json dependency): install it, or set PW to its folder.
+const PW = process.env.PW || 'playwright-core';
+const pwEntry = /^(\.|\/|[A-Za-z]:)/.test(PW) ? `${PW}/index.mjs` : PW; // a folder path, or the bare package name
+const { chromium, webkit } = await import(pwEntry);
 const ROOT = fileURLToPath(new URL('../../public/', import.meta.url));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 const DEVICES = [

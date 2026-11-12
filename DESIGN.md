@@ -5,7 +5,7 @@ Black and blood red, one gold action, Limelight for the marquee, Rubik for every
 
 The long 2026-10 spec (tokens, layouts per screen, DOM contract) is in git history: `git show 9bf5a48^:DESIGN.md`.
 
-## Nishant's rules (apply to every build)
+## House style (applies to every build)
 
 - Film-noir art deco: Limelight display font; blood dripping from the letters of the wordmark.
 - Animations 2x slower than default (`--dur-scale: 2`, `calc(<ms> * var(--dur-scale))`, `dur()`), smooth easing (no linear, no bouncy), `prefers-reduced-motion` respected, motion uses transform and opacity only.
@@ -27,7 +27,7 @@ The long 2026-10 spec (tokens, layouts per screen, DOM contract) is in git histo
 8. **Declare winner.** Only sides actually in this game. Uniform full-width buttons; Draw is secondary.
 9. **End screen.** No stale "You won, waiting for host" after the host ended the game. One cinematic winner reveal, then "The cast": every player and role revealed one by one at 2x. Restart is primary; "Change setup first" is a full-width secondary. One heading only.
 10. **Errors and 404.** Noir "This page slipped into the shadows". Gold "Go to Game Night home" plus a secondary link to the game's home. Multi-line error text is Rubik sentence case.
-11. **Family system.** `public/family.css` (copy in `/workspace/code-team/shared/family/`) holds the shared tokens: spacing `--f-s1..8`, type `--f-fs-xs..3xl`, radii, `--f-btn-h` 52px, `--f-btn-h-sm` 44px, `--f-tap` 44px, header height, motion, plus `.f-btn`, `.f-btn--primary|secondary|danger`, `.f-header`, `.f-footer`. A site links it FIRST, then sets four hooks: `--f-accent`, `--f-display-font`, `--f-bg`, `--f-ink`. Mafia: gold on black, Limelight. Quest: navy, Cinzel. Gilded: orange, Limelight with its own treatment. Odd Card: its own. The hub is a shelf of boxed games: the same card shape per game, each in its own art. Existing class names (Mafia's `.btn`) keep working; restyle them to the three looks with the family tokens.
+11. **Family system.** `public/family.css` (an identical copy is shared by every game in the family) holds the shared tokens: spacing `--f-s1..8`, type `--f-fs-xs..3xl`, radii, `--f-btn-h` 52px, `--f-btn-h-sm` 44px, `--f-tap` 44px, header height, motion, plus `.f-btn`, `.f-btn--primary|secondary|danger`, `.f-header`, `.f-footer`. A site links it FIRST, then sets four hooks: `--f-accent`, `--f-display-font`, `--f-bg`, `--f-ink`. Mafia: gold on black, Limelight. Quest: navy, Cinzel. Gilded: orange, Limelight with its own treatment. Odd Card: its own. The hub is a shelf of boxed games: the same card shape per game, each in its own art. Existing class names (Mafia's `.btn`) keep working; restyle them to the three looks with the family tokens.
 12. **Footer credit links** have a 44px tap height.
 
 ## Keep
@@ -44,4 +44,4 @@ Limelight wordmark with blood drips; 2x slower animations with smooth easing; re
 - [ ] Reduced motion: no animation; `data-fx="off"` too. Durations are `calc(<ms> * var(--dur-scale))`.
 - [ ] No leaks: day and night, living and dead, host and player show the same layout and no role or death info.
 - [ ] `node --test test/*.test.js` is green (`test/dur-scale.test.js` included).
-- [ ] Screenshot review: run `design-review-local.mjs` (`/workspace/code-team/oct24-runs/pp/`) and look at every screen.
+- [ ] Screenshot review: capture every screen at phone and desktop widths and look at each one.

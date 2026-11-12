@@ -1,14 +1,16 @@
 // E2E (browser): a player's hand opens at the top with the card face down, on small phones.
-// Nishant 2026-10-28: "The player hands dont open to the card. People have to scroll up. Keep the card hidden just open to the top."
+// Playtest feedback 2026-10-28: "The player hands dont open to the card. People have to scroll up. Keep the card hidden just open to the top."
 // Root cause: app.js paintScreen() put back the previous screen's scrollY after every render, so a screen that changed under
 // the player (dealt, card entered, night/day flip) opened scrolled down. Runs the real room reducer in Node behind a mocked
 // WebSocket (Playwright routeWebSocket), and serves public/ from disk. No network, no worker.
-// Run: PW=/workspace/forge/pw/node_modules/playwright-core node test/e2e/hand-top.e2e.mjs   (exit 1 on any failure)
+// Run: node test/e2e/hand-top.e2e.mjs   (exit 1 on any failure)
 import { readFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
-const { chromium, webkit } = await import(`${PW}/index.mjs`);
+// playwright-core is an optional dev tool (not a package.json dependency): install it, or set PW to its folder.
+const PW = process.env.PW || 'playwright-core';
+const pwEntry = /^(\.|\/|[A-Za-z]:)/.test(PW) ? `${PW}/index.mjs` : PW; // a folder path, or the bare package name
+const { chromium, webkit } = await import(pwEntry);
 const ROOT = fileURLToPath(new URL('../../public/', import.meta.url));
 const { newRoom, reduce, messagesFor } = await import(new URL('../../public/js/room.js', import.meta.url));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };

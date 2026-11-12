@@ -1,4 +1,4 @@
-// Jank fixes (Oct 29 2026, Nishant: "The way some elements appear are very janky"). Entrances are short, use only
+// Jank fixes (design review, Oct 29 2026: "The way some elements appear are very janky"). Entrances are short, use only
 // opacity and transform, play once per mount (a repaint does not replay them), and partitions use one divider token.
 import test from 'node:test';
 import assert from 'node:assert/strict';

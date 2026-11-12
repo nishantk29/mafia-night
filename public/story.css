@@ -41,7 +41,7 @@
 /* ---- Host timeline rail ---- */
 .st-rail{list-style:none;margin:var(--s4) 0 0;padding:0 0 0 38px;position:relative;display:grid;gap:0}
 /* One solid spine every step sits on (3px --rule-strong, 5.79:1 on --room): done is filled, the current step is brass with
-   a ring, upcoming is an outlined ring. Ratios are in run/mockups/mafia-day-clarity/CONTRAST.md. */
+   a ring, upcoming is an outlined ring. */
 .st-rail::before{content:"";position:absolute;left:9px;top:26px;bottom:26px;width:3px;border-radius:var(--f-r-inset);background:var(--rule-strong)}
 .st-line{position:relative;display:flex;align-items:center;gap:var(--s2);min-height:52px;font-size:1.0625rem}
 .st-dot{position:absolute;left:-36px;top:50%;width:18px;height:18px;margin-top:-9px;box-sizing:border-box;border-radius:var(--f-r-round);background:var(--room)}
@@ -114,7 +114,7 @@
    clear of the button. */
 html:has(.st-rail) .action-dock{background:linear-gradient(to bottom,transparent,var(--room) var(--s3))}
 
-/* press feedback (Nishant, 2026-10-29): lands on press-in in --f-press (120ms);
+/* press feedback (2026-10-29): lands on press-in in --f-press (120ms);
    the release runs in --f-release (about 0.7x). Buttons and cards scale to .97; list rows (.choice) highlight instead. */
 @media (prefers-reduced-motion:no-preference){
   :is(.pk,.home-rules,.block,.whisper,.guide,.path):active,.seat:active .seat-card,.btn:not(#v2):active,.action-dock .btn.big:not(#v2):active{transition-duration:var(--f-press)}

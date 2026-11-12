@@ -1,19 +1,21 @@
 // @ts-check
 // Shared multi-phone browser harness for the Game Night games (tech review, Oct 28 2026). Replaces the one-off
-// puppeteer/playwright scripts in code-team/redesign/run/tools/ with one tested set of helpers.
+// puppeteer/playwright scripts with one tested set of helpers.
 // Copy to test/e2e/phones.mjs in each game; the game's test/e2e/multi-phone.e2e.mjs drives it with a small adapter.
 //
 //   BASE=https://...  node test/e2e/multi-phone.e2e.mjs   # against a deployed site (read-only smoke; closes its rooms)
 //   node test/e2e/multi-phone.e2e.mjs                     # starts `wrangler dev --local` (no Cloudflare login) on a free port, stops it after
 //
-// Chromium only (system Chrome). The box has no WebKit runtime libraries. Browser tests stay out of the deploy gate
+// Chromium only (system Chrome) by default; WebKit needs its runtime libraries installed. Browser tests stay out of the deploy gate
 // (node --test); run them before opening a PR that touches the client or the Worker.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 
-const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
+// playwright-core is an optional dev tool (not a package.json dependency): install it, or set PW to its folder.
+const PW = process.env.PW || 'playwright-core';
+const pwEntry = /^(\.|\/|[A-Za-z]:)/.test(PW) ? `${PW}/index.mjs` : PW; // a folder path, or the bare package name
 const CHROME = process.env.CHROME || '/usr/bin/google-chrome';
 
 /** Phone and desktop profiles used across the family (390 is the review size). */
@@ -64,23 +66,23 @@ export async function server(dir) {
   return { base: `http://127.0.0.1:${port}`, stop: () => { p.kill('SIGTERM'); }, local: true };
 }
 
-// WebKit on this box can only reach http:// pages. Its Playwright WPE build finds no GIO TLS module (glib-networking is
+// WebKit on the dev machine could only reach http:// pages. Its Playwright WPE build finds no GIO TLS module (glib-networking is
 // not installed), so every https:// load fails with "TLS support is not available", before any app code runs. It is the
-// box, not the app: the same suites pass in WebKit against the local `wrangler dev` (http). So with an https BASE (a
+// machine, not the app: the same suites pass in WebKit against the local `wrangler dev` (http). So with an https BASE (a
 // live or preview URL) these suites run Chromium only.
-//   E2E_WEBKIT=1  force WebKit anyway (a box or CI with TLS)
+//   E2E_WEBKIT=1  force WebKit anyway (a machine or CI with TLS)
 //   E2E_WEBKIT=0  never run WebKit
 /** @param {string} base @param {string[]} [want] @returns {string[]} the engines to run, in order */
 export function engines(base, want = ['chromium', 'webkit']) {
   const f = process.env.E2E_WEBKIT;
-  const skip = f === '0' ? 'E2E_WEBKIT=0' : f !== '1' && /^https:/i.test(base || '') ? 'https BASE and the box WebKit has no TLS (set E2E_WEBKIT=1 to force)' : '';
+  const skip = f === '0' ? 'E2E_WEBKIT=0' : f !== '1' && /^https:/i.test(base || '') ? 'https BASE and WebKit may have no TLS here (set E2E_WEBKIT=1 to force)' : '';
   if (skip && want.includes('webkit')) console.log(`SKIP webkit: ${skip}`);
   return want.filter((e) => e !== 'webkit' || !skip);
 }
 
 /** @param {{ headless?: boolean }} [o] */
 export async function launch(o = {}) {
-  const { chromium } = await import(`${PW}/index.mjs`);
+  const { chromium } = await import(pwEntry);
   return chromium.launch({ executablePath: CHROME, headless: o.headless ?? true, args: ['--no-sandbox'] });
 }
 

@@ -1,12 +1,12 @@
 # Playability review (2026-10-21)
 
-Branch `grokbot/playability-review`, reviewed against `main` at c585c3b.
+Reviewed against `main` at c585c3b.
 
-**Scope.** One full online game per theme (city, village) per viewport: phone (390×844) and desktop (1280×800). That's four games and 104 screenshots, covering home, lobby, join, deal (hidden and revealed, Mafia and town), night 1 and night 2 scripts (including the Cop's live "Tell them now" result), the morning report, day voting, condemn, and the end screens for the host, a winner and a loser. Each game had 5 phones and 1 offline player. They were driven with `wrangler dev` plus headless Chrome (playwright-core), following HANDOFF.md "How to verify" step 4.
+**Scope.** One full online game per theme (city, village) per viewport: phone (390×844) and desktop (1280×800). That's four games and 104 screenshots, covering home, lobby, join, deal (hidden and revealed, Mafia and town), night 1 and night 2 scripts (including the Cop's live "Tell them now" result), the morning report, day voting, condemn, and the end screens for the host, a winner and a loser. Each game had 5 phones and 1 offline player. They were driven with `wrangler dev` plus headless Chrome (playwright-core), following "How to verify a change" step 4 in [architecture.md](architecture.md).
 
-**Evidence.** The screenshots and `observations.json` (console errors, horizontal overflow, tap targets under 44×44, theme-word leaks, investigator results per step) are kept out of git because they're about 20 MB. They're on the box at `/workspace/code-team/mafia-night/playability-shots/`, and the harness is `playability-shots.mjs` in the same folder. Screenshot names below are relative to that folder.
+**Evidence.** The screenshots and `observations.json` (console errors, horizontal overflow, tap targets under 44×44, theme-word leaks, investigator results per step) are kept out of git because they're about 20 MB. The harness that produced them (`playability-shots.mjs`) is kept with them. Screenshot names below are relative to that output folder.
 
-**Rule for fixes.** Nothing here changes the visual design. Each proposed fix keeps the current look (DESIGN.md) and only changes behaviour or layout where something is broken or easy to misuse. No app code is changed on this branch.
+**Rule for fixes.** Nothing here changes the visual design. Each proposed fix keeps the current look (DESIGN.md) and only changes behaviour or layout where something is broken or easy to misuse. The review itself changed no app code.
 
 ## Headline results
 
@@ -30,14 +30,14 @@ Branch `grokbot/playability-review`, reviewed against `main` at c585c3b.
 Each task is small, keeps the look, and needs `npm test` plus the 3-seed sim to stay green.
 
 - **P0: re-check "Tell them now" after PR #1.** Re-run the harness on main once PR #1 has merged. The expected result is 8/8 rendered and no console errors. No code change unless it fails.
-- **P1 (finding 1): guard "Start night" on the day screen.** Pick one of these (Nishant's choice; the look stays the same):
+- **P1 (finding 1): guard "Start night" on the day screen.** Pick one of these (a maintainer decision; the look stays the same):
   - (a) Until a vote is recorded, the dock button reads "Record the vote first" and is disabled, the same way it already behaves for pending questions. "Nobody today" counts as a vote.
   - (b) Keep it enabled, but the first tap without a vote asks "Skip today's vote?" with a confirm.
   - The recommendation is (a), because it reuses the existing disabled state and wording pattern.
   - Add a host-console test, and have the sim keep calling `noCondemn`/`condemn` before `startNight`.
 - **P2 (finding 2): stop the "Tell them now:" label from wrapping.** Wrap the label and result in one `<span>` inside `.tell-say` (or give the text `flex:1; min-width:0`), so the label and the result flow as one line of text that wraps normally. Fonts, colours and the icon don't change. Check on phone and desktop in both themes.
 - **P3 (finding 3): keep the full-screen icon from shrinking.** First reproduce it at 320–360 px. Give it `flex-shrink:0` and let the phase label truncate with an ellipsis instead. No visual change at normal widths.
-- **P4 (finding 4): consistent result wording.** This needs Nishant's OK on the wording. Options: "is MAFIA." / "is NOT MAFIA.", or "is Mafia." / "is not Mafia.", with village following the same pattern. Change `engine.js:388`, `theme.js` and the coin toast together, then update the tests that match the strings.
+- **P4 (finding 4): consistent result wording.** This needs a decision on the wording. Options: "is MAFIA." / "is NOT MAFIA.", or "is Mafia." / "is not Mafia.", with village following the same pattern. Change `engine.js:388`, `theme.js` and the coin toast together, then update the tests that match the strings.
 - **P5 (finding 5): shorter phone lobby.** This is a design call, so ask first. One option that keeps the tile look: collapse each faction group behind its existing heading on narrow screens (expanded on desktop), or show the selected roles first with "Show all roles" below.
 - **P6 (finding 6): tap targets.** Set `.appbar-tools` `min-height:44px`. Give the credit links vertical padding (`padding-block:.9em` or `display:inline-block; min-height:44px; line-height:44px`) so they look the same but have a bigger hit area.
 

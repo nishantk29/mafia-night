@@ -3,7 +3,7 @@
 // An event: { a: actor, m: message, e: [4 seed words], t: time, c: stamp }. Replaying an event gives back exactly the
 // same room, because the reducer's randomness and clock come from the event (entropy.js).
 //
-// Changing a past step and keeping the later ones (UNDO-PLAN.md sections 2.2 and 5; Nishant, Oct 30): the log stays
+// Changing a past step and keeping the later ones (UNDO-PLAN.md sections 2.2 and 5; decided Oct 30): the log stays
 // append-only. A change is one more Host event, a META event:
 //   {type:'edit', id, msg}        replace step `id`'s message (its seed words and time are kept)
 //   {type:'drop', id}             take the flagged step out

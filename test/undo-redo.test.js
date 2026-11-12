@@ -18,7 +18,7 @@ const GAMES = Number(process.env.UNDO_GAMES || 40);
 const SEED = Number(process.env.UNDO_SEED || 3);
 const json = (x) => JSON.stringify(x);
 
-test('the defaults wait on Nishant: undo past game over and the player toast are both on', () => {
+test('the defaults pending a decision: undo past game over and the player toast are both on', () => {
   assert.equal(UNDO_PAST_GAME_OVER, true);
   assert.equal(NOTIFY_ON_UNDO, true);
 });

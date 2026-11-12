@@ -4,7 +4,8 @@
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-const puppeteer = createRequire('/workspace/code-team/bugsweep/pp/node_modules/')('puppeteer-core');
+// puppeteer-core is an optional dev tool (not a package.json dependency): install it, or set PUPPETEER to its folder.
+const puppeteer = createRequire(import.meta.url)(process.env.PUPPETEER || 'puppeteer-core');
 const PORT = process.env.PORT || 18473, BASE = `http://localhost:${PORT}`;
 const root = fileURLToPath(new URL('../public', import.meta.url));
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';

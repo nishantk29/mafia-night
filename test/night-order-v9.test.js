@@ -1,4 +1,4 @@
-// v9 (Nishant 2026-10-28): "I think the order of mafia is wrong" and "I dont think a blocker can stop an action from being chosen."
+// v9 (playtest feedback 2026-10-28): "I think the order of mafia is wrong" and "I dont think a blocker can stop an action from being chosen."
 // 1) Wake order: Mafia (and every other killer) -> protectors (Doctor, Bodyguard) -> investigators, in every mode.
 // 2) A blocked role wakes and picks exactly like an unblocked one; the block only cancels the effect when the night resolves.
 // Both are pinned per room: v8 and older rooms keep their old order and behaviour.

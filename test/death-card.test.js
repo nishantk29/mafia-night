@@ -1,4 +1,4 @@
-// Nishant, Oct 30 2026: "The card that shows who died is too quick". The death card (Killed / Voted out) stays until someone
+// Design review, Oct 30 2026: "The card that shows who died is too quick". The death card (Killed / Voted out) stays until someone
 // taps its button (Close: the approved dismiss label), on the host's and every player's phone, with animations on, off, or reduced motion. Nothing times it out.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -118,7 +118,7 @@ test('CSS: the card has no exit animation, takes taps, and shows (without motion
 });
 
 // Engine PR C: the Host's Undo and Redo re-render every phone with the step before or after. A death undone and redone
-// shows its card once, never twice (Fennel, Oct 30 2026: "it shouldn't queue twice").
+// shows its card once, never twice (review, Oct 30 2026: "it shouldn't queue twice").
 const vote = (alive) => pv('day', [{ id: 'a', name: 'Ana', alive, cause: alive ? null : 'condemned' }, { id: 'b', name: 'Ben', alive: true }]);
 for (const closedFirst of [false, true]) {
   test(`Undo then Redo of a vote-out shows the card once (${closedFirst ? 'card closed before Undo' : 'card still up at Undo'})`, (t) => {

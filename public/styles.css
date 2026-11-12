@@ -1204,7 +1204,7 @@ html[data-noblur="1"] .glass{-webkit-backdrop-filter:none;backdrop-filter:none;b
 html[data-noblur="1"] .glass::after{display:none}
 
 /* ---------------------------------------------------------------- effects layer (fx.js)
-   Each overlay ends by 400ms (Nishant's motion budget, 2026-10-29); js/fx.js waits match. */
+   Each overlay ends by 400ms (the motion budget, 2026-10-29); js/fx.js waits match. */
 #fx{position:fixed;inset:0;z-index:70;pointer-events:none;overflow:hidden}
 .fx-scene{position:absolute;inset:0;pointer-events:none}
 .fx-scene::before{content:"";position:absolute;inset:0;opacity:0;will-change:opacity}

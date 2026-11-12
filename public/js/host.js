@@ -78,7 +78,7 @@ export function hostScreen(v, local) {
 }
 
 // Declare a winner: an in-page sheet (a native prompt() can lock the tab). Opens by itself when only the Cult and the
-// Serial Killer are left (v.stalemate), offering just those two and a draw: Nishant's rule, the Host decides.
+// Serial Killer are left (v.stalemate), offering just those two and a draw: the house rule is that the Host decides.
 const DECLARE_SIDES = { town: 'Town', mafia: 'Mafia', killer: 'Serial Killer', cult: 'Cult', draw: 'Draw' };
 function declareSheet(v) {
   const st = v.stalemate;

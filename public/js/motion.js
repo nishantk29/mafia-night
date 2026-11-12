@@ -32,7 +32,7 @@ export function step(paint) {
   const prevKey = last;
   const changed = last !== null && key !== last && !settling; last = key;
   if (!changed || !animOn()) return paint();
-  // Opening or leaving the FAQ (Nishant, Oct 30 2026: "janky"): no view transition. Its snapshot groups animate width, height
+  // Opening or leaving the FAQ (design review, Oct 30 2026: "janky"): no view transition. Its snapshot groups animate width, height
   // and backdrop-filter, and the home card morph ran 400ms. The page fades and slides in on opacity + transform only (.faq-in, 220ms).
   if (isFaq(prevKey) || isFaq(key)) { paint(); replay('faq-in'); return undefined; }
   if (hasVT()) {

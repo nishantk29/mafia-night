@@ -4,7 +4,7 @@ Two things for the person running the game: a first-time **walkthrough** (3-4 ca
 bottom sheet on every host screen. Host only. Players never see either.
 
 ## Modules
-- `public/js/host_help_core.js` (shared copy: `code-team/shared/host-help/host-help.js`). Generic, no imports, no game text.
+- `public/js/host_help_core.js` (an identical copy is shared by the other games). Generic, no imports, no game text.
   `helpButton(icon)`, `helpSheet(help, {icons})`, `walkthrough(cards, i, {dir})`, `helpSeen(key)`, `markHelpSeen(key)`.
 - `public/js/host_help.js` (per game). The words and the UI state:
   - `WALKTHROUGH = [{ title, lines[] }]` (title in the display font, one or two lines each).

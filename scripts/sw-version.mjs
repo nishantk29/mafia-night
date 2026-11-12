@@ -25,4 +25,4 @@ export function swVersion(pub = 'public') {
   return m && m[1];
 }
 
-export const FIX_HINT = 'run: node /workspace/code-team/shared/pwa/make-pwa.mjs public pwa/pwa.json';
+export const FIX_HINT = 'set VERSION in public/sw.js to the value of: node -e "import(\'./scripts/sw-version.mjs\').then((m) => console.log(m.computeVersion()))"';

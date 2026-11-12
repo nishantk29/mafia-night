@@ -1,4 +1,4 @@
-// Nishant 2026-10-28: "bugs like the cop 1 and cop 2 thing ruin games." For 2 and 3 copies of EVERY role with a night action:
+// Playtest feedback 2026-10-28: "bugs like the cop 1 and cop 2 thing ruin games." For 2 and 3 copies of EVERY role with a night action:
 // each copy gets its own numbered call that wakes only its own player, its pick is kept apart, and its result goes to its own
 // player. Root cause fixed in v9: team members with their own action (Hooker, Framer, Janitor, Consigliere...) were left out
 // of the numbering (engine callFamilies), so two Hookers shared one call ("Mafia, open your eyes" before v9) and both woke.

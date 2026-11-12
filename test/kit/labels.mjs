@@ -1,4 +1,4 @@
-// One label per intent (Nishant approved 2026-10-29 6:03 PM ET; run/copy/label-list.md; DESIGN-SKILL §10).
+// One label per intent (approved 2026-10-29).
 // Copy this file into each game's test/kit/ (copy it, don't fork it). Each entry: the label to use and the variants that
 // fail the gate. Patterns are anchored to the WHOLE label (trimmed), so prose like "Nobody died" never matches.
 export const INTENTS = [

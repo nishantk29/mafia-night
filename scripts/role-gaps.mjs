@@ -1,6 +1,6 @@
 // Lists role NAMES from other public Mafia sites that our catalogue doesn't have yet, for a human to review.
 // Only names are read and printed: never descriptions or any other text. New roles must be written in our own
-// words (see HANDOFF.md).
+// words (see docs/architecture.md).
 //
 // Usage:
 //   node scripts/role-gaps.mjs                       fetch the public sources and list what we're missing

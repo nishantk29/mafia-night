@@ -1,17 +1,19 @@
 // E2E (Chromium + WebKit, reduced motion on and off): the death card stays up until someone taps Close
-// (Nishant, Oct 30 2026: "The card that shows who died is too quick"). One host and eight phones play night 1 and the day vote.
+// (design review, Oct 30 2026: "The card that shows who died is too quick"). One host and eight phones play night 1 and the day vote.
 // The vote card must still be on the host's and a player's phone after 60 s, go only on that phone's Close, and name no role.
 // Run: node test/e2e/death-card.e2e.mjs   (starts `wrangler dev --local`; BASE=... uses a running one)
 //   SHOTS=<dir> saves t=0 and t=60s shots. ONLY=webkit|chromium and MOTION=reduce|no-preference narrow the runs.
-//   With an https BASE (live) WebKit is skipped: the box WebKit has no TLS. E2E_WEBKIT=1 forces it, E2E_WEBKIT=0 skips it. WAIT_MS overrides 60000.
+//   With an https BASE (live) WebKit is skipped: the dev machine's WebKit had no TLS. E2E_WEBKIT=1 forces it, E2E_WEBKIT=0 skips it. WAIT_MS overrides 60000.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { engines, ledger, server, DEVICES } from './phones.mjs';
 import { ROLE_BY_ID } from '../../public/js/roles.js';
 
-const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
-const { chromium, webkit } = await import(`${PW}/index.mjs`);
+// playwright-core is an optional dev tool (not a package.json dependency): install it, or set PW to its folder.
+const PW = process.env.PW || 'playwright-core';
+const pwEntry = /^(\.|\/|[A-Za-z]:)/.test(PW) ? `${PW}/index.mjs` : PW; // a folder path, or the bare package name
+const { chromium, webkit } = await import(pwEntry);
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SHOTS = process.env.SHOTS || '';
 const WAIT_MS = +(process.env.WAIT_MS || 60000);
@@ -126,7 +128,7 @@ async function run(engine, motion) {
     L.check(`${tag}: host Close removes the host's card`, (await card(host).count()) === 0);
     L.check(`${tag}: ${watcher.name}'s card waits for their own tap`, (await card(watcher).count()) === 1);
     // Engine PR C: Host Undo, then Redo, re-render every phone. The undone vote-out takes its card away; the Redo shows it
-    // once on each phone, never queued twice (Fennel, Oct 30 2026).
+    // once on each phone, never queued twice (review, Oct 30 2026).
     const nCards = (P) => P.page.evaluate(() => document.querySelectorAll('#fx .fx-out').length);
     if (await host.page.locator('[data-a="undo"]').count()) {
       await host.page.locator('[data-a="undo"]').click(); await wait(host, 900);

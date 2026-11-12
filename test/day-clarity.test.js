@@ -1,5 +1,5 @@
 // Day timeline clarity (approved 2026-10-29): one solid spine, filled done, brass current, outlined upcoming, a thin
-// line before what comes next, and a 12px dock fade. Contrast targets: run/mockups/mafia-day-clarity/CONTRAST.md.
+// line before what comes next, and a 12px dock fade.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
