@@ -32,7 +32,7 @@ async function scenario(browser, dev, mode) {
   const page = await ctx.newPage();
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
-    if (url.pathname.startsWith('/api/room/')) return route.fulfill({ status: 200, body: '{}' , contentType: 'application/json' });
+    if (url.pathname.startsWith('/api/room/')) return route.fulfill({ status: 200, body: '{"exists":true}', contentType: 'application/json' });
     let p = join(ROOT, decodeURIComponent(url.pathname)); if (url.pathname === '/' || !existsSync(p)) p = join(ROOT, 'index.html');
     return route.fulfill({ status: 200, body: readFileSync(p), contentType: TYPES[extname(p)] || 'application/octet-stream' });
   });

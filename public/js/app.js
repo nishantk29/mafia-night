@@ -371,7 +371,7 @@ async function route() {
     else { S.transport = wsTransport(S.code, () => ({ type: 'hello', hostKey: key })); S.send = (a) => S.transport.send(a); }
   } else if ((kind === 'play' || kind === 'join') && /^[A-Za-z]{6}$/.test(arg || '')) {
     S.mode = 'play'; S.code = arg.toUpperCase();
-    const ex = await fetch(`/api/room/${S.code}`).then((r) => r.ok).catch(() => false);
+    const ex = await fetch(`/api/room/${S.code}`).then((r) => (r.ok ? r.json() : null)).then((j) => j?.exists === true).catch(() => false);
     if (!ex) { S.fatal = FATAL.noRoom(S.code); }
     else {
       S.transport = wsTransport(S.code, () => { try { const c = JSON.parse(store.get(`mafia.player.${S.code}`) || 'null'); return c ? { type: 'hello', ...c } : null; } catch { return null; } });
@@ -383,7 +383,7 @@ async function route() {
     // Drop resume links for rooms that have closed.
     for (const k of Object.keys(localStorage).filter((x) => x.startsWith('mafia.host.') || x.startsWith('mafia.player.'))) {
       const code = k.slice(k.lastIndexOf('.') + 1);
-      fetch(`/api/room/${code}`).then((r) => { if (!r.ok) { store.del(k); if (S.mode === 'home') S.render(); } }).catch(() => {});
+      fetch(`/api/room/${code}`).then((r) => (r.ok ? r.json().catch(() => null) : null)).then((j) => { if (j?.exists !== true) { store.del(k); if (S.mode === 'home') S.render(); } }).catch(() => {});
     }
   }
   // Every new screen opens at the top (a player's hand shows the face-down card first).
