@@ -13,7 +13,7 @@
 import { buildExtra } from './roles_extra.js';
 import { buildExtra2 } from './roles_extra2.js';
 
-// The optional exact-role check. The name lives here once (open question: Nishant may rename it).
+// The optional exact-role check. The name lives here once (open question: it may be renamed).
 export const INVESTIGATOR_ID = 'investigator';
 export const INVESTIGATOR_NAME = 'Investigator';
 

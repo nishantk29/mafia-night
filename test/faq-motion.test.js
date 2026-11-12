@@ -1,4 +1,4 @@
-// Nishant, Oct 30 2026: "The animation when you open FAQS is also janky". Opening the FAQ page or one question animates
+// Design review, Oct 30 2026: "The animation when you open FAQS is also janky". Opening the FAQ page or one question animates
 // transform and opacity only, for 200-250 ms with the kit easing, and never height, max-height, width or blur. Opening
 // the page uses no view transition, because its snapshot groups animate width, height and backdrop-filter and the old
 // home-card morph ran for 400 ms. With reduced motion (or Animations off) the FAQ shows at once.

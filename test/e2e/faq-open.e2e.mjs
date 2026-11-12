@@ -1,13 +1,15 @@
 // E2E (Chromium + WebKit, motion on and reduced): opening the FAQ page from home, and opening one question, runs only
 // transform/opacity animations of at most 250 ms. No view transition snapshot groups (they animate width, height and
-// backdrop-filter) and no blur. With reduced motion nothing moves at all. Nishant, Oct 30 2026: "The animation when you open FAQS is also janky".
+// backdrop-filter) and no blur. With reduced motion nothing moves at all. Design review, Oct 30 2026: "The animation when you open FAQS is also janky".
 // Run: node test/e2e/faq-open.e2e.mjs   (starts `wrangler dev --local`; BASE=... uses a running one)
-// With an https BASE (live) WebKit is skipped: the box WebKit has no TLS. E2E_WEBKIT=1 forces it, E2E_WEBKIT=0 skips it.
+// With an https BASE (live) WebKit is skipped: the dev machine's WebKit had no TLS. E2E_WEBKIT=1 forces it, E2E_WEBKIT=0 skips it.
 import { fileURLToPath } from 'node:url';
 import { engines, ledger, server } from './phones.mjs';
 
-const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
-const { chromium, webkit } = await import(`${PW}/index.mjs`);
+// playwright-core is an optional dev tool (not a package.json dependency): install it, or set PW to its folder.
+const PW = process.env.PW || 'playwright-core';
+const pwEntry = /^(\.|\/|[A-Za-z]:)/.test(PW) ? `${PW}/index.mjs` : PW; // a folder path, or the bare package name
+const { chromium, webkit } = await import(pwEntry);
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const L = ledger('mafia FAQ open e2e');
 const srv = await server(ROOT);

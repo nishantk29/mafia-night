@@ -1,4 +1,4 @@
-// E2E (browser, Chromium): deaths never reveal a role by default (Nishant, Oct 29 2026), and a room that is mid-game when a
+// E2E (browser, Chromium): deaths never reveal a role by default (decided Oct 29 2026), and a room that is mid-game when a
 // new build ships resumes after a refresh. One host and five phones play night 1 to the morning and the day vote.
 //   STAGE=all     (default) play to the morning and the vote on this build, check no role is named anywhere, shots
 //   STAGE=before  play to the morning on whatever build is running, save the phones (storage + URL) to STATE=<file>

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const app = readFileSync(new URL('../public/js/app.js', import.meta.url), 'utf8');
-const kit = '/workspace/code-team/shared/reconnect/wake.js';
+const kit = process.env.WAKE_KIT || ''; // optional: path to the shared wake kit, to check public/js/wake.js is an unchanged copy
 
 test('wsTransport uses wakeReconnect, resets the backoff, and stops listening on close', () => {
   assert.match(app, /import \{ wakeReconnect \} from '\.\/wake\.js';/);
@@ -13,6 +13,6 @@ test('wsTransport uses wakeReconnect, resets the backoff, and stops listening on
   assert.match(t, /const s = ws = new WebSocket/);
   assert.match(t, /ws\.onclose = \(\) => \{ if \(closed \|\| s !== ws\) return;/, 'an abandoned socket cannot schedule a second reconnect');
 });
-test('public/js/wake.js is the shared kit, unchanged', { skip: !(() => { try { readFileSync(kit); return true; } catch { return false; } })() && 'shared kit not on this machine' }, () => {
+test('public/js/wake.js is the shared kit, unchanged', { skip: !(() => { try { readFileSync(kit); return true; } catch { return false; } })() && 'shared kit not on this machine (set WAKE_KIT)' }, () => {
   assert.equal(readFileSync(new URL('../public/js/wake.js', import.meta.url), 'utf8'), readFileSync(kit, 'utf8'));
 });

@@ -1,4 +1,4 @@
-// Nishant 2026-10-28: "you might be overdoing the artdeco font" / "We should keep it in Mafia only".
+// Design review 2026-10-28: "you might be overdoing the artdeco font" / "We should keep it in Mafia only".
 // Limelight stays in Mafia, for headings and titles only, and Mafia loads it on its own (not through the shared family.css).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

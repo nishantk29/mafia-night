@@ -868,7 +868,7 @@ export function checkWin(room) {
   return null;
 }
 // Cult vs Serial Killer: when they are the only sides left, checkWin has no rule for it and the nights can loop.
-// Nishant's rule (2026-10-23): the Host decides each time. Returns the sides to offer, or null.
+// House rule (2026-10-23): the Host decides each time. Returns the sides to offer, or null.
 export function stalemateOf(room) {
   if (!['day', 'night'].includes(room.phase) || room.winner) return null;
   if (room.players.some((p) => !p.roleId)) return null;

@@ -303,7 +303,7 @@ describe('House rules', () => {
     P(room, 'Cop').alive = false;
     const seen = viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop');
     assert.equal(seen.role, null);
-    room.config.rules = {}; // the default (Nishant, Oct 29): still secret
+    room.config.rules = {}; // the default (Oct 29): still secret
     assert.equal(viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop').role, null);
     room.config.rules = { revealOnDeath: true }; // the host turned it on
     assert.equal(viewForPlayer(room, id(room, 'Ann')).players.find((p) => p.name === 'Cop').role.id, 'cop');

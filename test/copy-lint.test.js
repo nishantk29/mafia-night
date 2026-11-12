@@ -1,5 +1,5 @@
-// Nishant 2026-10-28: "Make sure the text is checked to avoid AI wording." Every user-facing string goes through the shared
-// copy lint (test/kit/copy-lint.mjs, a copy of /workspace/code-team/shared/copy-lint/banned-phrases.mjs; copy it, don't fork it).
+// Design review 2026-10-28: "Make sure the text is checked to avoid AI wording." Every user-facing string goes through the shared
+// copy lint (test/kit/copy-lint.mjs, a shared file identical in every game repo; copy it, don't fork it).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';

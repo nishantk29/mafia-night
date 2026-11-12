@@ -214,7 +214,7 @@ h3,.appbar-title,.faq-q summary,.home-how h3,.role-name{font-family:var(--font-d
 @media (max-width:480px){.appbar-code{font-size:.7rem}.appbar-code .code{font-size:.82rem;letter-spacing:.02em}}
 
 /* ---- arriving from the hub (game end of the handoff): ONE opacity fade of the page, 150ms.
-   Nothing moves: the wordmark no longer flies in from the handoff pose (Nishant, Oct 28: "That logo moving on game night is
+   Nothing moves: the wordmark no longer flies in from the handoff pose (design review, Oct 28: "That logo moving on game night is
    kinda janky"), and the first-load rise of the home cards is skipped so the fade is the only motion. html.hub-in is set by
    the inline script in <head>, never under reduced motion or with effects off, and stays for the page's life so nothing replays. */
 html.hub-in #app,html.hub-in .bg-art{animation:hub-fade 300ms var(--ease-butter) both}
@@ -425,7 +425,7 @@ html[data-fx="off"] .check-card{animation:none}
 .action-dock .btn.big[data-a="nextStep"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:max(15px,min(var(--fs-lg),5vw))}
 
 /* ======================================================================================
-   Type tone-down (Nishant 2026-10-28: "you might be overdoing the artdeco font"). Limelight stays in Mafia, for headings
+   Type tone-down (design review 2026-10-28: "you might be overdoing the artdeco font"). Limelight stays in Mafia, for headings
    and titles only: the wordmark, page and section titles, the role card's name, win headings and the big-caps check card.
    Body text, Say lines, buttons, labels, role names in lists, FAQ and rules text use Rubik.
    Mafia owns its display font here, so a change to the shared family.css can't take it away.

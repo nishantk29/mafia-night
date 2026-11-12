@@ -78,7 +78,7 @@ export function day() {
 
 // ---------------------------------------------------------------- death card (voted out or killed)
 // items: [{ name, how: 'vote' | 'night', role?: string }]. Public facts only: callers pass a role only when the room shows it.
-// The card stays until someone taps Close (Nishant, Oct 30 2026: "The card that shows who died is too quick"). No timer
+// The card stays until someone taps Close (design review, Oct 30 2026: "The card that shows who died is too quick"). No timer
 // or animationend removes it. With animations off or reduced motion it still shows, with no spring, wash or shake.
 // A second death while one card is up waits its turn, so no name is skipped. The same death never shows twice: a card
 // that is up or waiting is not queued again, and a Host Undo that brings a player back drops their card (a Redo then

@@ -2,12 +2,14 @@
 // The real room reducer runs in Node behind a mocked WebSocket; public/ is served from disk (no network, no worker).
 // Checks: the Detective role card, "Detective 1" / "Detective 2" calls, the MAFIA / NOT MAFIA result card, no console
 // errors and no horizontal overflow at 390x844, 375x667 and 1280x800. Saves screenshots when SHOTS is set.
-// Run: PW=/workspace/forge/pw/node_modules/playwright-core SHOTS=/some/dir node test/e2e/detective.e2e.mjs   (exit 1 on any failure)
+// Run: SHOTS=/some/dir node test/e2e/detective.e2e.mjs   (exit 1 on any failure)
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-const PW = process.env.PW || '/workspace/forge/pw/node_modules/playwright-core';
-const { chromium } = await import(`${PW}/index.mjs`);
+// playwright-core is an optional dev tool (not a package.json dependency): install it, or set PW to its folder.
+const PW = process.env.PW || 'playwright-core';
+const pwEntry = /^(\.|\/|[A-Za-z]:)/.test(PW) ? `${PW}/index.mjs` : PW; // a folder path, or the bare package name
+const { chromium } = await import(pwEntry);
 const ROOT = fileURLToPath(new URL('../../public/', import.meta.url));
 const { newRoom, reduce, messagesFor } = await import(new URL('../../public/js/room.js', import.meta.url));
 const SHOTS = process.env.SHOTS; if (SHOTS) mkdirSync(SHOTS, { recursive: true });

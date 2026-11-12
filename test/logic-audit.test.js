@@ -135,7 +135,7 @@ describe('rule risks: Hunter, revive, stalemate', () => {
   });
 });
 
-describe('Cult + Serial Killer stalemate: the Host decides (Nishant, 2026-10-23)', () => {
+describe('Cult + Serial Killer stalemate: the Host decides (2026-10-23)', () => {
   test('detected only when the Cult and the Serial Killer are the only sides alive', async () => {
     const { stalemateOf } = await import('../public/js/engine.js');
     const room = mk([['Cu', 'cult'], ['Sk', 'killer'], ['V', 'villager']]);

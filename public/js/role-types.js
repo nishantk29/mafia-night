@@ -1,6 +1,6 @@
 // @ts-check
 // Role type for every built-in role, used to group the role selector, the Add role sheet and "Roles in this game"
-// by team, then type (Nishant approved 2026-10-29: Plain kept, Mafia Killing and Support kept apart, no Vote type,
+// by team, then type (approved 2026-10-29: Plain kept, Mafia Killing and Support kept apart, no Vote type,
 // a subhead even when a team has a single type). Teams follow roles_sheet.js teamKey: faction, else alignment.
 // A role missing here falls back to its team's last type; test/role-types.test.js fails if a built-in role is missing.
 export const TYPE_ORDER = {

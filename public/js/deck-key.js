@@ -1,4 +1,4 @@
-// "Your own playing cards": the fixed card key Nishant chose. Pure data; the setup needs the printable deck when a role has no card left.
+// "Your own playing cards": the fixed card key. Pure data; the setup needs the printable deck when a role has no card left.
 export const CORE_KEY = {
   mafia: ['A♠', 'A♣', 'K♠', 'K♣', 'J♠', 'J♣'],
   doctor: ['K♥', 'K♦'],

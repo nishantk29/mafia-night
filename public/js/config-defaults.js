@@ -1,8 +1,8 @@
-// Every default the redesign chose without asking Nishant lives here, so a change is one edit.
+// Every default the redesign chose without a maintainer decision lives here, so a change is one edit.
 export const DEFAULT_PRESET_ID = 'speakeasy'; // preselected on the Presets page
 export const ROOM_CODE_STEP = 1; // the room code chip + QR sit on carousel step 1 (Players)
 export const SETUP_STEPS = ['Players', 'Preset', 'Seating', 'Deal'];
-export const ADVANCED_DEFAULTS = { dayTimer: false, cardOnDeath: false, hiddenSetup: false }; // cardOnDeath off (Nishant, Oct 29): deaths never name a role unless the host turns it on; game over shows all
+export const ADVANCED_DEFAULTS = { dayTimer: false, cardOnDeath: false, hiddenSetup: false }; // cardOnDeath off (decided Oct 29): deaths never name a role unless the host turns it on; game over shows all
 export const ADVANCED_SAVE_VERSION = 2; // Advanced saved before v2 had cardOnDeath:true by default, so its cardOnDeath is ignored
 export const HIDDEN_SETUP_SHOWS_BALANCE = true; // hidden setups still show "At least 1 Mafia, Mafia fewer than Town"
 export const SETUP_STORE_KEY = 'mafia.setup.v1';
@@ -27,7 +27,7 @@ export const TALK_MIN = 1; // shortest talk, in minutes (the quick -1 stops here
 export const TALK_MAX = 15; // longest talk, in minutes (the quick +1 stops here)
 export const TALK_STORE_KEY = 'mafia.talk.v1'; // this phone's current day step, so a refresh mid-talk comes back to it
 
-// Back and forward (the Host's Undo and Redo). Both wait on Nishant's answer; flip here, nothing else changes.
+// Back and forward (the Host's Undo and Redo). Both await a final decision; flip here, nothing else changes.
 // UNDO_PAST_GAME_OVER: the Host may go back from the end screen (a confirm sheet says every phone hides the roles again).
 // NOTIFY_ON_UNDO: player phones get a short toast when the Host goes back or forward over something they could see.
 export const UNDO_PAST_GAME_OVER = true;
