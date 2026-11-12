@@ -2,7 +2,7 @@
 export const GAME_LINKS = [
   ['All games', 'https://gamenight.hatethespurs.com/'],
   ['Quest Night', 'https://avalon.hatethespurs.com/'],
-  ['The Gilded Chamber', 'https://secrethitler.hatethespurs.com/'],
+  ['The Gilded Chamber', 'https://gilded.hatethespurs.com/'],
 ];
 
 export function siteFooter() {
